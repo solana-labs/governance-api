@@ -5,6 +5,7 @@ import { ConfigService as _ConfigService } from '@nestjs/config';
 export interface Config {
   app: {
     port: number;
+    host?: string;
   };
   database: {
     password: string | undefined;

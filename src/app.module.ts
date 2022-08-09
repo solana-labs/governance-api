@@ -35,6 +35,7 @@ import { UserModule } from './user/user.module';
       useFactory: async (configService: ConfigService) => ({
         type: 'postgres',
         autoLoadEntities: true,
+        database: configService.get('database.name'),
         entities: [join(__dirname, '/**/entity{.ts,.js}')],
         password: configService.get('database.password'),
         ssl: configService.get('database.useSsl') ? { rejectUnauthorized: true } : false,

@@ -22,7 +22,7 @@ jobs:
         run: npm ci
         
       - name: Setup GCloud
-        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@v0
         with:
           project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
@@ -41,5 +41,5 @@ jobs:
           DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
           DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
         run: |
-          ./cloud_sql_proxy -instances=${{ env.DB_INSTANCE }} & npm run db:m:run
+          ./cloud_sql_proxy -instances=${{ env.DB_INSTANCE }}=tcp:5432 & npm run db:m:run
         

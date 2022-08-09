@@ -15,6 +15,7 @@ import { ConfigService } from './config.service';
           const config: Config = {
             app: {
               port,
+              host: process.env.HOST || undefined,
             },
             database: {
               password: process.env.DATABASE_PASSWORD,

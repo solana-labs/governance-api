@@ -44,7 +44,7 @@
 #   Cloud Run builds from source        - https://cloud.google.com/run/docs/deploying-source-code
 #   Principle of least privilege        - https://cloud.google.com/blog/products/identity-security/dont-get-pwned-practicing-the-principle-of-least-privilege
 
-name: Deploy to Cloud Run from Source
+name: Deploy to Prod
 
 on: [workflow_dispatch]
 
@@ -88,7 +88,9 @@ jobs:
           # NOTE: If required, update to the appropriate source folder
           source: ./
           env_vars: |
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_HOST=${{ secrets.DATABASE_HOST }}
+            DATABASE_PORT=${{ secrets.DATABASE_PORT }}
+            DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}
             JWT_USER_SECRET=${{ secrets.JWT_USER_SECRET }}
             HOST=0.0.0.0
 

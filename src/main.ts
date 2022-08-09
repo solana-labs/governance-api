@@ -21,6 +21,7 @@ async function bootstrap() {
   fastifyInstance.register(MercuriusGQLUpload);
 
   const port = configService.get('app.port');
+  app.enableCors();
   await app.listen(port);
 }
 bootstrap();

@@ -11,15 +11,18 @@ import { ConfigService } from './config.service';
       load: [
         () => {
           const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+          const dbPort = process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT, 10) : 5432;
 
           const config: Config = {
             app: {
               port,
-              host: process.env.HOST || undefined,
+              host: process.env.HOST,
             },
             database: {
+              host: process.env.DATABASE_HOST || '',
+              name: process.env.DATABASE_NAME,
               password: process.env.DATABASE_PASSWORD,
-              url: process.env.DATABASE_URL || '',
+              port: dbPort,
               username: process.env.DATABASE_USERNAME,
               useSsl: process.env.DATABASE_USE_SSL === 'true',
             },

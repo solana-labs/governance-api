@@ -1,0 +1,40 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""An authentication claim specific to a public key"""
+type AuthClaim {
+  """A payload that must be signed and returned to the api"""
+  claim: String!
+
+  """The public key the claim is for"""
+  onBehalfOf: PublicKey!
+}
+
+type Mutation {
+  createAuthenticationClaim(
+    """The public key of the wallet"""
+    publicKey: PublicKey!
+  ): AuthClaim!
+  createAuthenticationToken(
+    """The authentication claim payload used to generate a token"""
+    claim: String!
+
+    """
+    The auth claim signed by the public key's corresponding private key in hex representation
+    """
+    signature: Signature!
+  ): String!
+}
+
+"""A valid Public Key"""
+scalar PublicKey
+
+type Query {
+  root: PublicKey
+}
+
+"""
+The output of a message signed by a private key, represented as a Hex string
+"""
+scalar Signature

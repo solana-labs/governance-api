@@ -12,18 +12,29 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: ['.eslintrc.js', 'migrations/*'],
   rules: {
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-empty-interface': 'off',
     'import/order': [
       'error',
       {
         'newlines-between': 'always-and-inside-groups',
         'pathGroupsExcludedImportTypes': ['builtin'],
+        pathGroups: [
+          {
+            pattern: '@src/**/**',
+            group: 'parent',
+          },
+          {
+            pattern: '@lib/**/**',
+            group: 'parent',
+          },
+        ],
         'alphabetize': {
           order: 'asc',
           caseInsensitive: true,

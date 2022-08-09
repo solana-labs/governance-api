@@ -10,6 +10,7 @@ dotenvExpand.expand(env);
 export default new DataSource({
   type: 'postgres',
   connectTimeoutMS: 3000,
+  database: process.env.DATABASE_NAME,
   entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
   migrations: ['./migrations/*.ts'],
   migrationsTableName: 'typeorm_migrations',

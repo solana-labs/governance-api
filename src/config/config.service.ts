@@ -8,8 +8,10 @@ export interface Config {
     host?: string;
   };
   database: {
+    host: string;
+    name: string;
     password: string | undefined;
-    url: string;
+    port: number;
     username: string | undefined;
     useSsl: boolean;
   };

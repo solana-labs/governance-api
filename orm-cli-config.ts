@@ -15,6 +15,7 @@ export default new DataSource({
   migrationsTableName: 'typeorm_migrations',
   password: process.env.DATABASE_PASSWORD,
   ssl: process.env.DATABASE_USE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  url: process.env.DATABASE_URL,
+  host: process.env.DATABASE_HOST,
+  port: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT, 10) : undefined,
   username: process.env.DATABASE_USERNAME,
 });

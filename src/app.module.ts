@@ -12,13 +12,14 @@ import { AppService } from '@src/app.service';
 import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
-import { QueryRoot } from '@src/queryRoot';
+
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
     ConfigModule,
     GraphQLModule.forRoot<MercuriusDriverConfig>({
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: true,
       buildSchemaOptions: {
         dateScalarMode: 'timestamp',
       },
@@ -43,8 +44,9 @@ import { QueryRoot } from '@src/queryRoot';
       inject: [ConfigService],
     }),
     AuthModule,
+    UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService, QueryRoot],
+  providers: [AppService],
 })
 export class AppModule {}

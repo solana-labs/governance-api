@@ -16,6 +16,8 @@ import { Repository } from 'typeorm';
 
 import * as base64 from '@lib/base64';
 import * as errors from '@lib/errors/gql';
+import { User } from '@src/user/entities/User.entity';
+import { UserService } from '@src/user/user.service';
 
 import { Auth } from './entities/Auth.entity';
 import { AuthClaim } from './entities/AuthClaim.entity';
@@ -33,7 +35,8 @@ export class AuthService {
     private readonly authRepository: Repository<Auth>,
     @InjectRepository(AuthClaim)
     private readonly authClaimRepository: Repository<AuthClaim>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly userService: UserService,
   ) {}
 
   /**
@@ -45,26 +48,26 @@ export class AuthService {
       (auth) =>
         TE.tryCatch(
           () => this.authRepository.save(auth),
-          (error) => (error instanceof Error ? error : new Error(String(error)))
-        )
+          (error) => new errors.Exception(error),
+        ),
     );
   }
 
   /**
    * Removes existing authentication claims for a public key
    */
-  destroyExistingClaims(publicKey: PublicKey): TE.TaskEither<Error, boolean> {
+  destroyExistingClaims(publicKey: PublicKey) {
     return FN.pipe(
       TE.tryCatch(
         () => this.authClaimRepository.delete({ onBehalfOf: publicKey.toBase58() }),
-        (error) => (error instanceof Error ? error : new Error(String(error)))
+        (error) => new errors.Exception(error),
       ),
-      TE.map(() => true)
+      TE.map(() => true),
     );
   }
 
   /**
-   * Extracts the claim from a claim str
+   * Extracts the claim from a claim str that was sent to the client
    */
   extractClaimFromClaimStr(claimStr: string) {
     return FN.pipe(
@@ -72,45 +75,57 @@ export class AuthService {
       (str) => str.split(' '),
       AR.last,
       EI.fromOption(() => new errors.MalformedData()),
-      EI.map(base64.decode),
+      EI.chain((payload) =>
+        EI.tryCatch(
+          () => base64.decode(payload),
+          () => new errors.MalformedData(),
+        ),
+      ),
       EI.chain((payload) =>
         EI.tryCatch(
           () => JSON.parse(payload),
-          () => new errors.MalformedData()
-        )
+          () => new errors.MalformedData(),
+        ),
       ),
       EI.chainW(ClaimSentToClientCodec.decode),
       EI.map((clientClaim) => ({
         onBehalfOf: new PublicKey(clientClaim.onBehalfOf),
         nonce: clientClaim.nonce,
         created: new Date(clientClaim.created),
-      }))
+      })),
     );
+  }
+
+  /**
+   * Creates a JWT for a User
+   */
+  generateJWT(user: User) {
+    return this.jwtService.sign({ sub: user.id });
   }
 
   /**
    * Returns an Auth if it exists
    */
-  getAuthById(id: string): TE.TaskEither<Error, OP.Option<Auth>> {
+  getAuthById(id: string) {
     return FN.pipe(
       TE.tryCatch(
         () => this.authRepository.findOne({ where: { id } }),
-        (error) => (error instanceof Error ? error : new Error(String(error)))
+        (error) => new errors.Exception(error),
       ),
-      TE.map((auth) => (auth ? OP.some(auth) : OP.none))
+      TE.map((auth) => (auth ? OP.some(auth) : OP.none)),
     );
   }
 
   /**
    * Returns an Auth if it exists
    */
-  getAuthByPublicKey(publicKey: PublicKey): TE.TaskEither<Error, OP.Option<Auth>> {
+  getAuthByPublicKey(publicKey: PublicKey) {
     return FN.pipe(
       TE.tryCatch(
         () => this.authRepository.findOne({ where: { publicKeyStr: publicKey.toBase58() } }),
-        (error) => (error instanceof Error ? error : new Error(String(error)))
+        (error) => new errors.Exception(error),
       ),
-      TE.map((auth) => (auth ? OP.some(auth) : OP.none))
+      TE.map((auth) => (auth ? OP.some(auth) : OP.none)),
     );
   }
 
@@ -121,8 +136,8 @@ export class AuthService {
     return FN.pipe(
       this.getAuthByPublicKey(publicKey),
       TE.chain((auth) =>
-        OP.isSome(auth) ? TE.right(auth.value) : this.createAuthForPublicKey(publicKey)
-      )
+        OP.isSome(auth) ? TE.right(auth.value) : this.createAuthForPublicKey(publicKey),
+      ),
     );
   }
 
@@ -136,13 +151,13 @@ export class AuthService {
         this.authClaimRepository.create({
           nonce: randomBytes(64).toString('hex'),
           onBehalfOf: publicKey.toBase58(),
-        })
+        }),
       ),
       TE.chain((claim) =>
         TE.tryCatch(
           () => this.authClaimRepository.save(claim),
-          (error) => (error instanceof Error ? error : new Error(String(error)))
-        )
+          (error) => new errors.Exception(error),
+        ),
       ),
       TE.map((claim) => {
         const payload = base64.encode(
@@ -150,7 +165,7 @@ export class AuthService {
             onBehalfOf: publicKey.toBase58(),
             nonce: claim.nonce,
             created: claim.created.getTime(),
-          })
+          }),
         );
 
         return {
@@ -165,15 +180,15 @@ export class AuthService {
           ].join('\n'),
           onBehalfOf: publicKey,
         };
-      })
+      }),
     );
   }
 
   /**
    * Get an existing authentication claim for a public key. If none
-   * exists, return 'none';
+   * exists, return `none`;
    */
-  getClaim(publicKey: PublicKey): TE.TaskEither<Error, OP.Option<AuthClaim>> {
+  getClaim(publicKey: PublicKey) {
     return FN.pipe(
       TE.tryCatch(
         () =>
@@ -182,14 +197,14 @@ export class AuthService {
               onBehalfOf: publicKey.toBase58(),
             },
           }),
-        (error) => (error instanceof Error ? error : new Error(String(error)))
+        (error) => new errors.Exception(error),
       ),
-      TE.map((claim) => (claim ? OP.some(claim) : OP.none))
+      TE.map((claim) => (claim ? OP.some(claim) : OP.none)),
     );
   }
 
   /**
-   * Verifies a signed auth claim
+   * Verifies a signed auth claim and generate a JWT
    */
   verifyClaim(claimStr: string, signature: Buffer) {
     return FN.pipe(
@@ -203,47 +218,47 @@ export class AuthService {
           nacl.sign.detached.verify(
             new TextEncoder().encode(claimStr),
             signature,
-            decodedClaim.onBehalfOf.toBuffer()
+            decodedClaim.onBehalfOf.toBuffer(),
           )
             ? TE.right(decodedClaim)
             : TE.left(new errors.Unauthorized()),
           TE.bindTo('claim'),
           // Next, find existing claims
           TE.bind('existingClaim', ({ claim }) => this.getClaim(claim.onBehalfOf)),
-          // If there is no existing claim, consider this verification invaled
+          // If there is no existing claims, consider this verification invaled
           TE.chain(({ existingClaim, claim }) =>
             OP.isNone(existingClaim)
               ? TE.left(new errors.Unauthorized())
-              : TE.right({ claim, existingClaim: existingClaim.value })
+              : TE.right({ claim, existingClaim: existingClaim.value }),
           ),
-          // The signed claim need to match the one and not be too old
+          // The signed claim needs to match the existing one and also not be too old
           TE.chain(({ claim, existingClaim }) =>
             existingClaim.nonce !== claim.nonce ||
             !isEqual(existingClaim.created, claim.created) ||
             differenceInMinutes(Date.now(), existingClaim.created) > 10
               ? TE.left(new errors.Unauthorized())
-              : TE.right({ claim, existingClaim })
+              : TE.right(claim),
           ),
-          // If everything checks out, create a JWT
-          TE.chainW(({ claim }) => this.getOrCreateAuthByPublicKey(claim.onBehalfOf)),
-          TE.map((auth) => this.jwtService.sign({ sub: auth.id })),
-          // Regardless of what happened, clean up by removing all existing claims saed in the db
+          // Regardless of what happened, clean up by removing all existing claims saved in the db
           TE.matchW(
             (error) =>
               FN.pipe(
                 this.destroyExistingClaims(decodedClaim.onBehalfOf),
-                TE.chainW(() => TE.left(error))
+                TE.chainW(() => TE.left(error)),
               ),
-            (jwt) =>
+            (claim) =>
               FN.pipe(
-                this.destroyExistingClaims(decodedClaim.onBehalfOf),
-                TE.chainW(() => TE.right(jwt))
-              )
+                this.destroyExistingClaims(claim.onBehalfOf),
+                TE.chainW(() => this.getOrCreateAuthByPublicKey(claim.onBehalfOf)),
+                TE.chainW((auth) => this.userService.getOrCreateUser(auth.id, claim.onBehalfOf)),
+                TE.chainW((user) => TE.right(user)),
+              ),
           ),
-          (te) => TE.fromTask<TE.TaskEither<Error, string>, Error>(te),
-          TE.flatten
-        )
-      )
+          // Return the result
+          (te) => TE.fromTask<TE.TaskEither<errors.Exception, User>, Error>(te),
+          TE.flatten,
+        ),
+      ),
     );
   }
 }

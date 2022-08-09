@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
+import { UserModule } from '@src/user/user.module';
 
 import { AuthJwtStrategy } from './auth.jwt.strategy';
 import { AuthResolver } from './auth.resolver';
@@ -16,6 +17,7 @@ import { AuthClaim } from './entities/AuthClaim.entity';
   imports: [
     ConfigModule,
     PassportModule,
+    UserModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

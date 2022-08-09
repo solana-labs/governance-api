@@ -1,5 +1,7 @@
 import { Resolver, Mutation, Args } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
+import * as FN from 'fp-ts/function';
+import * as TE from 'fp-ts/TaskEither';
 
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
@@ -19,7 +21,7 @@ export class AuthResolver {
       description: 'The public key of the wallet',
       type: () => PublicKeyScalar,
     })
-    publicKey: PublicKey
+    publicKey: PublicKey,
   ) {
     return this.authService.generateClaim(publicKey);
   }
@@ -37,8 +39,11 @@ export class AuthResolver {
         "The auth claim signed by the public key's corresponding private key in hex representation",
       type: () => SignatureScalar,
     })
-    signature: Buffer
+    signature: Buffer,
   ) {
-    return this.authService.verifyClaim(claim, signature);
+    return FN.pipe(
+      this.authService.verifyClaim(claim, signature),
+      TE.map((user) => this.authService.generateJWT(user)),
+    );
   }
 }

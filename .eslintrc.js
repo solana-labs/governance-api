@@ -12,7 +12,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js', 'migrations/*'],
+  ignorePatterns: ['.eslintrc.js', 'migrations/*', 'dist/*'],
   rules: {
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
@@ -25,7 +25,7 @@ module.exports = {
       {
         'newlines-between': 'always-and-inside-groups',
         'pathGroupsExcludedImportTypes': ['builtin'],
-        pathGroups: [
+        'pathGroups': [
           {
             pattern: '@src/**/**',
             group: 'parent',

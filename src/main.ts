@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import AltairFastify from 'altair-fastify-plugin';
-import { processRequest } from 'graphql-upload';
+import MercuriusGQLUpload from 'mercurius-upload';
 
 import { AppModule } from '@src/app.module';
 import { ConfigService } from '@src/config/config.service';
@@ -18,18 +18,7 @@ async function bootstrap() {
     path: '/playground/',
   });
 
-  fastifyInstance.addContentTypeParser('multipart', (request, done) => {
-    request.isMultipart = true;
-    done();
-  });
-
-  fastifyInstance.addHook('preValidation', async function (request: any, reply) {
-    if (!request.raw.isMultipart) {
-      return;
-    }
-
-    request.body = await processRequest(request.raw, reply.raw);
-  });
+  fastifyInstance.register(MercuriusGQLUpload);
 
   const port = configService.get('app.port');
   await app.listen(port);

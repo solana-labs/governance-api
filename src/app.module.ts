@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { MercuriusDriver, MercuriusDriverConfig } from '@nestjs/mercurius';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import mercurius from 'mercurius';
 
 // import { NonceScalar } from '@lib/scalars/Nonce';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
@@ -24,6 +25,7 @@ import { UserModule } from './user/user.module';
         dateScalarMode: 'timestamp',
       },
       driver: MercuriusDriver,
+      persistedQueryProvider: mercurius.persistedQueryDefaults.automatic(),
       resolvers: {
         // Nonce: NonceScalar,
         PublicKey: PublicKeyScalar,

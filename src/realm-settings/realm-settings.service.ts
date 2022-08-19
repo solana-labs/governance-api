@@ -12,7 +12,7 @@ import { Environment } from '@lib/types/Environment';
 /**
  * Settings that were committed to code in the app.realms.today codebase
  */
-interface CodeCommittedSettings {
+export interface CodeCommittedSettings {
   bannerImage: string;
   displayName: string;
   keywords?: string;

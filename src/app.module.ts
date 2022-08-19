@@ -13,8 +13,14 @@ import { AppService } from '@src/app.service';
 import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
-
-import { UserModule } from './user/user.module';
+import { HolaplexModule } from '@src/holaplex/holaplex.module';
+import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
+import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
+import { RealmMemberModule } from '@src/realm-member/realm-member.module';
+import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
+import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
+import { RealmModule } from '@src/realm/realm.module';
+import { UserModule } from '@src/user/user.module';
 
 @Module({
   imports: [
@@ -49,6 +55,13 @@ import { UserModule } from './user/user.module';
     }),
     AuthModule,
     UserModule,
+    HolaplexModule,
+    RealmModule,
+    RealmMemberModule,
+    RealmProposalModule,
+    RealmFeedModule,
+    RealmFeedItemModule,
+    RealmSettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

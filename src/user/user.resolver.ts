@@ -12,7 +12,7 @@ export class UserResolver {
   constructor(private readonly userService: UserService) {}
 
   @Query(() => User, {
-    description: 'The user making the request, as determined by the jwt token used',
+    description: 'User making the request, as determined by the jwt token used',
   })
   @UseGuards(AuthJwtGuard)
   me(@CurrentUser() user: User): User {

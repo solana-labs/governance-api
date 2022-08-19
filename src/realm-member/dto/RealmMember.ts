@@ -4,9 +4,11 @@ import { PublicKey } from '@solana/web3.js';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 
 @ObjectType({
-  description: 'A user',
+  description: 'A member of a Realm',
 })
-export class User {
-  @Field(() => PublicKeyScalar, { description: "User's public key" })
+export class RealmMember {
+  @Field(() => PublicKeyScalar, {
+    description: 'Public Key address for the Realm Member',
+  })
   publicKey: PublicKey;
 }

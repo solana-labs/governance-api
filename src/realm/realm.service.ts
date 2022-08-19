@@ -5,6 +5,7 @@ import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
+import { Environment } from '@lib/types/Environment';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 
 import * as queries from './holaplexQueries';
@@ -16,7 +17,11 @@ export class RealmService {
   /**
    * Fetch a Realm
    */
-  getRealm(publicKey: PublicKey) {
+  getRealm(publicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     return FN.pipe(
       this.holaplexService.requestV1(
         {

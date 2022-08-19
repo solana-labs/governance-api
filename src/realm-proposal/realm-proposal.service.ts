@@ -6,6 +6,7 @@ import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
+import { Environment } from '@lib/types/Environment';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 
@@ -21,9 +22,13 @@ export class RealmProposalService {
   /**
    * Fetch a list of proposals in a Realm
    */
-  getProposalsForRealm(realmPublicKey: PublicKey) {
+  getProposalsForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     return FN.pipe(
-      this.getGovernancesForRealm(realmPublicKey),
+      this.getGovernancesForRealm(realmPublicKey, environment),
       TE.chainW((governances) =>
         this.holaplexService.requestV1(
           {
@@ -47,9 +52,13 @@ export class RealmProposalService {
   /**
    * Get a list of governances for a realm
    */
-  private getGovernancesForRealm(realmPublicKey: PublicKey) {
+  private getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey),
+      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
       TE.chainW(({ programId }) =>
         TE.tryCatch(
           () =>

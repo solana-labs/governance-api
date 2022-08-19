@@ -1,8 +1,10 @@
 import { UseGuards } from '@nestjs/common';
 import { Resolver, Query } from '@nestjs/graphql';
 
+import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
+import { CurrentUser } from '@lib/decorators/CurrentUser';
+import * as errors from '@lib/errors/gql';
 import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
-import { CurrentUser } from '@src/lib/decorators/CurrentUser';
 
 import { User } from './dto/User';
 import { UserService } from './user.service';
@@ -15,7 +17,11 @@ export class UserResolver {
     description: 'User making the request, as determined by the jwt token used',
   })
   @UseGuards(AuthJwtGuard)
-  me(@CurrentUser() user: User): User {
+  me(@CurrentUser() user: User, @CurrentEnvironment() environment: Environment): User {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
     return user;
   }
 }

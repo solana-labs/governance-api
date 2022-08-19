@@ -7,6 +7,7 @@ import * as OP from 'fp-ts/Option';
 import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
+import { Environment } from '@lib/types/Environment';
 
 interface CodeCommittedSettings {
   bannerImage: string;
@@ -29,8 +30,8 @@ export class RealmSettingsService {
   /**
    * Get's all the settings checked into the app.realms.today github repo
    */
-  fetchAllCodeCommittedSettings(chain: 'mainnet' | 'devnet' = 'mainnet') {
-    const cacheKey = `realm-settings-all-${chain}`;
+  fetchAllCodeCommittedSettings(environment: Environment) {
+    const cacheKey = `realm-settings-all-${environment}`;
 
     return FN.pipe(
       TE.tryCatch(
@@ -46,7 +47,7 @@ export class RealmSettingsService {
                 () =>
                   fetch(
                     `https://app.realms.today/realms/${
-                      chain === 'mainnet' ? 'mainnet-beta' : 'devnet'
+                      environment === 'mainnet' ? 'mainnet-beta' : 'devnet'
                     }.json`,
                   ).then<CodeCommittedSettings[]>((response) => response.json()),
                 (e) => new errors.Exception(e),
@@ -65,9 +66,9 @@ export class RealmSettingsService {
   /**
    * Return a Realm's specific settings checked into the app.realms.today repo
    */
-  getCodeCommittedSettingsForRealm(realmPublicKey: PublicKey) {
+  getCodeCommittedSettingsForRealm(realmPublicKey: PublicKey, environment: Environment) {
     return FN.pipe(
-      this.fetchAllCodeCommittedSettings(),
+      this.fetchAllCodeCommittedSettings(environment),
       TE.map(AR.findFirst((setting) => setting.realmId === realmPublicKey.toBase58())),
       TE.chainW(TE.fromOption(() => new errors.NotFound())),
     );

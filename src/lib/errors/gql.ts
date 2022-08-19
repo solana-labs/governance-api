@@ -25,3 +25,15 @@ export class Unauthorized extends mercurius.ErrorWithProps {
     super("You are not authorized to perform that action", {}, 403)
   }
 }
+
+export class Unsupported extends mercurius.ErrorWithProps {
+  constructor() {
+    super("That operation is unsupported", {}, 501);
+  }
+}
+
+export class UnsupportedDevnet extends mercurius.ErrorWithProps {
+  constructor() {
+    super("Devnet is not currently supported", {}, 501);
+  }
+}

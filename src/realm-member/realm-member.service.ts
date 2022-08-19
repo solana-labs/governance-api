@@ -4,6 +4,8 @@ import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 
+import { Environment } from '@lib/decorators/CurrentEnvironment';
+import * as errors from '@lib/errors/gql';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 
 import * as queries from './holaplexQueries';
@@ -15,7 +17,11 @@ export class RealmMemberService {
   /**
    * Fetch a list of members in a Realm
    */
-  getMembersForRealm(realmPublicKey: PublicKey) {
+  getMembersForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     return FN.pipe(
       this.holaplexService.requestV1(
         {
@@ -38,7 +44,11 @@ export class RealmMemberService {
   /**
    * Get a count of the total members in the realm
    */
-  getMembersCountForRealm(realmPublicKey: PublicKey) {
+  getMembersCountForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     return FN.pipe(
       this.holaplexService.requestV1(
         {

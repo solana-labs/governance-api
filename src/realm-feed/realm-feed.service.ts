@@ -15,33 +15,33 @@ export class RealmFeedService {
    * Returns the first n items in the realm feed
    */
   getFirstNItems(realmPublicKey: PublicKey, n: number) {
-    return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(realmPublicKey),
-      TE.map(AR.takeLeft(n)),
-      TE.map(
-        AR.map((proposal) => ({
-          proposal,
-          type: RealmFeedItemType.Proposal,
-          id: proposal.publicKey.toBase58(),
-        })),
-      ),
-    );
+    // return FN.pipe(
+    //   this.realmProposalService.getProposalsForRealm(realmPublicKey),
+    //   TE.map(AR.takeLeft(n)),
+    //   TE.map(
+    //     AR.map((proposal) => ({
+    //       proposal,
+    //       type: RealmFeedItemType.Proposal,
+    //       id: proposal.publicKey.toBase58(),
+    //     })),
+    //   ),
+    // );
   }
 
   /**
    * Returns the last n items in the realm feed
    */
   getLastNItems(realmPublicKey: PublicKey, n: number) {
-    return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(realmPublicKey),
-      TE.map(AR.takeRight(n)),
-      TE.map(
-        AR.map((proposal) => ({
-          proposal,
-          type: RealmFeedItemType.Proposal,
-          id: proposal.publicKey.toBase58(),
-        })),
-      ),
-    );
+    // return FN.pipe(
+    //   this.realmProposalService.getProposalsForRealm(realmPublicKey),
+    //   TE.map(AR.takeRight(n)),
+    //   TE.map(
+    //     AR.map((proposal) => ({
+    //       proposal,
+    //       type: RealmFeedItemType.Proposal,
+    //       id: proposal.publicKey.toBase58(),
+    //     })),
+    //   ),
+    // );
   }
 }

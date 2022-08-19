@@ -16,7 +16,7 @@ export class AuthResolver {
 
   @Mutation(() => AuthClaim, {
     description:
-      'Generate an authentication claim string that a wallet can sign and trade for an auth token',
+      'Generate an authentication claim that a wallet can sign and trade for an auth token',
   })
   @EitherResolver()
   createAuthenticationClaim(

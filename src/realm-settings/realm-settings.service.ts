@@ -9,18 +9,21 @@ import * as TE from 'fp-ts/TaskEither';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 
+/**
+ * Settings that were committed to code in the app.realms.today codebase
+ */
 interface CodeCommittedSettings {
   bannerImage: string;
   displayName: string;
-  keywords?: undefined;
+  keywords?: string;
   ogImage: string;
   programId: string;
   realmId: string;
   sharedWalletId: string;
   sortRank: number;
   symbol: string;
-  twitter?: undefined;
-  website?: undefined;
+  twitter?: string;
+  website?: string;
 }
 
 @Injectable()

@@ -37,5 +37,6 @@ export class RealmFeedItemProposal {
 
 export const RealmFeedItem = createUnionType({
   name: 'RealmFeedItem',
+  description: "An item in a Realm's feed",
   types: () => [RealmFeedItemPost, RealmFeedItemProposal] as const,
 });

@@ -1,5 +1,8 @@
 import { registerEnumType } from '@nestjs/graphql';
 
+/**
+ * A discriminant for differentiating between Realm Feed items
+ */
 export enum RealmFeedItemType {
   Post = 'Post',
   Proposal = 'Proposal',

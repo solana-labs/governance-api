@@ -9,6 +9,9 @@ interface EitherFunction {
     | TaskEither<any, any>;
 }
 
+/**
+ * Handle resolvers that return a `TaskEither`
+ */
 export function EitherResolver() {
   return (
     target: any,

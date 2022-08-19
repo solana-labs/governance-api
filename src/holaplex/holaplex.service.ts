@@ -8,6 +8,9 @@ import * as errors from '@lib/errors/gql';
 
 @Injectable()
 export class HolaplexService {
+  /**
+   * Make a GQL request to Holaplex's v1 indexer API
+   */
   requestV1<Variables = any, A = any, O = any, I = any>(
     req: {
       query: RequestDocument;

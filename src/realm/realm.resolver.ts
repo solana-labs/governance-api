@@ -6,7 +6,6 @@ import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
-import { RealmMember } from '@src/realm-member/dto/RealmMember';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
 
 import { Realm } from './dto/Realm';

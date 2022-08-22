@@ -10,9 +10,9 @@ import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pa
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
 import { RealmProposalSort, RealmProposalConnection } from '@src/realm-proposal/dto/pagination';
 import {
-  RealmProposalService,
+  RealmProposalGQLService,
   RealmProposalCursor,
-} from '@src/realm-proposal/realm-proposal.service';
+} from '@src/realm-proposal/realm-proposal.gql.service';
 
 import { Realm } from './dto/Realm';
 import { RealmService } from './realm.service';
@@ -21,7 +21,7 @@ import { RealmService } from './realm.service';
 export class RealmResolver {
   constructor(
     private readonly realmMemberService: RealmMemberService,
-    private readonly realmProposalService: RealmProposalService,
+    private readonly realmProposalGqlService: RealmProposalGQLService,
     private readonly realmService: RealmService,
   ) {}
 
@@ -92,7 +92,7 @@ export class RealmResolver {
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmProposalService.getGQLProposalList(
+    return this.realmProposalGqlService.getGQLProposalList(
       realm.publicKey,
       user ? new PublicKey(user.publicKeyStr) : null,
       sort,

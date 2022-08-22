@@ -8,11 +8,11 @@ import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 
 import { RealmProposalConnection, RealmProposalSort } from './dto/pagination';
-import { RealmProposalService, RealmProposalCursor } from './realm-proposal.service';
+import { RealmProposalGQLService, RealmProposalCursor } from './realm-proposal.gql.service';
 
 @Resolver()
 export class RealmProposalResolver {
-  constructor(private readonly realmProposalService: RealmProposalService) {}
+  constructor(private readonly realmProposalGQLService: RealmProposalGQLService) {}
 
   @Query(() => RealmProposalConnection, {
     description: 'A list of proposals for a Realm',
@@ -35,7 +35,7 @@ export class RealmProposalResolver {
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmProposalService.getGQLProposalList(
+    return this.realmProposalGQLService.getGQLProposalList(
       realm,
       user ? new PublicKey(user.publicKeyStr) : null,
       sort,

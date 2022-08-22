@@ -14,6 +14,12 @@ export class MalformedData extends mercurius.ErrorWithProps {
   }
 }
 
+export class MalformedRequest extends mercurius.ErrorWithProps {
+  constructor() {
+    super("Malformed request", {}, 400);
+  }
+}
+
 export class NotFound extends mercurius.ErrorWithProps {
   constructor() {
     super("Not found", {}, 404);

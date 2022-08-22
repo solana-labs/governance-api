@@ -7,6 +7,11 @@ import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
+import { RealmProposalSort, RealmProposalConnection } from '@src/realm-proposal/dto/pagination';
+import {
+  RealmProposalService,
+  RealmProposalCursor,
+} from '@src/realm-proposal/realm-proposal.service';
 
 import { Realm } from './dto/Realm';
 import { RealmService } from './realm.service';
@@ -14,8 +19,9 @@ import { RealmService } from './realm.service';
 @Resolver(() => Realm)
 export class RealmResolver {
   constructor(
-    private readonly realmService: RealmService,
     private readonly realmMemberService: RealmMemberService,
+    private readonly realmProposalService: RealmProposalService,
+    private readonly realmService: RealmService,
   ) {}
 
   @Query(() => Realm, {
@@ -66,5 +72,32 @@ export class RealmResolver {
   @EitherResolver()
   membersCount(@Root() realm: Realm, @CurrentEnvironment() environment: Environment) {
     return this.realmMemberService.getMembersCountForRealm(realm.publicKey, environment);
+  }
+
+  @ResolveField(() => RealmProposalConnection, {
+    description: 'List of proposals in the realm',
+  })
+  @EitherResolver()
+  proposals(
+    @Args() args: ConnectionArgs,
+    @Args('sort', {
+      type: () => RealmProposalSort,
+      description: 'Sort order for the list',
+      defaultValue: RealmProposalSort.Time,
+      nullable: true,
+    })
+    sort: RealmProposalSort = RealmProposalSort.Time,
+    @Root() realm: Realm,
+    @CurrentEnvironment() environment: Environment,
+  ) {
+    return this.realmProposalService.getGQLProposalList(
+      realm.publicKey,
+      sort,
+      environment,
+      args.after as RealmProposalCursor | undefined,
+      args.before as RealmProposalCursor | undefined,
+      args.first,
+      args.last,
+    );
   }
 }

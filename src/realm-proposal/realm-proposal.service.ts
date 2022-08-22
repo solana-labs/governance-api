@@ -1,10 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  getGovernanceAccounts,
-  Governance,
-  ProposalState,
-  pubkeyFilter,
-} from '@solana/spl-governance';
+import { getGovernanceAccounts, Governance, pubkeyFilter } from '@solana/spl-governance';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { compareDesc } from 'date-fns';
 import * as AR from 'fp-ts/Array';

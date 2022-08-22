@@ -4,6 +4,7 @@ import { PublicKey } from '@solana/web3.js';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 
 import { RealmProposalState } from './RealmProposalState';
+import { RealmProposalUserVote } from './RealmProposalUserVote';
 
 @ObjectType({
   description: 'A proposal in a Realm',
@@ -23,6 +24,12 @@ export class RealmProposal {
     description: 'Public Key address for the proposal',
   })
   publicKey: PublicKey;
+
+  @Field(() => RealmProposalUserVote, {
+    description: "The requesting user's vote",
+    nullable: true,
+  })
+  myVote?: RealmProposalUserVote | null;
 
   @Field(() => RealmProposalState, {
     description: 'Current state of the proposal',

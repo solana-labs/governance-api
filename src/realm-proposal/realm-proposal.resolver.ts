@@ -2,6 +2,7 @@ import { Resolver, Query, Args } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
+import { CurrentUser, User } from '@lib/decorators/CurrentUser';
 import { EitherResolver } from '@lib/decorators/EitherResolver';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
@@ -32,9 +33,11 @@ export class RealmProposalResolver {
     })
     sort: RealmProposalSort = RealmProposalSort.Alphabetical,
     @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
   ) {
     return this.realmProposalService.getGQLProposalList(
       realm,
+      user ? new PublicKey(user.publicKeyStr) : null,
       sort,
       environment,
       args.after as RealmProposalCursor | undefined,

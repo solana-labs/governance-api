@@ -12,16 +12,24 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@src/": ["src/"],
-      "@src/*": ["src/*"],
-      "@lib/": ["src/lib/"],
-      "@lib/*": ["src/lib/*"]
+      "@src/": [
+        "src/"
+      ],
+      "@src/*": [
+        "src/*"
+      ],
+      "@lib/": [
+        "src/lib/"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ]
     }
   }
 }

@@ -20,7 +20,7 @@ import { ConfigService } from './config.service';
             },
             database: {
               host: process.env.DATABASE_HOST || '',
-              name: process.env.DATABASE_NAME,
+              name: process.env.DATABASE_NAME || '',
               password: process.env.DATABASE_PASSWORD,
               port: dbPort,
               username: process.env.DATABASE_USERNAME,

@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { getGovernanceAccounts, Governance, pubkeyFilter } from '@solana/spl-governance';
+import {
+  getGovernanceAccounts,
+  Governance,
+  pubkeyFilter,
+  MemcmpFilter,
+} from '@solana/spl-governance';
 import { Connection, PublicKey } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
 import { compareDesc } from 'date-fns';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
@@ -18,6 +24,7 @@ import { RealmSettingsService } from '@src/realm-settings/realm-settings.service
 import { RealmProposalSort } from './dto/pagination';
 import { RealmProposal } from './dto/RealmProposal';
 import { RealmProposalState } from './dto/RealmProposalState';
+import { RealmProposalUserVote, RealmProposalUserVoteType } from './dto/RealmProposalUserVote';
 import * as queries from './holaplexQueries';
 
 export const RealmProposalCursor = BrandedString('realm proposal cursor');
@@ -37,6 +44,7 @@ export class RealmProposalService {
    */
   getFirstNProposals(
     realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
     n: number,
     sortOrder: RealmProposalSort,
     environment: Environment,
@@ -46,7 +54,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getProposalsForRealm(realmPublicKey, environment),
+      this.getProposalsForRealm(realmPublicKey, requestingUser, environment),
       TE.map((proposals) => {
         switch (sortOrder) {
           case RealmProposalSort.Alphabetical:
@@ -66,6 +74,7 @@ export class RealmProposalService {
    */
   getLastNProposals(
     realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
     n: number,
     sortOrder: RealmProposalSort,
     environment: Environment,
@@ -75,7 +84,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getProposalsForRealm(realmPublicKey, environment),
+      this.getProposalsForRealm(realmPublicKey, requestingUser, environment),
       TE.map((proposals) => {
         switch (sortOrder) {
           case RealmProposalSort.Alphabetical:
@@ -95,6 +104,7 @@ export class RealmProposalService {
    */
   getNProposalsAfter(
     realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
     n: number,
     after: RealmProposalCursor,
     sortOrder: RealmProposalSort,
@@ -111,7 +121,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getProposalsForRealm(realmPublicKey, environment),
+      this.getProposalsForRealm(realmPublicKey, requestingUser, environment),
       TE.map((proposals) => {
         switch (sortOrder) {
           case RealmProposalSort.Alphabetical:
@@ -133,6 +143,7 @@ export class RealmProposalService {
    */
   getNProposalsBefore(
     realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
     n: number,
     before: RealmProposalCursor,
     sortOrder: RealmProposalSort,
@@ -149,7 +160,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getProposalsForRealm(realmPublicKey, environment),
+      this.getProposalsForRealm(realmPublicKey, requestingUser, environment),
       TE.map((proposals) => {
         switch (sortOrder) {
           case RealmProposalSort.Alphabetical:
@@ -170,6 +181,7 @@ export class RealmProposalService {
    */
   getGQLProposalList(
     realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
     sortOrder: RealmProposalSort,
     environment: Environment,
     after?: RealmProposalCursor,
@@ -179,7 +191,7 @@ export class RealmProposalService {
   ) {
     if (first) {
       return FN.pipe(
-        this.getFirstNProposals(realmPublicKey, first, sortOrder, environment),
+        this.getFirstNProposals(realmPublicKey, requestingUser, first, sortOrder, environment),
         TE.map((proposals) => {
           const edges = proposals.map((proposal) => this.buildEdge(proposal, sortOrder));
 
@@ -198,7 +210,7 @@ export class RealmProposalService {
 
     if (last) {
       return FN.pipe(
-        this.getLastNProposals(realmPublicKey, last, sortOrder, environment),
+        this.getLastNProposals(realmPublicKey, requestingUser, last, sortOrder, environment),
         TE.map((proposals) => {
           const edges = proposals.map((proposal) => this.buildEdge(proposal, sortOrder));
 
@@ -219,6 +231,7 @@ export class RealmProposalService {
       return FN.pipe(
         this.getNProposalsAfter(
           realmPublicKey,
+          requestingUser,
           PAGE_SIZE,
           after as RealmProposalCursor,
           sortOrder,
@@ -244,6 +257,7 @@ export class RealmProposalService {
       return FN.pipe(
         this.getNProposalsBefore(
           realmPublicKey,
+          requestingUser,
           PAGE_SIZE,
           before as RealmProposalCursor,
           sortOrder,
@@ -271,7 +285,11 @@ export class RealmProposalService {
   /**
    * Fetch a list of proposals in a Realm
    */
-  getProposalsForRealm(realmPublicKey: PublicKey, environment: Environment) {
+  getProposalsForRealm(
+    realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
     if (environment === 'devnet') {
       return TE.left(new errors.UnsupportedDevnet());
     }
@@ -290,7 +308,27 @@ export class RealmProposalService {
         ),
       ),
       TE.map(({ proposals }) => proposals),
-      TE.map(AR.map(this.buildProposalFromHolaplexRespose)),
+      TE.bindTo('proposals'),
+      TE.bind('voteRecords', ({ proposals }) =>
+        FN.pipe(
+          requestingUser
+            ? this.holaplexService.requestV1(
+                {
+                  query: queries.voteRecords.query,
+                  variables: {
+                    user: requestingUser.toBase58(),
+                    proposals: proposals.map((p) => p.address),
+                  },
+                },
+                queries.voteRecords.resp,
+              )
+            : TE.right({ voteRecords: [] }),
+          TE.map(({ voteRecords }) => voteRecords),
+        ),
+      ),
+      TE.map(({ proposals, voteRecords }) =>
+        proposals.map((proposal) => this.buildProposalFromHolaplexRespose(proposal, voteRecords)),
+      ),
     );
   }
 
@@ -324,11 +362,13 @@ export class RealmProposalService {
    */
   private buildProposalFromHolaplexRespose = (
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
+    voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
   ) => {
     return {
       created: new Date(holaplexProposal.draftAt),
       description: holaplexProposal.description,
       publicKey: new PublicKey(holaplexProposal.address),
+      myVote: this.buildProposalUserVote(voteRecords, holaplexProposal.address),
       state: this.buildProposalStateFromHolaplexResponse(holaplexProposal),
       title: holaplexProposal.name,
       updated: this.buildPropsalUpdatedFromHolaplexResponse(holaplexProposal),
@@ -389,7 +429,7 @@ export class RealmProposalService {
         return RealmProposalState.SigningOff;
       case 'SUCCEEDED':
         return !hasInstructions ? RealmProposalState.Completed : RealmProposalState.Executable;
-      case 'VOTING':
+      default:
         return votingEnded ? RealmProposalState.Finalizing : RealmProposalState.Voting;
     }
   };
@@ -415,6 +455,46 @@ export class RealmProposalService {
     } else {
       return new Date(holaplexProposal.draftAt);
     }
+  };
+
+  /** Get the user vote for a proposal */
+  private buildProposalUserVote = (
+    voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
+    proposalAddress: string,
+  ): RealmProposalUserVote | null => {
+    const record = voteRecords.find((record) => record.proposal.address === proposalAddress);
+
+    if (record) {
+      let type: RealmProposalUserVoteType | null = null;
+
+      switch (record.vote) {
+        case 'APPROVE': {
+          type = RealmProposalUserVoteType.Yes;
+          break;
+        }
+        case 'DENY': {
+          type = RealmProposalUserVoteType.No;
+          break;
+        }
+        case 'ABSTAIN': {
+          type = RealmProposalUserVoteType.Abstain;
+          break;
+        }
+        case 'VETO': {
+          type = RealmProposalUserVoteType.Veto;
+          break;
+        }
+      }
+
+      if (type) {
+        return {
+          type,
+          weight: new BigNumber(record.voterWeight),
+        };
+      }
+    }
+
+    return null;
   };
 
   /**
@@ -444,7 +524,7 @@ export class RealmProposalService {
               new Connection('https://rpc.theindex.io'),
               new PublicKey(programId),
               Governance,
-              [pubkeyFilter(1, realmPublicKey)],
+              [pubkeyFilter(1, realmPublicKey) as MemcmpFilter],
             ),
           (e) => new errors.Exception(e),
         ),

@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import mercurius from 'mercurius';
 
 // import { NonceScalar } from '@lib/scalars/Nonce';
+import { BigNumberScalar } from '@lib/scalars/BigNumber';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { AppController } from '@src/app.controller';
 import { AppService } from '@src/app.service';
@@ -34,6 +35,7 @@ import { UserModule } from '@src/user/user.module';
       persistedQueryProvider: mercurius.persistedQueryDefaults.automatic(),
       resolvers: {
         // Nonce: NonceScalar,
+        BigNumber: BigNumberScalar,
         PublicKey: PublicKeyScalar,
       },
       sortSchema: true,

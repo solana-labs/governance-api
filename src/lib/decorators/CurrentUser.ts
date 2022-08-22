@@ -13,3 +13,5 @@ export const CurrentUser = createParamDecorator(
     return ctx.getContext().req.user as User;
   },
 );
+
+export { User }

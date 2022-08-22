@@ -134,6 +134,10 @@ export class RealmMemberService {
     sortOrder: RealmMemberSort,
     environment: Environment,
   ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     const parsedCursor = this.fromCursor(after);
 
     if (parsedCursor.sortOrder !== sortOrder) {
@@ -164,6 +168,10 @@ export class RealmMemberService {
     sortOrder: RealmMemberSort,
     environment: Environment,
   ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
     const parsedCursor = this.fromCursor(before);
 
     if (parsedCursor.sortOrder !== sortOrder) {

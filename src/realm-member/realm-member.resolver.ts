@@ -7,7 +7,6 @@ import { CurrentEnvironment, Environment } from '@src/lib/decorators/CurrentEnvi
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 
 import { RealmMemberConnection, RealmMemberSort } from './dto/pagination';
-import { RealmMember } from './dto/RealmMember';
 import { RealmMemberService, RealmMemberCursor } from './realm-member.service';
 
 @Resolver()
@@ -43,12 +42,5 @@ export class RealmMemberResolver {
       args.first,
       args.last,
     );
-  }
-
-  private buildNode(member: RealmMember, sort: RealmMemberSort) {
-    return {
-      node: member,
-      cursor: this.realmMemberService.toCursor(member, sort),
-    };
   }
 }

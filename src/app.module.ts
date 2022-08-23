@@ -6,8 +6,8 @@ import { MercuriusDriver, MercuriusDriverConfig } from '@nestjs/mercurius';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import mercurius from 'mercurius';
 
-// import { NonceScalar } from '@lib/scalars/Nonce';
 import { BigNumberScalar } from '@lib/scalars/BigNumber';
+import { CursorScalar } from '@lib/scalars/Cursor';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { AppController } from '@src/app.controller';
 import { AppService } from '@src/app.service';
@@ -36,8 +36,8 @@ import { RealmPostModule } from './realm-post/realm-post.module';
       driver: MercuriusDriver,
       persistedQueryProvider: mercurius.persistedQueryDefaults.automatic(),
       resolvers: {
-        // Nonce: NonceScalar,
         BigNumber: BigNumberScalar,
+        Cursor: CursorScalar,
         PublicKey: PublicKeyScalar,
       },
       sortSchema: true,

@@ -1,15 +1,17 @@
-import { ObjectType, ID, ArgsType, Field } from '@nestjs/graphql';
+import { ObjectType, ArgsType, Field } from '@nestjs/graphql';
 import * as Relay from 'graphql-relay';
+
+import { CursorScalar } from '../scalars/Cursor';
 
 @ArgsType()
 export class ConnectionArgs implements Relay.ConnectionArguments {
-  @Field(() => ID, {
+  @Field(() => CursorScalar, {
     description: '`after` cursor for pagination',
     nullable: true,
   })
   after?: Relay.ConnectionCursor;
 
-  @Field(() => ID, {
+  @Field(() => CursorScalar, {
     description: '`before` cursor for pagination',
     nullable: true,
   })
@@ -40,13 +42,13 @@ class PageInfo implements Relay.PageInfo {
   })
   hasPreviousPage: boolean;
 
-  @Field(() => ID, {
+  @Field(() => CursorScalar, {
     description: 'A cursor representing the head of the returned results',
     nullable: true,
   })
   startCursor: Relay.ConnectionCursor | null;
 
-  @Field(() => ID, {
+  @Field(() => CursorScalar, {
     description: 'A cursor representing the end of the returned results',
     nullable: true,
   })
@@ -64,7 +66,7 @@ export function EdgeType<NodeType>(
     })
     node: NodeType;
 
-    @Field(() => String, {
+    @Field(() => CursorScalar, {
       description: 'A cursor representing this node. Used in `before` and `after` args.',
     })
     cursor: Relay.ConnectionCursor;

@@ -14,7 +14,8 @@ export class UserResolver {
   constructor(private readonly userService: UserService) {}
 
   @Query(() => User, {
-    description: 'User making the request, as determined by the jwt token used',
+    description:
+      'User making the request, as determined by the jwt bearer token in the authorization header',
     nullable: true,
   })
   @UseGuards(AuthJwtGuard)

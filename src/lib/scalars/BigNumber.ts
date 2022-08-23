@@ -7,6 +7,8 @@ export const BigNumberScalar = new GraphQLScalarType({
   parseLiteral: (ast: ValueNode): BigNumber =>
     // @ts-ignore
     ast.kind === Kind.STRING ? new BigNumber(ast.value) : null,
+  // @ts-ignore
   parseValue: (value: string): BigNumber => new BigNumber(value),
+  // @ts-ignore
   serialize: (value: BigNumber): string => value.toString(),
 })

@@ -7,6 +7,8 @@ export const PublicKeyScalar = new GraphQLScalarType({
   parseLiteral: (ast: ValueNode): PublicKey =>
     // @ts-ignore
     ast.kind === Kind.STRING ? new PublicKey(ast.value) : null,
+  // @ts-ignore
   parseValue: (value: string): PublicKey => new PublicKey(value),
+  // @ts-ignore
   serialize: (value: PublicKey): string => value.toBase58(),
 });

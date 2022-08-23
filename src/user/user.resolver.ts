@@ -15,9 +15,10 @@ export class UserResolver {
 
   @Query(() => User, {
     description: 'User making the request, as determined by the jwt token used',
+    nullable: true,
   })
   @UseGuards(AuthJwtGuard)
-  me(@CurrentUser() user: User, @CurrentEnvironment() environment: Environment): User {
+  me(@CurrentUser() user: User | null, @CurrentEnvironment() environment: Environment) {
     if (environment === 'devnet') {
       throw new errors.UnsupportedDevnet();
     }

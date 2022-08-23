@@ -1,3 +1,4 @@
+import { UseGuards } from '@nestjs/common';
 import { Resolver, Query, Args } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
@@ -6,6 +7,7 @@ import { CurrentUser, User } from '@lib/decorators/CurrentUser';
 import { EitherResolver } from '@lib/decorators/EitherResolver';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
+import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 
 import { RealmProposalConnection, RealmProposalSort } from './dto/pagination';
 import { RealmProposalGQLService, RealmProposalCursor } from './realm-proposal.gql.service';
@@ -18,6 +20,7 @@ export class RealmProposalResolver {
     description: 'A list of proposals for a Realm',
   })
   @EitherResolver()
+  @UseGuards(AuthJwtGuard)
   proposals(
     @Args() args: ConnectionArgs,
     @Args('realm', {
@@ -37,7 +40,7 @@ export class RealmProposalResolver {
   ) {
     return this.realmProposalGQLService.getGQLProposalList(
       realm,
-      user ? new PublicKey(user.publicKeyStr) : null,
+      user ? user.publicKey : null,
       sort,
       environment,
       args.after as RealmProposalCursor | undefined,

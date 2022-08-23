@@ -9,19 +9,21 @@ import * as TE from 'fp-ts/TaskEither';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 
+const DEFAULT_GOVERNANCE_PROGRAM = 'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw';
+
 /**
  * Settings that were committed to code in the app.realms.today codebase
  */
 export interface CodeCommittedSettings {
-  bannerImage: string;
-  displayName: string;
+  bannerImage?: string;
+  displayName?: string;
   keywords?: string;
-  ogImage: string;
+  ogImage?: string;
   programId: string;
-  realmId: string;
-  sharedWalletId: string;
-  sortRank: number;
-  symbol: string;
+  realmId?: string;
+  sharedWalletId?: string;
+  sortRank?: number;
+  symbol?: string;
   twitter?: string;
   website?: string;
 }
@@ -73,7 +75,13 @@ export class RealmSettingsService {
     return FN.pipe(
       this.fetchAllCodeCommittedSettings(environment),
       TE.map(AR.findFirst((setting) => setting.realmId === realmPublicKey.toBase58())),
-      TE.chainW(TE.fromOption(() => new errors.NotFound())),
+      TE.map((setting) =>
+        OP.isNone(setting)
+          ? ({
+              programId: DEFAULT_GOVERNANCE_PROGRAM,
+            } as CodeCommittedSettings)
+          : setting.value,
+      ),
     );
   }
 }

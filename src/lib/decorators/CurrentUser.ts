@@ -1,8 +1,13 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
+import type { PublicKey } from '@solana/web3.js';
 
-import { User } from '@src/user/entities/User.entity';
+import { Data } from '@src/user/entities/User.entity';
+
+export interface User extends Data {
+  publicKey: PublicKey;
+}
 
 /**
  * Get the current user making the request
@@ -14,4 +19,3 @@ export const CurrentUser = createParamDecorator(
   },
 );
 
-export { User }

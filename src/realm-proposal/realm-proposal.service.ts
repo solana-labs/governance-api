@@ -19,6 +19,7 @@ import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 
 import { RealmProposalSort } from './dto/pagination';
+import { RealmProposal } from './dto/RealmProposal';
 import { RealmProposalState } from './dto/RealmProposalState';
 import { RealmProposalUserVote, RealmProposalUserVoteType } from './dto/RealmProposalUserVote';
 import * as queries from './holaplexQueries';
@@ -31,9 +32,37 @@ export class RealmProposalService {
   ) {}
 
   /**
-   * Fetch a list of proposals in a Realm
+   * Get a list of proposals in a realm
    */
-  getProposalsForRealm(
+  getProposalsForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.getGovernancesForRealm(realmPublicKey, environment),
+      TE.chainW((governances) =>
+        this.holaplexService.requestV1(
+          {
+            query: queries.realmProposals.query,
+            variables: {
+              governances: governances.map((g) => g.toBase58()),
+            },
+          },
+          queries.realmProposals.resp,
+        ),
+      ),
+      TE.map(({ proposals }) => proposals),
+      TE.map((proposals) =>
+        proposals.map((proposal) => this.buildProposalFromHolaplexRespose(proposal, [])),
+      ),
+    );
+  }
+
+  /**
+   * Fetch a list of proposals in a Realm using user context and sort them
+   */
+  getProposalsForRealmAndUser(
     realmPublicKey: PublicKey,
     requestingUser: PublicKey | null,
     sortOrder: RealmProposalSort,
@@ -88,6 +117,40 @@ export class RealmProposalService {
             return proposals.sort(this.sortTime);
         }
       }),
+    );
+  }
+
+  /**
+   * Get proposals by public keys
+   */
+  getProposalsForRealmAndUserByPublicKeys(
+    realmPublicKey: PublicKey,
+    publicKeys: PublicKey[],
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.getProposalsForRealmAndUser(
+        realmPublicKey,
+        requestingUser,
+        RealmProposalSort.Alphabetical,
+        environment,
+      ),
+      TE.map(
+        AR.reduce({} as { [publicKeyStr: string]: RealmProposal }, (acc, proposal) => {
+          for (const key of publicKeys) {
+            if (key.equals(proposal.publicKey)) {
+              acc[key.toBase58()] = proposal;
+            }
+          }
+
+          return acc;
+        }),
+      ),
     );
   }
 

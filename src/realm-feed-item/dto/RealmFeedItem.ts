@@ -15,6 +15,11 @@ export class RealmFeedItemPost {
 
   @Field(() => ID)
   id: string;
+
+  @Field(() => Number, {
+    description: 'The total raw score for the feed item',
+  })
+  score: number;
 }
 
 @ObjectType({
@@ -33,6 +38,11 @@ export class RealmFeedItemProposal {
     description: 'The proposal',
   })
   proposal: RealmProposal;
+
+  @Field(() => Number, {
+    description: 'The total raw score for the feed item',
+  })
+  score: number;
 }
 
 export const RealmFeedItem = createUnionType({

@@ -23,6 +23,8 @@ import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
 import { RealmModule } from '@src/realm/realm.module';
 import { UserModule } from '@src/user/user.module';
 
+import { RealmPostModule } from './realm-post/realm-post.module';
+
 @Module({
   imports: [
     ConfigModule,
@@ -64,6 +66,7 @@ import { UserModule } from '@src/user/user.module';
     RealmFeedModule,
     RealmFeedItemModule,
     RealmSettingsModule,
+    RealmPostModule,
   ],
   controllers: [AppController],
   providers: [AppService],

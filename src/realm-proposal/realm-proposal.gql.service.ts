@@ -39,7 +39,7 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(
+      this.realmProposalService.getProposalsForRealmAndUser(
         realmPublicKey,
         requestingUser,
         sortOrder,
@@ -64,7 +64,7 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(
+      this.realmProposalService.getProposalsForRealmAndUser(
         realmPublicKey,
         requestingUser,
         sortOrder,
@@ -96,7 +96,7 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(
+      this.realmProposalService.getProposalsForRealmAndUser(
         realmPublicKey,
         requestingUser,
         sortOrder,
@@ -130,7 +130,7 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(
+      this.realmProposalService.getProposalsForRealmAndUser(
         realmPublicKey,
         requestingUser,
         sortOrder,

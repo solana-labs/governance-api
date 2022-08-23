@@ -11,7 +11,7 @@ export class RealmFeedItemPost {
   @Field(() => RealmFeedItemType, {
     description: 'A discriminant indicating this is a post item',
   })
-  type: RealmFeedItemType;
+  type: RealmFeedItemType.Post;
 
   @Field(() => ID)
   id: string;
@@ -29,7 +29,7 @@ export class RealmFeedItemProposal {
   @Field(() => RealmFeedItemType, {
     description: 'A discriminant indicating this is a proposal item',
   })
-  type: RealmFeedItemType;
+  type: RealmFeedItemType.Proposal;
 
   @Field(() => ID)
   id: string;
@@ -48,5 +48,12 @@ export class RealmFeedItemProposal {
 export const RealmFeedItem = createUnionType({
   name: 'RealmFeedItem',
   description: "An item in a Realm's feed",
+  resolveType: (value) => {
+    if (value.type === RealmFeedItemType.Proposal) {
+      return RealmFeedItemProposal;
+    }
+
+    return RealmFeedItemPost;
+  },
   types: () => [RealmFeedItemPost, RealmFeedItemProposal] as const,
 });

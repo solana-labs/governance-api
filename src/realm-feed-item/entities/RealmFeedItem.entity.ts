@@ -16,14 +16,14 @@ export interface Data {
 
 export interface Metadata {
   relevanceScore: number;
-  topScore: number;
+  topAllTimeScore: number;
   rawScore: number;
 }
 
 @Entity()
 export class RealmFeedItem {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column('jsonb')
   data: Data;
@@ -43,6 +43,6 @@ export class RealmFeedItem {
   @DeleteDateColumn()
   deleted: Date;
 
-  @Column('date')
+  @Column('timestamptz')
   updated: Date;
 }

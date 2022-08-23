@@ -200,13 +200,17 @@ export class RealmProposalService {
       }
     }
 
-    if (holaplexProposal.proposalOptions.length) {
+    if (holaplexProposal.proposalOptions && holaplexProposal.proposalOptions.length) {
       for (const option of holaplexProposal.proposalOptions) {
         if (option.transactionsCount > 0) {
           hasInstructions = true;
           break;
         }
       }
+    }
+
+    if (holaplexProposal.instructionsCount && holaplexProposal.instructionsCount > 0) {
+      hasInstructions = true;
     }
 
     switch (holaplexProposal.state) {
@@ -281,13 +285,24 @@ export class RealmProposalService {
           type = RealmProposalUserVoteType.Veto;
           break;
         }
+        case 'YES': {
+          type = RealmProposalUserVoteType.Yes;
+          break;
+        }
+        case 'NO': {
+          type = RealmProposalUserVoteType.No;
+          break;
+        }
       }
 
       if (type) {
-        return {
-          type,
-          weight: new BigNumber(record.voterWeight),
-        };
+        const weight = record.voteWeight
+          ? new BigNumber(record.voteWeight)
+          : record.voterWeight
+          ? new BigNumber(record.voterWeight)
+          : new BigNumber(0);
+
+        return { type, weight };
       }
     }
 

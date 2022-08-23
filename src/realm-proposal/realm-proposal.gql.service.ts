@@ -92,7 +92,7 @@ export class RealmProposalGQLService {
     const parsedCursor = this.fromCursor(after);
 
     if (parsedCursor.sortOrder !== sortOrder) {
-      return TE.left(new errors.MalformedData());
+      return TE.left(new errors.MalformedRequest());
     }
 
     return FN.pipe(
@@ -126,7 +126,7 @@ export class RealmProposalGQLService {
     const parsedCursor = this.fromCursor(before);
 
     if (parsedCursor.sortOrder !== sortOrder) {
-      return TE.left(new errors.MalformedData());
+      return TE.left(new errors.MalformedRequest());
     }
 
     return FN.pipe(

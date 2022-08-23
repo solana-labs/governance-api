@@ -8,6 +8,11 @@ import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
+import { RealmFeedItemSort, RealmFeedItemConnection } from '@src/realm-feed-item/dto/pagination';
+import {
+  RealmFeedItemGQLService,
+  RealmFeedItemCursor,
+} from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
 import { RealmProposalSort, RealmProposalConnection } from '@src/realm-proposal/dto/pagination';
@@ -22,10 +27,40 @@ import { RealmService } from './realm.service';
 @Resolver(() => Realm)
 export class RealmResolver {
   constructor(
+    private readonly realmFeedItemGqlService: RealmFeedItemGQLService,
     private readonly realmMemberService: RealmMemberService,
     private readonly realmProposalGqlService: RealmProposalGQLService,
     private readonly realmService: RealmService,
   ) {}
+
+  @ResolveField(() => RealmFeedItemConnection, {
+    description: 'Realm feed',
+  })
+  @EitherResolver()
+  feed(
+    @Args() args: ConnectionArgs,
+    @Args('sort', {
+      type: () => RealmFeedItemSort,
+      description: 'Sort order for the feed',
+      defaultValue: RealmFeedItemSort.Relevance,
+      nullable: true,
+    })
+    sort: RealmFeedItemSort = RealmFeedItemSort.Relevance,
+    @Root() realm: Realm,
+    @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemGqlService.getGQLFeedItemsList(
+      realm.publicKey,
+      user ? user.publicKey : null,
+      sort,
+      environment,
+      args.after as RealmFeedItemCursor | undefined,
+      args.before as RealmFeedItemCursor | undefined,
+      args.first,
+      args.last,
+    );
+  }
 
   @Query(() => Realm, {
     description: 'A Realm',

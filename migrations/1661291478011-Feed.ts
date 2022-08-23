@@ -1,19 +1,19 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Feed1661266768370 implements MigrationInterface {
-    name = 'Feed1661266768370'
+export class Feed1661291478011 implements MigrationInterface {
+    name = 'Feed1661291478011'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`
             CREATE TABLE "realm_feed_item" (
-                "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+                "id" SERIAL NOT NULL,
                 "data" jsonb NOT NULL,
                 "environment" character varying NOT NULL,
                 "metadata" jsonb NOT NULL,
                 "realmPublicKeyStr" character varying NOT NULL,
                 "created" TIMESTAMP NOT NULL DEFAULT now(),
                 "deleted" TIMESTAMP,
-                "updated" date NOT NULL,
+                "updated" TIMESTAMP WITH TIME ZONE NOT NULL,
                 CONSTRAINT "PK_e24c04da3892a7573c1aa0d37ef" PRIMARY KEY ("id")
             )
         `);

@@ -62,6 +62,34 @@ export class RealmFeedItemService {
   }
 
   /**
+   * Return a single feed item
+   */
+  getFeedItem(
+    realmPublicKey: PublicKey,
+    id: RealmFeedItemEntity['id'],
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      TE.tryCatch(
+        () =>
+          this.realmFeedItemRepository.findOne({
+            where: { id, realmPublicKeyStr: realmPublicKey.toBase58() },
+          }),
+        (e) => new errors.Exception(e),
+      ),
+      TE.chainW(TE.fromNullable(new errors.NotFound())),
+      TE.chainW((entity) =>
+        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, environment),
+      ),
+    );
+  }
+
+  /**
    * Ensure that all the proposals are accurately represented as feed items
    */
   syncProposalsToFeedItems(realmPublicKey: PublicKey, environment: Environment) {
@@ -140,6 +168,58 @@ export class RealmFeedItemService {
         );
       }),
     );
+  }
+
+  /**
+   * Convert a single entity into a feed item
+   */
+  private convertEntityToFeedItem(
+    realmPublicKey: PublicKey,
+    entity: RealmFeedItemEntity,
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    switch (entity.data.type) {
+      case RealmFeedItemType.Post:
+        return FN.pipe(
+          this.realmPostService.getPostsForRealmByIds(
+            realmPublicKey,
+            [entity.data.ref],
+            requestingUser,
+            environment,
+          ),
+          TE.map((mapping) => mapping[entity.data.ref]),
+          TE.chainW(TE.fromNullable(new errors.NotFound())),
+          TE.map(
+            () =>
+              ({
+                type: RealmFeedItemType.Post,
+                id: entity.id.toString(),
+                score: entity.metadata.rawScore,
+              } as typeof RealmFeedItem),
+          ),
+        );
+      case RealmFeedItemType.Proposal:
+        return FN.pipe(
+          this.realmProposalService.getProposalsForRealmAndUserByPublicKeys(
+            realmPublicKey,
+            [new PublicKey(entity.data.ref)],
+            requestingUser,
+            environment,
+          ),
+          TE.map((mapping) => mapping[entity.data.ref]),
+          TE.chainW(TE.fromNullable(new errors.NotFound())),
+          TE.map(
+            (proposal) =>
+              ({
+                proposal,
+                type: RealmFeedItemType.Proposal,
+                id: entity.id.toString(),
+                score: entity.metadata.rawScore,
+              } as typeof RealmFeedItem),
+          ),
+        );
+    }
   }
 
   /**

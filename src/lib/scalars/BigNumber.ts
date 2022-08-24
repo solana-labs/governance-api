@@ -3,7 +3,7 @@ import { Kind, ValueNode, GraphQLScalarType } from 'graphql';
 
 export const BigNumberScalar = new GraphQLScalarType({
   name: 'BigNumber',
-  description: 'A potentially large number value',
+  description: 'A potentially large number value. Compatible with `BigNumber.js`',
   parseLiteral: (ast: ValueNode): BigNumber =>
     // @ts-ignore
     ast.kind === Kind.STRING ? new BigNumber(ast.value) : null,

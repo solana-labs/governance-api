@@ -1,4 +1,4 @@
-import { ObjectType, ArgsType, Field } from '@nestjs/graphql';
+import { ObjectType, ArgsType, Field, Int } from '@nestjs/graphql';
 import * as Relay from 'graphql-relay';
 
 import { CursorScalar } from '../scalars/Cursor';
@@ -17,13 +17,13 @@ export class ConnectionArgs implements Relay.ConnectionArguments {
   })
   before?: Relay.ConnectionCursor;
 
-  @Field(() => Number, {
+  @Field(() => Int, {
     description: 'Count of items to grab from the head of the full list',
     nullable: true,
   })
   first?: number;
 
-  @Field(() => Number, {
+  @Field(() => Int, {
     description: 'Count of items to grab form the tail of the full list',
     nullable: true,
   })

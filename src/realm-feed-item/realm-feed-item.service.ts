@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
-import { isEqual, parseISO } from 'date-fns';
+import { isEqual } from 'date-fns';
 import { hoursToMilliseconds } from 'date-fns';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';

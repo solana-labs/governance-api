@@ -1,5 +1,6 @@
+import { getReverseEntry, formatName } from '@cardinal/namespaces';
 import { Injectable } from '@nestjs/common';
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as OP from 'fp-ts/Option';
@@ -71,6 +72,50 @@ export class RealmMemberService {
         queries.realmMembers.resp,
       ),
       TE.map(({ tokenOwnerRecords }) => tokenOwnerRecords.length),
+    );
+  }
+
+  /**
+   * Returns a user's twitter handle, if it exists
+   */
+  getTwitterHandleForPublicKey(userPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    const connection = new Connection('https://rpc.theindex.io');
+
+    return FN.pipe(
+      TE.tryCatch(
+        () => getReverseEntry(connection, userPublicKey),
+        (e) => new errors.Exception(e),
+      ),
+      TE.map((result) => formatName(result.parsed.namespaceName, result.parsed.entryName)),
+      TE.matchW(
+        () => TE.of(null),
+        (handle) =>
+          FN.pipe(
+            TE.tryCatch(
+              () =>
+                fetch(
+                  `https://api.cardinal.so//twitter/proxy?url=https://api.twitter.com/2/users/by&usernames=${handle}&user.fields=profile_image_url`,
+                ).then<{
+                  data: { profile_image_url: string }[];
+                }>((resp) => resp.json()),
+              (e) => new errors.Exception(e),
+            ),
+            TE.map((result) => result.data || []),
+            TE.map(AR.head),
+            TE.map((result) => ({
+              avatarUrl: OP.isSome(result)
+                ? result.value.profile_image_url.replace('_normal', '')
+                : undefined,
+              handle,
+            })),
+          ),
+      ),
+      TE.fromTask,
+      TE.flatten,
     );
   }
 

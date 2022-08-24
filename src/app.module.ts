@@ -24,6 +24,7 @@ import { RealmModule } from '@src/realm/realm.module';
 import { UserModule } from '@src/user/user.module';
 
 import { RealmPostModule } from './realm-post/realm-post.module';
+import { RealmTreasuryModule } from './realm-treasury/realm-treasury.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { RealmPostModule } from './realm-post/realm-post.module';
     RealmFeedItemModule,
     RealmSettingsModule,
     RealmPostModule,
+    RealmTreasuryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

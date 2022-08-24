@@ -1,4 +1,4 @@
-import { Args, Resolver, Query } from '@nestjs/graphql';
+import { Args, Resolver, ResolveField, Root, Query } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
@@ -7,11 +7,22 @@ import { CurrentEnvironment, Environment } from '@src/lib/decorators/CurrentEnvi
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 
 import { RealmMemberConnection, RealmMemberSort } from './dto/pagination';
+import { RealmMember } from './dto/RealmMember';
+import { RealmMemberTwitterInfo } from './dto/RealmMemberTwitterInfo';
 import { RealmMemberService, RealmMemberCursor } from './realm-member.service';
 
-@Resolver()
+@Resolver(() => RealmMember)
 export class RealmMemberResolver {
   constructor(private readonly realmMemberService: RealmMemberService) {}
+
+  @ResolveField(() => RealmMemberTwitterInfo, {
+    description: "User's twitter handle info",
+    nullable: true,
+  })
+  @EitherResolver()
+  twitterInfo(@Root() member: RealmMember, @CurrentEnvironment() environment: Environment) {
+    return this.realmMemberService.getTwitterHandleForPublicKey(member.publicKey, environment);
+  }
 
   @Query(() => RealmMemberConnection, {
     description: 'List of members in a Realm',

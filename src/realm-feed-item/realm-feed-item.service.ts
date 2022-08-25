@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
-import { compareDesc, isEqual } from 'date-fns';
+import { compareDesc, differenceInHours, isEqual } from 'date-fns';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import { Repository } from 'typeorm';
 
+import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
@@ -16,13 +17,17 @@ import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
 import { RealmFeedItemType } from './dto/RealmFeedItemType';
+import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
 import { RealmFeedItem as RealmFeedItemEntity } from './entities/RealmFeedItem.entity';
+import { RealmFeedItemVote as RealmFeedItemVoteEntity } from './entities/RealmFeedItemVote.entity';
 
 @Injectable()
 export class RealmFeedItemService {
   constructor(
     @InjectRepository(RealmFeedItemEntity)
     private readonly realmFeedItemRepository: Repository<RealmFeedItemEntity>,
+    @InjectRepository(RealmFeedItemVoteEntity)
+    private readonly realmFeedItemVoteRepository: Repository<RealmFeedItemVoteEntity>,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
   ) {}
@@ -64,12 +69,11 @@ export class RealmFeedItemService {
   }
 
   /**
-   * Return a single feed item
+   * Returns a feed item entity
    */
-  getFeedItem(
+  getFeedItemEntity(
     realmPublicKey: PublicKey,
     id: RealmFeedItemEntity['id'],
-    requestingUser: PublicKey | null,
     environment: Environment,
   ) {
     if (environment === 'devnet') {
@@ -85,6 +89,24 @@ export class RealmFeedItemService {
         (e) => new errors.Exception(e),
       ),
       TE.chainW(TE.fromNullable(new errors.NotFound())),
+    );
+  }
+
+  /**
+   * Return a single feed item
+   */
+  getFeedItem(
+    realmPublicKey: PublicKey,
+    id: RealmFeedItemEntity['id'],
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.getFeedItemEntity(realmPublicKey, id, environment),
       TE.chainW((entity) =>
         this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, environment),
       ),
@@ -233,6 +255,142 @@ export class RealmFeedItemService {
           (e) => new errors.Exception(e),
         );
       }),
+    );
+  }
+
+  /**
+   * Approve or disapprove a feed item
+   */
+  submitVote(
+    realmPublicKey: PublicKey,
+    id: RealmFeedItemEntity['id'],
+    type: RealmFeedItemVoteType,
+    requestingUser: User | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    if (!requestingUser) {
+      return TE.left(new errors.Unauthorized());
+    }
+
+    return FN.pipe(
+      this.getFeedItemEntity(realmPublicKey, id, environment),
+      TE.bindTo('feedItem'),
+      TE.bindW('existingVote', ({ feedItem }) =>
+        TE.tryCatch(
+          () =>
+            this.realmFeedItemVoteRepository.findOne({
+              where: {
+                feedItemId: feedItem.id,
+                userId: requestingUser.id,
+                realmPublicKeyStr: realmPublicKey.toBase58(),
+              },
+            }),
+          (e) => new errors.Exception(e),
+        ),
+      ),
+      TE.chainW(({ feedItem, existingVote }) => {
+        // undo the vote
+        if (existingVote && existingVote.data.type === type) {
+          const relevanceWeight = existingVote.data.relevanceWeight;
+
+          if (existingVote.data.type === RealmFeedItemVoteType.Approve) {
+            feedItem.metadata.relevanceScore -= relevanceWeight;
+            feedItem.metadata.rawScore -= 1;
+            feedItem.metadata.topAllTimeScore -= 1;
+          } else {
+            feedItem.metadata.relevanceScore += relevanceWeight;
+            feedItem.metadata.rawScore += 1;
+            feedItem.metadata.topAllTimeScore += 1;
+          }
+
+          return FN.pipe(
+            TE.tryCatch(
+              () => this.realmFeedItemVoteRepository.remove(existingVote),
+              (e) => new errors.Exception(e),
+            ),
+            TE.chainW(() =>
+              TE.tryCatch(
+                () => this.realmFeedItemRepository.save(feedItem),
+                (e) => new errors.Exception(e),
+              ),
+            ),
+          );
+        }
+        // change the vote
+        else if (existingVote && existingVote.data.type !== type) {
+          const relevanceWeight = existingVote.data.relevanceWeight;
+
+          // changing from disapprove to approve
+          if (type === RealmFeedItemVoteType.Approve) {
+            feedItem.metadata.relevanceScore += 2 * relevanceWeight;
+            feedItem.metadata.rawScore += 2;
+            feedItem.metadata.topAllTimeScore += 2;
+          }
+          // change from approve to disapprove
+          else {
+            feedItem.metadata.relevanceScore -= 2 * relevanceWeight;
+            feedItem.metadata.rawScore -= 2;
+            feedItem.metadata.topAllTimeScore -= 2;
+          }
+
+          existingVote.data.type = type;
+
+          return FN.pipe(
+            TE.tryCatch(
+              () => this.realmFeedItemVoteRepository.save(existingVote),
+              (e) => new errors.Exception(e),
+            ),
+            TE.chainW(() =>
+              TE.tryCatch(
+                () => this.realmFeedItemRepository.save(feedItem),
+                (e) => new errors.Exception(e),
+              ),
+            ),
+          );
+        }
+        // submit a new vote
+        else {
+          const hours = differenceInHours(Date.now(), feedItem.created);
+          const relevanceWeight = Math.ceil(hours / 4);
+
+          if (type === RealmFeedItemVoteType.Approve) {
+            feedItem.metadata.relevanceScore += relevanceWeight;
+            feedItem.metadata.rawScore += 1;
+            feedItem.metadata.topAllTimeScore += 1;
+          } else {
+            feedItem.metadata.relevanceScore -= relevanceWeight;
+            feedItem.metadata.rawScore -= 1;
+            feedItem.metadata.topAllTimeScore -= 1;
+          }
+
+          const vote = this.realmFeedItemVoteRepository.create({
+            feedItemId: feedItem.id,
+            userId: requestingUser.id,
+            realmPublicKeyStr: realmPublicKey.toBase58(),
+            data: { type, relevanceWeight },
+          });
+
+          return FN.pipe(
+            TE.tryCatch(
+              () => this.realmFeedItemVoteRepository.save(vote),
+              (e) => new errors.Exception(e),
+            ),
+            TE.chainW(() =>
+              TE.tryCatch(
+                () => this.realmFeedItemRepository.save(feedItem),
+                (e) => new errors.Exception(e),
+              ),
+            ),
+          );
+        }
+      }),
+      TE.chainW((entity) =>
+        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser.publicKey, environment),
+      ),
     );
   }
 

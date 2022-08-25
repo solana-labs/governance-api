@@ -1,5 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Resolver, Query, ID } from '@nestjs/graphql';
+import { Args, Resolver, Mutation, Query, ID } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
@@ -9,6 +9,8 @@ import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 
 import { RealmFeedItem } from './dto/RealmFeedItem';
+import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
+
 import { RealmFeedItemService } from './realm-feed-item.service';
 
 @Resolver(() => RealmFeedItem)
@@ -61,5 +63,33 @@ export class RealmFeedItemResolver {
       user ? user.publicKey : null,
       environment,
     );
+  }
+
+  @Mutation(() => RealmFeedItem, {
+    description: 'Approve or disapprove a feed item',
+  })
+  @UseGuards(AuthJwtGuard)
+  @EitherResolver()
+  voteOnFeedItem(
+    @Args('realm', {
+      type: () => PublicKeyScalar,
+      description: 'Public key of the realm the feed item belongs in',
+    })
+    realm: PublicKey,
+    @Args('feedItemId', {
+      type: () => ID,
+      description: 'The ID of the feed item being voted on',
+    })
+    id: string,
+    @Args('vote', {
+      type: () => RealmFeedItemVoteType,
+      description: 'The type of vote',
+    })
+    vote: RealmFeedItemVoteType,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemService.submitVote(realm, parseInt(id, 10), vote, user, environment);
   }
 }

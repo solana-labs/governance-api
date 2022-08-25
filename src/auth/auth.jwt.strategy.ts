@@ -30,7 +30,7 @@ export class AuthJwtStrategy extends PassportStrategy(Strategy, 'authJwt') {
       TE.chainW(TE.fromOption(() => new errors.Unauthorized())),
       TE.matchW(
         () => null,
-        (user) => ({ ...user.data, publicKey: new PublicKey(user.publicKeyStr) }),
+        (user) => ({ ...user.data, id: user.id, publicKey: new PublicKey(user.publicKeyStr) }),
       ),
     )();
   }

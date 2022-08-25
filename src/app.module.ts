@@ -15,16 +15,16 @@ import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
+import { OnChainModule } from '@src/on-chain/on-chain.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
+import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
+import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { RealmModule } from '@src/realm/realm.module';
 import { UserModule } from '@src/user/user.module';
-
-import { RealmPostModule } from './realm-post/realm-post.module';
-import { RealmTreasuryModule } from './realm-treasury/realm-treasury.module';
 
 @Module({
   imports: [
@@ -69,6 +69,7 @@ import { RealmTreasuryModule } from './realm-treasury/realm-treasury.module';
     RealmSettingsModule,
     RealmPostModule,
     RealmTreasuryModule,
+    OnChainModule,
   ],
   controllers: [AppController],
   providers: [AppService],

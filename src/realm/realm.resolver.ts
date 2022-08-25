@@ -20,6 +20,7 @@ import {
   RealmProposalGQLService,
   RealmProposalCursor,
 } from '@src/realm-proposal/realm-proposal.gql.service';
+import { RealmTreasury } from '@src/realm-treasury/dto/RealmTreasury';
 
 import { Realm } from './dto/Realm';
 import { RealmService } from './realm.service';
@@ -140,5 +141,12 @@ export class RealmResolver {
       args.first,
       args.last,
     );
+  }
+
+  @ResolveField(() => RealmTreasury, {
+    description: "The realm's treasury",
+  })
+  treasury(@Root() realm: Realm) {
+    return { belongsTo: realm.publicKey };
   }
 }

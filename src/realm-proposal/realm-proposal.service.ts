@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  getGovernanceAccounts,
-  Governance,
-  pubkeyFilter,
-  MemcmpFilter,
-} from '@solana/spl-governance';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
 import { compareDesc } from 'date-fns';
 import * as AR from 'fp-ts/Array';
@@ -16,7 +10,7 @@ import * as IT from 'io-ts';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
-import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
+import { OnChainService } from '@src/on-chain/on-chain.service';
 
 import { RealmProposalSort } from './dto/pagination';
 import { RealmProposal } from './dto/RealmProposal';
@@ -28,7 +22,7 @@ import * as queries from './holaplexQueries';
 export class RealmProposalService {
   constructor(
     private readonly holaplexService: HolaplexService,
-    private readonly realmSettingsService: RealmSettingsService,
+    private readonly onChainService: OnChainService,
   ) {}
 
   /**
@@ -40,7 +34,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getGovernancesForRealm(realmPublicKey, environment),
+      this.onChainService.getGovernancesForRealm(realmPublicKey, environment),
       TE.chainW((governances) =>
         this.holaplexService.requestV1(
           {
@@ -73,7 +67,7 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.getGovernancesForRealm(realmPublicKey, environment),
+      this.onChainService.getGovernancesForRealm(realmPublicKey, environment),
       TE.chainW((governances) =>
         this.holaplexService.requestV1(
           {
@@ -308,32 +302,6 @@ export class RealmProposalService {
 
     return null;
   };
-
-  /**
-   * Get a list of governances for a realm
-   */
-  private getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
-
-    return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
-      TE.chainW(({ programId }) =>
-        TE.tryCatch(
-          () =>
-            getGovernanceAccounts(
-              new Connection('https://rpc.theindex.io'),
-              new PublicKey(programId),
-              Governance,
-              [pubkeyFilter(1, realmPublicKey) as MemcmpFilter],
-            ),
-          (e) => new errors.Exception(e),
-        ),
-      ),
-      TE.map(AR.map((governance) => governance.pubkey)),
-    );
-  }
 
   /**
    * Sorts a list of proposals alphabetically

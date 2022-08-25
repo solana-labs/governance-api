@@ -2,8 +2,8 @@ import { CacheModule, Module } from '@nestjs/common';
 
 import { OnChainModule } from '@src/on-chain/on-chain.module';
 
-import { RealmTreasuryService } from './realm-treasury.service';
 import { RealmTreasuryResolver } from './realm-treasury.resolver';
+import { RealmTreasuryService } from './realm-treasury.service';
 
 @Module({
   imports: [CacheModule.register(), OnChainModule],

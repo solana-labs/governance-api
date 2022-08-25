@@ -155,7 +155,7 @@ export class RealmFeedItemService {
                     ref: proposal.publicKey.toBase58(),
                   },
                   metadata: {
-                    relevanceScore: proposal.updated.getTime() / hoursToMilliseconds(1),
+                    relevanceScore: 0,
                     topAllTimeScore: 0,
                     rawScore: 0,
                   },

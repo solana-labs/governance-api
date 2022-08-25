@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
-import { compareDesc } from 'date-fns';
+import { compareDesc, format } from 'date-fns';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as IT from 'io-ts';
@@ -346,7 +346,9 @@ export class RealmFeedItemGQLService {
         break;
       }
       case RealmFeedItemSort.Relevance: {
-        id = feedItem.metadata.relevanceScore.toString();
+        const updatedAsNumber = parseInt(format(feedItem.updated, 'yyyyMMddHHmm'), 10);
+        const score = feedItem.metadata.relevanceScore + updatedAsNumber / 10;
+        id = score.toString();
         break;
       }
       case RealmFeedItemSort.TopAllTime: {
@@ -446,7 +448,9 @@ export class RealmFeedItemGQLService {
       };
     } else if (sortOrder === RealmFeedItemSort.Relevance) {
       return {
-        clause: `${name}.metadata->'relevanceScore' ${forwards ? '<' : '>'} :score`,
+        clause: `((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / 10)) ${
+          forwards ? '<' : '>'
+        } :score`,
         params: { score: feedItem },
       };
     } else {
@@ -470,7 +474,8 @@ export class RealmFeedItemGQLService {
         };
       case RealmFeedItemSort.Relevance:
         return {
-          [`${name}.metadata->'relevanceScore'`]: desc,
+          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHHMI')::decimal) / 10))`]:
+            desc,
         };
       case RealmFeedItemSort.TopAllTime:
         return {

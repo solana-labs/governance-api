@@ -13,6 +13,11 @@ export class RealmFeedItemPost {
   })
   type: RealmFeedItemType.Post;
 
+  @Field(() => Date, {
+    description: 'When the feed item was created',
+  })
+  created: Date;
+
   @Field(() => ID)
   id: string;
 
@@ -20,6 +25,11 @@ export class RealmFeedItemPost {
     description: 'The total raw score for the feed item',
   })
   score: number;
+
+  @Field(() => Date, {
+    description: 'When the feed item was last updated',
+  })
+  updated: Date;
 }
 
 @ObjectType({
@@ -30,6 +40,11 @@ export class RealmFeedItemProposal {
     description: 'A discriminant indicating this is a proposal item',
   })
   type: RealmFeedItemType.Proposal;
+
+  @Field(() => Date, {
+    description: 'When the feed item was created',
+  })
+  created: Date;
 
   @Field(() => ID)
   id: string;
@@ -43,6 +58,11 @@ export class RealmFeedItemProposal {
     description: 'The total raw score for the feed item',
   })
   score: number;
+
+  @Field(() => Date, {
+    description: 'When the feed item was last updated',
+  })
+  updated: Date;
 }
 
 export const RealmFeedItem = createUnionType({

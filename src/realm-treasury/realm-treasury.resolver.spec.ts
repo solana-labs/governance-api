@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { RealmTreasuryResolver } from './realm-treasury.resolver';
 
 describe('RealmTreasuryResolver', () => {

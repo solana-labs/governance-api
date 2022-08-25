@@ -41,4 +41,25 @@ export class RealmFeedItemResolver {
       environment,
     );
   }
+
+  @Query(() => [RealmFeedItem], {
+    description: 'A list of feed items that have been pinned',
+  })
+  @UseGuards(AuthJwtGuard)
+  @EitherResolver()
+  pinnedFeedItems(
+    @Args('realm', {
+      type: () => PublicKeyScalar,
+      description: 'Public key of the realm the feed item belongs in',
+    })
+    realm: PublicKey,
+    @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemService.getPinnedFeedItems(
+      realm,
+      user ? user.publicKey : null,
+      environment,
+    );
+  }
 }

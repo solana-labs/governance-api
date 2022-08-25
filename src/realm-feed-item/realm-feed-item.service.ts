@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
-import { isEqual } from 'date-fns';
-import { hoursToMilliseconds } from 'date-fns';
+import { compareDesc, isEqual } from 'date-fns';
+import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import { Repository } from 'typeorm';
 
 import * as errors from '@lib/errors/gql';
+import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
+import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
@@ -85,6 +87,70 @@ export class RealmFeedItemService {
       TE.chainW(TE.fromNullable(new errors.NotFound())),
       TE.chainW((entity) =>
         this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, environment),
+      ),
+    );
+  }
+
+  /**
+   * Returns a list of pinned feed items
+   */
+  getPinnedFeedItems(
+    realmPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
+      TE.map(
+        AR.filter(
+          (proposal) =>
+            proposal.state === RealmProposalState.Voting ||
+            proposal.state === RealmProposalState.Executable,
+        ),
+      ),
+      TE.map((proposals) =>
+        proposals.sort((a, b) => {
+          const aScore = a.state === RealmProposalState.Voting ? 20 : 10;
+          const bScore = b.state === RealmProposalState.Voting ? 20 : 10;
+
+          if (aScore === bScore) {
+            return compareDesc(a.updated, b.updated);
+          } else {
+            return bScore - aScore;
+          }
+        }),
+      ),
+      TE.chainW((proposals) =>
+        TE.sequenceArray(
+          proposals.map((proposal) =>
+            TE.tryCatch(
+              () =>
+                this.realmFeedItemRepository
+                  .createQueryBuilder('feedItem')
+                  .where(`"feedItem"."data"->'type' = :type`, {
+                    type: JSON.stringify(RealmFeedItemType.Proposal),
+                  })
+                  .andWhere(`"feedItem"."data"->'ref' = :ref`, {
+                    ref: JSON.stringify(proposal.publicKey.toBase58()),
+                  })
+                  .getOne(),
+              (e) => new errors.Exception(e),
+            ),
+          ),
+        ),
+      ),
+      TE.map((entities) => entities.filter(exists)),
+      TE.chainW((entities) =>
+        this.convertProposalEntitiesToFeedItems(
+          realmPublicKey,
+          entities,
+          requestingUser,
+          environment,
+        ),
       ),
     );
   }
@@ -194,8 +260,10 @@ export class RealmFeedItemService {
             () =>
               ({
                 type: RealmFeedItemType.Post,
+                created: entity.created,
                 id: entity.id.toString(),
                 score: entity.metadata.rawScore,
+                updated: entity.updated,
               } as typeof RealmFeedItem),
           ),
         );
@@ -214,8 +282,10 @@ export class RealmFeedItemService {
               ({
                 proposal,
                 type: RealmFeedItemType.Proposal,
+                created: entity.created,
                 id: entity.id.toString(),
                 score: entity.metadata.rawScore,
+                updated: entity.updated,
               } as typeof RealmFeedItem),
           ),
         );
@@ -243,8 +313,10 @@ export class RealmFeedItemService {
           (post) =>
             ({
               type: RealmFeedItemType.Post,
+              created: post.created,
               id: post.id.toString(),
               score: post.metadata.rawScore,
+              updated: post.updated,
             } as RealmFeedItemPost),
         ),
       ),
@@ -273,9 +345,11 @@ export class RealmFeedItemService {
             (proposal) =>
               ({
                 type: RealmFeedItemType.Proposal,
+                created: proposal.created,
                 id: proposal.id.toString(),
                 proposal: proposalMap[proposal.data.ref],
                 score: proposal.metadata.rawScore,
+                updated: proposal.updated,
               } as RealmFeedItemProposal),
           )
           .filter((proposal) => !!proposal.proposal),

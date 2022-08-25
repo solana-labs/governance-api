@@ -19,12 +19,9 @@ import { AUXILIARY_TOKEN_ASSETS } from '@lib/treasuryAssets/AUXILIARY_TOKEN_ASSE
 import { getRawAssetAccounts } from '@lib/treasuryAssets/getRawAssetAccounts';
 import { parseMintAccountData } from '@lib/treasuryAssets/parseMintAccountData';
 import { parseTokenAccountData } from '@lib/treasuryAssets/parseTokenAccountData';
+import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
-
-function isDefined<X>(thing: X | null | undefined): thing is X {
-  return !!thing;
-}
 
 function dedupe<T extends { publicKey: PublicKey }>(list: T[]) {
   const existing = new Set<string>();
@@ -93,7 +90,7 @@ export class OnChainService {
           walletPublicKey: assetOwner.wallet,
         };
       }),
-      AR.filter(isDefined),
+      AR.filter(exists),
       dedupe,
       (accounts) =>
         TE.sequenceArray(

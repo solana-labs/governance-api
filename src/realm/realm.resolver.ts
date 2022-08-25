@@ -9,10 +9,12 @@ import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RealmFeedItemSort, RealmFeedItemConnection } from '@src/realm-feed-item/dto/pagination';
+import { RealmFeedItem } from '@src/realm-feed-item/dto/RealmFeedItem';
 import {
   RealmFeedItemGQLService,
   RealmFeedItemCursor,
 } from '@src/realm-feed-item/realm-feed-item.gql.service';
+import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
 import { RealmProposalSort, RealmProposalConnection } from '@src/realm-proposal/dto/pagination';
@@ -28,7 +30,8 @@ import { RealmService } from './realm.service';
 @Resolver(() => Realm)
 export class RealmResolver {
   constructor(
-    private readonly realmFeedItemGqlService: RealmFeedItemGQLService,
+    private readonly realmFeedItemGQLService: RealmFeedItemGQLService,
+    private readonly realmFeedItemService: RealmFeedItemService,
     private readonly realmMemberService: RealmMemberService,
     private readonly realmProposalGqlService: RealmProposalGQLService,
     private readonly realmService: RealmService,
@@ -37,6 +40,7 @@ export class RealmResolver {
   @ResolveField(() => RealmFeedItemConnection, {
     description: 'Realm feed',
   })
+  @UseGuards(AuthJwtGuard)
   @EitherResolver()
   feed(
     @Args() args: ConnectionArgs,
@@ -51,7 +55,7 @@ export class RealmResolver {
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemGqlService.getGQLFeedItemsList(
+    return this.realmFeedItemGQLService.getGQLFeedItemsList(
       realm.publicKey,
       user ? user.publicKey : null,
       sort,
@@ -60,6 +64,23 @@ export class RealmResolver {
       args.before as RealmFeedItemCursor | undefined,
       args.first,
       args.last,
+    );
+  }
+
+  @ResolveField(() => [RealmFeedItem], {
+    description: 'A list of pinned feed items',
+  })
+  @UseGuards(AuthJwtGuard)
+  @EitherResolver()
+  pinnedFeedItems(
+    @Root() realm: Realm,
+    @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemService.getPinnedFeedItems(
+      realm.publicKey,
+      user ? user.publicKey : null,
+      environment,
     );
   }
 

@@ -173,7 +173,7 @@ export class RealmProposalService {
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
   ) => {
     let hasInstructions = false;
-    let votingEnded = true;
+    let votingEnded = false;
 
     if (
       holaplexProposal.governance?.governanceConfig?.maxVotingTime &&
@@ -189,8 +189,8 @@ export class RealmProposalService {
       );
       const timeToVoteEnd = votingAt + maxVotingTime - nowUnixSeconds;
 
-      if (timeToVoteEnd > 0) {
-        votingEnded = false;
+      if (timeToVoteEnd <= 0) {
+        votingEnded = true;
       }
     }
 

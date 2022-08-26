@@ -1,19 +1,13 @@
-import type { Either } from 'fp-ts/Either';
 import { isLeft } from 'fp-ts/Either';
-import type { TaskEither } from 'fp-ts/TaskEither';
 
-interface EitherFunction {
-  (...args: any[]):
-    | Either<any, any>
-    | Promise<Either<any, any>>
-    | TaskEither<any, any>;
-}
-
+/**
+ * Handle resolvers that return a `TaskEither`
+ */
 export function EitherResolver() {
   return (
     target: any,
     key: string,
-    descriptor: TypedPropertyDescriptor<EitherFunction>,
+    descriptor: TypedPropertyDescriptor<any>,
   ) => {
     if (!descriptor.value) {
       throw new Error('Missing a description for the EitherResolver');

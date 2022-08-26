@@ -7,6 +7,6 @@ import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
   description: 'A user',
 })
 export class User {
-  @Field(() => PublicKeyScalar, { description: "The user's public key" })
+  @Field(() => PublicKeyScalar, { description: "User's public key" })
   publicKey: PublicKey;
 }

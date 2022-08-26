@@ -6,7 +6,10 @@ import {
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+
+import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
 
 export interface Data {}
 
@@ -24,6 +27,9 @@ export class User {
 
   @Column()
   publicKeyStr: string;
+
+  @OneToMany('RealmPost', 'author')
+  posts: RealmPost[];
 
   @CreateDateColumn()
   created: Date;

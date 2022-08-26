@@ -6,15 +6,26 @@ import { MercuriusDriver, MercuriusDriverConfig } from '@nestjs/mercurius';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import mercurius from 'mercurius';
 
-// import { NonceScalar } from '@lib/scalars/Nonce';
+import { BigNumberScalar } from '@lib/scalars/BigNumber';
+import { CursorScalar } from '@lib/scalars/Cursor';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
+import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { AppController } from '@src/app.controller';
 import { AppService } from '@src/app.service';
 import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
-
-import { UserModule } from './user/user.module';
+import { HolaplexModule } from '@src/holaplex/holaplex.module';
+import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
+import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
+import { RealmMemberModule } from '@src/realm-member/realm-member.module';
+import { RealmPostModule } from '@src/realm-post/realm-post.module';
+import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
+import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
+import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
+import { RealmModule } from '@src/realm/realm.module';
+import { UserModule } from '@src/user/user.module';
 
 @Module({
   imports: [
@@ -27,8 +38,10 @@ import { UserModule } from './user/user.module';
       driver: MercuriusDriver,
       persistedQueryProvider: mercurius.persistedQueryDefaults.automatic(),
       resolvers: {
-        // Nonce: NonceScalar,
+        BigNumber: BigNumberScalar,
+        Cursor: CursorScalar,
         PublicKey: PublicKeyScalar,
+        RichTextDocument: RichTextDocumentScalar,
       },
       sortSchema: true,
     }),
@@ -49,6 +62,16 @@ import { UserModule } from './user/user.module';
     }),
     AuthModule,
     UserModule,
+    HolaplexModule,
+    RealmModule,
+    RealmMemberModule,
+    RealmProposalModule,
+    RealmFeedModule,
+    RealmFeedItemModule,
+    RealmSettingsModule,
+    RealmPostModule,
+    RealmTreasuryModule,
+    OnChainModule,
   ],
   controllers: [AppController],
   providers: [AppService],

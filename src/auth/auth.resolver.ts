@@ -14,7 +14,10 @@ import { AuthClaim } from './dto/AuthClaim';
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
-  @Mutation(() => AuthClaim)
+  @Mutation(() => AuthClaim, {
+    description:
+      'Generate an authentication claim that a wallet can sign and trade for an auth token',
+  })
   @EitherResolver()
   createAuthenticationClaim(
     @Args('publicKey', {
@@ -26,7 +29,9 @@ export class AuthResolver {
     return this.authService.generateClaim(publicKey);
   }
 
-  @Mutation(() => String)
+  @Mutation(() => String, {
+    description: 'Trade a signed authentication claim for an auth token',
+  })
   @EitherResolver()
   createAuthenticationToken(
     @Args('claim', {

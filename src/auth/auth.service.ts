@@ -72,6 +72,9 @@ export class AuthService {
   extractClaimFromClaimStr(claimStr: string) {
     return FN.pipe(
       claimStr,
+      // The claim contains a bunch of filler text in the front to make it read
+      // well when being signed by the wallet. The claim string will be at the
+      // end.
       (str) => str.split(' '),
       AR.last,
       EI.fromOption(() => new errors.MalformedData()),

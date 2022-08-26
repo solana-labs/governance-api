@@ -1,6 +1,9 @@
 import { AccountInfo, AccountLayout, u64 } from '@solana/spl-token'
 import { PublicKey } from '@solana/web3.js'
 
+/**
+ * Convert on-chain token account data into something more useful
+ */
 export function parseTokenAccountData(
   account: PublicKey,
   data: Buffer

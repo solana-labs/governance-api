@@ -1,6 +1,9 @@
 import { MintLayout, u64, MintInfo } from '@solana/spl-token'
 import { PublicKey } from "@solana/web3.js"
 
+/**
+ * Convert on-chain mint data into something more useful
+ */
 export function parseMintAccountData(data: Buffer): MintInfo {
   const mintInfo = MintLayout.decode(data)
   if (mintInfo.mintAuthorityOption === 0) {

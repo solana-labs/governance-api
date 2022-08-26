@@ -9,6 +9,9 @@ interface AssetDefinition {
   [key: string]: Asset[];
 }
 
+/**
+ * A list of auxiliary assets registered to a Realm
+ */
 export const AUXILIARY_TOKEN_ASSETS: AssetDefinition = {
   // Mango
   'DPiH3H3c7t47BMxqTxLsuPQpEC6Kne8GA9VXbxpnZxFE': [

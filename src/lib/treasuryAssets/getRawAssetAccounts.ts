@@ -4,6 +4,10 @@ import type { PublicKey } from "@solana/web3.js";
 const TOKEN_ACCOUNT_LAYOUT_SPAN = 165;
 const TOKEN_OWNER_OFFSET = 32;
 
+/**
+ * Return a list of asset accounts. The data is fetched directly from the chain
+ * through an RPC.
+ */
 export function getRawAssetAccounts(owners: PublicKey[], commitment?: string) {
   return fetch('https://rpc.theindex.io', {
     method: 'POST',

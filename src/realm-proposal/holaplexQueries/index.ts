@@ -1,2 +1,4 @@
+export * as realmProposal from './realmProposal';
 export * as realmProposals from './realmProposals';
-export * as voteRecords from './voteRecords';
+export * as voteRecordsForProposal from './voteRecordsForProposal';
+export * as voteRecordsForUser from './voteRecordsForUser';

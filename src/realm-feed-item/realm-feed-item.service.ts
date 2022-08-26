@@ -493,14 +493,11 @@ export class RealmFeedItemService {
         );
       case RealmFeedItemType.Proposal:
         return FN.pipe(
-          this.realmProposalService.getProposalsForRealmAndUserByPublicKeys(
-            realmPublicKey,
-            [new PublicKey(entity.data.ref)],
+          this.realmProposalService.getProposalForUserByPublicKey(
+            new PublicKey(entity.data.ref),
             requestingUser,
             environment,
           ),
-          TE.map((mapping) => mapping[entity.data.ref]),
-          TE.chainW(TE.fromNullable(new errors.NotFound())),
           TE.map(
             (proposal) =>
               ({

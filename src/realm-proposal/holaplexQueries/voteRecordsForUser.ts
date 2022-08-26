@@ -1,6 +1,8 @@
 import { gql } from 'graphql-request';
 import * as IT from 'io-ts';
 
+import { respVoteRecord } from './voteRecordsForProposal';
+
 export const query = gql`
   query ($user: PublicKey!, $proposals: [PublicKey!]!) {
     voteRecords(governingTokenOwners: [$user], proposals: $proposals) {
@@ -22,15 +24,7 @@ export const query = gql`
   }
 `;
 
-export const respVoteRecord = IT.type({
-  vote: IT.union([IT.null, IT.undefined, IT.string]),
-  voteWeight: IT.union([IT.null, IT.undefined, IT.string]),
-  voterWeight: IT.union([IT.null, IT.undefined, IT.string]),
-  voteType: IT.union([IT.null, IT.undefined, IT.string]),
-  proposal: IT.type({
-    address: IT.string,
-  }),
-});
+export { respVoteRecord };
 
 export const resp = IT.type({
   voteRecords: IT.array(respVoteRecord),

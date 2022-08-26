@@ -8,6 +8,7 @@ import { RealmMember } from '@src/realm-member/dto/RealmMember';
 
 import { RealmProposalState } from './RealmProposalState';
 import { RealmProposalUserVote } from './RealmProposalUserVote';
+import { RealmProposalVoteBreakdown } from './RealmProposalVoteBreakdown';
 
 @ObjectType({
   description: 'A proposal in a Realm',
@@ -59,4 +60,9 @@ export class RealmProposal {
     description: 'Update timestamp',
   })
   updated: Date;
+
+  @Field(() => RealmProposalVoteBreakdown, {
+    description: 'A breakdown of how users voted on the proposal',
+  })
+  voteBreakdown: RealmProposalVoteBreakdown;
 }

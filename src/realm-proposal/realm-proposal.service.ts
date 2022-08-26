@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
+import { MintInfo } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
+import { Cache } from 'cache-manager';
 import { compareDesc } from 'date-fns';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
@@ -22,9 +24,117 @@ import * as queries from './holaplexQueries';
 @Injectable()
 export class RealmProposalService {
   constructor(
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly holaplexService: HolaplexService,
     private readonly onChainService: OnChainService,
   ) {}
+
+  /**
+   * Get a single proposal
+   */
+  getProposalByPublicKey(proposalPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.holaplexService.requestV1(
+        {
+          query: queries.realmProposal.query,
+          variables: {
+            proposal: proposalPublicKey.toBase58(),
+          },
+        },
+        queries.realmProposal.resp,
+      ),
+      TE.map(({ proposals }) => proposals),
+      TE.map(AR.head),
+      TE.chainW(TE.fromOption(() => new errors.NotFound())),
+      TE.bindTo('proposal'),
+      TE.bindW('proposalVoteRecords', ({ proposal }) =>
+        this.getVoteRecordsForHolaplexProposals([proposal], environment),
+      ),
+      TE.bindW('proposalMints', ({ proposal }) =>
+        this.getGoverningTokenMintsForHolaplexProposals([proposal], environment),
+      ),
+      TE.chainW(({ proposal, proposalMints, proposalVoteRecords }) =>
+        TE.tryCatch(
+          () =>
+            this.buildProposalFromHolaplexRespose(
+              proposal,
+              [],
+              proposalVoteRecords[proposal.address] || [],
+              proposalMints[proposal.address]?.account,
+            ),
+          (e) => new errors.Exception(e),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Get a single proposal
+   */
+  getProposalForUserByPublicKey(
+    proposalPublicKey: PublicKey,
+    requestingUser: PublicKey | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.holaplexService.requestV1(
+        {
+          query: queries.realmProposal.query,
+          variables: {
+            proposal: proposalPublicKey.toBase58(),
+          },
+        },
+        queries.realmProposal.resp,
+      ),
+      TE.map(({ proposals }) => proposals),
+      TE.map(AR.head),
+      TE.chainW(TE.fromOption(() => new errors.NotFound())),
+      TE.bindTo('proposal'),
+      TE.bindW('proposalVoteRecords', ({ proposal }) =>
+        this.getVoteRecordsForHolaplexProposals([proposal], environment),
+      ),
+      TE.bindW('proposalMints', ({ proposal }) =>
+        this.getGoverningTokenMintsForHolaplexProposals([proposal], environment),
+      ),
+      TE.bindW('userVoteRecords', ({ proposal }) =>
+        FN.pipe(
+          requestingUser
+            ? this.holaplexService.requestV1(
+                {
+                  query: queries.voteRecordsForUser.query,
+                  variables: {
+                    user: requestingUser.toBase58(),
+                    proposals: [proposal.address],
+                  },
+                },
+                queries.voteRecordsForUser.resp,
+              )
+            : TE.right({ voteRecords: [] }),
+          TE.map(({ voteRecords }) => voteRecords),
+        ),
+      ),
+      TE.chainW(({ proposal, proposalMints, proposalVoteRecords, userVoteRecords }) =>
+        TE.tryCatch(
+          () =>
+            this.buildProposalFromHolaplexRespose(
+              proposal,
+              userVoteRecords,
+              proposalVoteRecords[proposal.address] || [],
+              proposalMints[proposal.address]?.account,
+            ),
+          (e) => new errors.Exception(e),
+        ),
+      ),
+    );
+  }
 
   /**
    * Get a list of proposals in a realm
@@ -48,11 +158,24 @@ export class RealmProposalService {
         ),
       ),
       TE.map(({ proposals }) => proposals),
-      TE.chainW((proposals) =>
+      TE.bindTo('proposals'),
+      TE.bindW('proposalVoteRecords', ({ proposals }) =>
+        this.getVoteRecordsForHolaplexProposals(proposals, environment),
+      ),
+      TE.bindW('proposalMints', ({ proposals }) =>
+        this.getGoverningTokenMintsForHolaplexProposals(proposals, environment),
+      ),
+      TE.chainW(({ proposals, proposalMints, proposalVoteRecords }) =>
         TE.sequenceArray(
           proposals.map((proposal) =>
             TE.tryCatch(
-              () => this.buildProposalFromHolaplexRespose(proposal, []),
+              () =>
+                this.buildProposalFromHolaplexRespose(
+                  proposal,
+                  [],
+                  proposalVoteRecords[proposal.address] || [],
+                  proposalMints[proposal.address]?.account,
+                ),
               (e) => new errors.Exception(e),
             ),
           ),
@@ -89,28 +212,40 @@ export class RealmProposalService {
       ),
       TE.map(({ proposals }) => proposals),
       TE.bindTo('proposals'),
-      TE.bind('voteRecords', ({ proposals }) =>
+      TE.bindW('proposalVoteRecords', ({ proposals }) =>
+        this.getVoteRecordsForHolaplexProposals(proposals, environment),
+      ),
+      TE.bindW('proposalMints', ({ proposals }) =>
+        this.getGoverningTokenMintsForHolaplexProposals(proposals, environment),
+      ),
+      TE.bindW('userVoteRecords', ({ proposals }) =>
         FN.pipe(
           requestingUser
             ? this.holaplexService.requestV1(
                 {
-                  query: queries.voteRecords.query,
+                  query: queries.voteRecordsForUser.query,
                   variables: {
                     user: requestingUser.toBase58(),
                     proposals: proposals.map((p) => p.address),
                   },
                 },
-                queries.voteRecords.resp,
+                queries.voteRecordsForUser.resp,
               )
             : TE.right({ voteRecords: [] }),
           TE.map(({ voteRecords }) => voteRecords),
         ),
       ),
-      TE.chainW(({ proposals, voteRecords }) =>
+      TE.chainW(({ proposals, proposalMints, proposalVoteRecords, userVoteRecords }) =>
         TE.sequenceArray(
           proposals.map((proposal) =>
             TE.tryCatch(
-              () => this.buildProposalFromHolaplexRespose(proposal, voteRecords),
+              () =>
+                this.buildProposalFromHolaplexRespose(
+                  proposal,
+                  userVoteRecords,
+                  proposalVoteRecords[proposal.address] || [],
+                  proposalMints[proposal.address]?.account,
+                ),
               (e) => new errors.Exception(e),
             ),
           ),
@@ -164,11 +299,144 @@ export class RealmProposalService {
   }
 
   /**
+   * Get a list of governing token mints for proposals
+   */
+  getGoverningTokenMintsForHolaplexProposals(
+    proposals: IT.TypeOf<typeof queries.realmProposals.respProposal>[],
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      TE.sequenceArray(
+        proposals.map((proposal) =>
+          FN.pipe(
+            this.onChainService.getTokenMintInfo(
+              new PublicKey(proposal.governingTokenMint),
+              environment,
+            ),
+            TE.map((mint) => ({ [proposal.address]: mint })),
+          ),
+        ),
+      ),
+      TE.map((mints) =>
+        mints.reduce((acc, mint) => {
+          return { ...acc, ...mint };
+        }, {} as { [address: string]: { publicKey: PublicKey; account: MintInfo } }),
+      ),
+    );
+  }
+
+  /**
+   * Get all the vote records for proposals
+   */
+  getVoteRecordsForHolaplexProposals(
+    proposals: IT.TypeOf<typeof queries.realmProposals.respProposal>[],
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    const cacheableProposals = proposals.filter((proposal) => proposal.state !== 'VOTING');
+    const notCacheable = proposals.filter((proposal) => proposal.state === 'VOTING');
+    const missing: IT.TypeOf<typeof queries.realmProposals.respProposal>[] = [];
+    const result: {
+      [key: string]: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[];
+    } = {};
+
+    return FN.pipe(
+      TE.sequenceArray(
+        cacheableProposals.map((proposal) =>
+          FN.pipe(
+            TE.tryCatch(
+              () =>
+                this.cacheManager.get<
+                  IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[]
+                >(`vote-records-${proposal.address}`),
+              (e) => new errors.Exception(e),
+            ),
+            TE.matchW(
+              () => {
+                missing.push(proposal);
+                return TE.right(false);
+              },
+              (records) => {
+                if (records) {
+                  result[proposal.address] = records;
+                  return TE.right(false);
+                } else {
+                  missing.push(proposal);
+                  return TE.right(true);
+                }
+              },
+            ),
+            TE.fromTask,
+            TE.flatten,
+          ),
+        ),
+      ),
+      TE.chainW(() => TE.right(missing.concat(notCacheable))),
+      TE.chainW((proposals) =>
+        this.holaplexService.requestV1(
+          {
+            query: queries.voteRecordsForProposal.query,
+            variables: {
+              proposals: proposals.map((proposal) => proposal.address),
+            },
+          },
+          queries.voteRecordsForProposal.resp,
+        ),
+      ),
+      TE.map(({ voteRecords }) => {
+        const mapping: {
+          [key: string]: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[];
+        } = {};
+
+        for (const voteRecord of voteRecords) {
+          if (!mapping[voteRecord.proposal.address]) {
+            mapping[voteRecord.proposal.address] = [];
+          }
+
+          mapping[voteRecord.proposal.address].push(voteRecord);
+        }
+
+        return mapping;
+      }),
+      TE.map((mapping) => {
+        for (const proposal of missing) {
+          const records = mapping[proposal.address];
+
+          if (records) {
+            result[proposal.address] = records;
+            this.cacheManager.set(`vote-records-${proposal.address}`, records, {
+              ttl: 60 * 60 * 24 * 5,
+            });
+          }
+        }
+
+        for (const proposal of notCacheable) {
+          const records = mapping[proposal.address];
+
+          if (records) {
+            result[proposal.address] = records;
+          }
+        }
+      }),
+      TE.map(() => result),
+    );
+  }
+
+  /**
    * Convert a Holaplex proposal to a GQL proposal
    */
   private buildProposalFromHolaplexRespose = async (
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
-    voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
+    userVoteRecords: IT.TypeOf<typeof queries.voteRecordsForUser.respVoteRecord>[],
+    proposalVoteRecords: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[],
+    mint?: MintInfo,
   ) => {
     return {
       author: holaplexProposal.tokenOwnerRecord
@@ -180,10 +448,15 @@ export class RealmProposalService {
       document: await convertTextToRichTextDocument(holaplexProposal.description),
       description: holaplexProposal.description,
       publicKey: new PublicKey(holaplexProposal.address),
-      myVote: this.buildProposalUserVote(voteRecords, holaplexProposal.address),
+      myVote: this.buildProposalUserVote(userVoteRecords, holaplexProposal.address),
       state: this.buildProposalStateFromHolaplexResponse(holaplexProposal),
       title: holaplexProposal.name,
       updated: this.buildPropsalUpdatedFromHolaplexResponse(holaplexProposal),
+      voteBreakdown: this.buildVotingBreakdownFromHolaplexResponse(
+        holaplexProposal,
+        proposalVoteRecords,
+        mint,
+      ),
     };
   };
 
@@ -275,7 +548,7 @@ export class RealmProposalService {
 
   /** Get the user vote for a proposal */
   private buildProposalUserVote = (
-    voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
+    voteRecords: IT.TypeOf<typeof queries.voteRecordsForUser.respVoteRecord>[],
     proposalAddress: string,
   ): RealmProposalUserVote | null => {
     const record = voteRecords.find((record) => record.proposal.address === proposalAddress);
@@ -323,6 +596,38 @@ export class RealmProposalService {
 
     return null;
   };
+
+  /**
+   * Get a breakdown of the vote result
+   */
+  buildVotingBreakdownFromHolaplexResponse(
+    holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
+    proposalVoteRecords: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[],
+    mint?: MintInfo,
+  ) {
+    const decimals = mint?.decimals || 0;
+    let totalYesWeight = new BigNumber(0);
+    let totalNoWeight = new BigNumber(0);
+
+    for (const voteRecord of proposalVoteRecords) {
+      if (voteRecord.voteType === 'YES' && voteRecord.voteWeight) {
+        totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voteWeight));
+      } else if (voteRecord.voteType === 'NO' && voteRecord.voteWeight) {
+        totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voteWeight));
+      } else if (voteRecord.vote === 'APPROVE' && voteRecord.voterWeight) {
+        totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voterWeight));
+      } else if (voteRecord.vote === 'DENY' && voteRecord.voterWeight) {
+        totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voterWeight));
+      }
+    }
+
+    return {
+      percentThresholdMet: null,
+      threshold: null,
+      totalNoWeight: totalNoWeight.shiftedBy(-decimals),
+      totalYesWeight: totalYesWeight.shiftedBy(-decimals),
+    };
+  }
 
   /**
    * Sorts a list of proposals alphabetically

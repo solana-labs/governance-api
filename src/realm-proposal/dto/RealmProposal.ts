@@ -2,6 +2,8 @@ import { ObjectType, Field } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
+import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
 
 import { RealmProposalState } from './RealmProposalState';
 import { RealmProposalUserVote } from './RealmProposalUserVote';
@@ -16,9 +18,14 @@ export class RealmProposal {
   created: Date;
 
   @Field(() => String, {
-    description: 'Description for the proposal',
+    description: 'On-chain description for the proposal',
   })
   description: string;
+
+  @Field(() => RichTextDocumentScalar, {
+    description: 'Proposal body text',
+  })
+  document: RichTextDocument;
 
   @Field(() => PublicKeyScalar, {
     description: 'Public Key address for the proposal',

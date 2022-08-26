@@ -127,6 +127,7 @@ export class RealmFeedItemService {
 
     return FN.pipe(
       this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
+      TE.map((proposals) => proposals.slice()),
       TE.map(
         AR.filter(
           (proposal) =>
@@ -415,8 +416,9 @@ export class RealmFeedItemService {
           TE.map((mapping) => mapping[entity.data.ref]),
           TE.chainW(TE.fromNullable(new errors.NotFound())),
           TE.map(
-            () =>
+            (post) =>
               ({
+                post,
                 type: RealmFeedItemType.Post,
                 created: entity.created,
                 id: entity.id.toString(),
@@ -466,13 +468,14 @@ export class RealmFeedItemService {
         requestingUser,
         environment,
       ),
-      TE.map(() =>
+      TE.map((postsMap) =>
         entities.map(
           (post) =>
             ({
               type: RealmFeedItemType.Post,
               created: post.created,
               id: post.id.toString(),
+              post: postsMap[post.data.ref],
               score: post.metadata.rawScore,
               updated: post.updated,
             } as RealmFeedItemPost),

@@ -1,5 +1,6 @@
 import { Field, ObjectType, ID, createUnionType } from '@nestjs/graphql';
 
+import { RealmPost } from '@src/realm-post/dto/RealmPost';
 import { RealmProposal } from '@src/realm-proposal/dto/RealmProposal';
 
 import { RealmFeedItemType } from './RealmFeedItemType';
@@ -20,6 +21,11 @@ export class RealmFeedItemPost {
 
   @Field(() => ID)
   id: string;
+
+  @Field(() => RealmPost, {
+    description: 'The post',
+  })
+  post: RealmPost;
 
   @Field(() => Number, {
     description: 'The total raw score for the feed item',

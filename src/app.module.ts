@@ -9,6 +9,7 @@ import mercurius from 'mercurius';
 import { BigNumberScalar } from '@lib/scalars/BigNumber';
 import { CursorScalar } from '@lib/scalars/Cursor';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
+import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { AppController } from '@src/app.controller';
 import { AppService } from '@src/app.service';
 import { AuthModule } from '@src/auth/auth.module';
@@ -40,6 +41,7 @@ import { UserModule } from '@src/user/user.module';
         BigNumber: BigNumberScalar,
         Cursor: CursorScalar,
         PublicKey: PublicKeyScalar,
+        RichTextDocument: RichTextDocumentScalar,
       },
       sortSchema: true,
     }),

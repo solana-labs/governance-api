@@ -8,6 +8,7 @@ import * as TE from 'fp-ts/TaskEither';
 import * as IT from 'io-ts';
 
 import * as errors from '@lib/errors/gql';
+import { convertTextToRichTextDocument } from '@lib/textManipulation/convertTextToRichTextDocument';
 import { Environment } from '@lib/types/Environment';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { OnChainService } from '@src/on-chain/on-chain.service';
@@ -47,8 +48,15 @@ export class RealmProposalService {
         ),
       ),
       TE.map(({ proposals }) => proposals),
-      TE.map((proposals) =>
-        proposals.map((proposal) => this.buildProposalFromHolaplexRespose(proposal, [])),
+      TE.chainW((proposals) =>
+        TE.sequenceArray(
+          proposals.map((proposal) =>
+            TE.tryCatch(
+              () => this.buildProposalFromHolaplexRespose(proposal, []),
+              (e) => new errors.Exception(e),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -98,17 +106,24 @@ export class RealmProposalService {
           TE.map(({ voteRecords }) => voteRecords),
         ),
       ),
-      TE.map(({ proposals, voteRecords }) =>
-        proposals.map((proposal) => this.buildProposalFromHolaplexRespose(proposal, voteRecords)),
+      TE.chainW(({ proposals, voteRecords }) =>
+        TE.sequenceArray(
+          proposals.map((proposal) =>
+            TE.tryCatch(
+              () => this.buildProposalFromHolaplexRespose(proposal, voteRecords),
+              (e) => new errors.Exception(e),
+            ),
+          ),
+        ),
       ),
       TE.map((proposals) => {
         switch (sortOrder) {
           case RealmProposalSort.Alphabetical:
-            return proposals.sort(this.sortAlphabetically);
+            return proposals.slice().sort(this.sortAlphabetically);
           case RealmProposalSort.Relevance:
-            return proposals.sort(this.sortRelevance);
+            return proposals.slice().sort(this.sortRelevance);
           default:
-            return proposals.sort(this.sortTime);
+            return proposals.slice().sort(this.sortTime);
         }
       }),
     );
@@ -151,12 +166,13 @@ export class RealmProposalService {
   /**
    * Convert a Holaplex proposal to a GQL proposal
    */
-  private buildProposalFromHolaplexRespose = (
+  private buildProposalFromHolaplexRespose = async (
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
     voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
   ) => {
     return {
       created: new Date(holaplexProposal.draftAt),
+      document: await convertTextToRichTextDocument(holaplexProposal.description),
       description: holaplexProposal.description,
       publicKey: new PublicKey(holaplexProposal.address),
       myVote: this.buildProposalUserVote(voteRecords, holaplexProposal.address),

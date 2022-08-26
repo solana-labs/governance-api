@@ -8,8 +8,12 @@ import {
 } from 'typeorm';
 
 import { Environment } from '@lib/types/Environment';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
 
-export interface Data {}
+export interface Data {
+  document: RichTextDocument;
+  title: string;
+}
 
 @Entity()
 export class RealmPost {

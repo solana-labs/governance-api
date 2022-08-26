@@ -9,13 +9,14 @@ import { Repository, In } from 'typeorm';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 
-import { RealmPost } from './entities/RealmPost.entity';
+import { RealmPost } from './dto/RealmPost';
+import { RealmPost as RealmPostEntity } from './entities/RealmPost.entity';
 
 @Injectable()
 export class RealmPostService {
   constructor(
-    @InjectRepository(RealmPost)
-    private readonly realmPostRepository: Repository<RealmPost>,
+    @InjectRepository(RealmPostEntity)
+    private readonly realmPostRepository: Repository<RealmPostEntity>,
   ) {}
 
   /**
@@ -42,6 +43,15 @@ export class RealmPostService {
             },
           }),
         (e) => new errors.Exception(e),
+      ),
+      TE.map(
+        AR.map((entity) => ({
+          created: entity.created,
+          document: entity.data.document,
+          id: entity.id,
+          title: entity.data.title,
+          updated: entity.updated,
+        })),
       ),
       TE.map(
         AR.reduce({} as { [id: string]: RealmPost }, (acc, post) => {

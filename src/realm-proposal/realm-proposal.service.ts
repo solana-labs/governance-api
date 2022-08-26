@@ -171,6 +171,11 @@ export class RealmProposalService {
     voteRecords: IT.TypeOf<typeof queries.voteRecords.respVoteRecord>[],
   ) => {
     return {
+      author: holaplexProposal.tokenOwnerRecord
+        ? {
+            publicKey: new PublicKey(holaplexProposal.tokenOwnerRecord.address),
+          }
+        : undefined,
       created: new Date(holaplexProposal.draftAt),
       document: await convertTextToRichTextDocument(holaplexProposal.description),
       description: holaplexProposal.description,

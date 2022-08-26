@@ -15,8 +15,8 @@ export class MalformedData extends mercurius.ErrorWithProps {
 }
 
 export class MalformedRequest extends mercurius.ErrorWithProps {
-  constructor() {
-    super("Malformed request", {}, 400);
+  constructor(message?: string) {
+    super(message || "Malformed request", {}, 400);
   }
 }
 

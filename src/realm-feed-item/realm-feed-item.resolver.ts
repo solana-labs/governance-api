@@ -4,11 +4,13 @@ import { PublicKey } from '@solana/web3.js';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser, User } from '@lib/decorators/CurrentUser';
+import { EitherResolver } from '@lib/decorators/EitherResolver';
+import { PublicKeyScalar } from '@lib/scalars/PublicKey';
+import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
-import { EitherResolver } from '@src/lib/decorators/EitherResolver';
-import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 
-import { RealmFeedItem } from './dto/RealmFeedItem';
+import { RealmFeedItem, RealmFeedItemPost } from './dto/RealmFeedItem';
 import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
 
 import { RealmFeedItemService } from './realm-feed-item.service';
@@ -63,6 +65,34 @@ export class RealmFeedItemResolver {
       user ? user.publicKey : null,
       environment,
     );
+  }
+
+  @Mutation(() => RealmFeedItemPost, {
+    description: 'Create a new Post',
+  })
+  @UseGuards(AuthJwtGuard)
+  @EitherResolver()
+  createPost(
+    @Args('document', {
+      type: () => RichTextDocumentScalar,
+      description: 'Post content',
+    })
+    document: RichTextDocument,
+    @Args('realm', {
+      type: () => PublicKeyScalar,
+      description: 'Public key of the realm the post belongs in',
+    })
+    realm: PublicKey,
+    @Args('title', {
+      type: () => String,
+      description: 'Title of the post',
+    })
+    title: string,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemService.createPost(realm, title, document, user, environment);
   }
 
   @Mutation(() => RealmFeedItem, {

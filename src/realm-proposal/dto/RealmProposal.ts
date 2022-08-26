@@ -4,6 +4,7 @@ import { PublicKey } from '@solana/web3.js';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
+import { RealmMember } from '@src/realm-member/dto/RealmMember';
 
 import { RealmProposalState } from './RealmProposalState';
 import { RealmProposalUserVote } from './RealmProposalUserVote';
@@ -12,6 +13,12 @@ import { RealmProposalUserVote } from './RealmProposalUserVote';
   description: 'A proposal in a Realm',
 })
 export class RealmProposal {
+  @Field(() => RealmMember, {
+    description: 'The creator of the proposal',
+    nullable: true,
+  })
+  author?: RealmMember;
+
   @Field(() => Date, {
     description: 'Creation timestamp',
   })

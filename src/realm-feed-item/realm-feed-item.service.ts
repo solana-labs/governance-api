@@ -11,6 +11,7 @@ import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
@@ -65,6 +66,69 @@ export class RealmFeedItemService {
         ),
       ),
       TE.map(({ posts, proposals }) => this.organizeFeedItemsListIntoMap([...posts, ...proposals])),
+    );
+  }
+
+  /**
+   * Create a new post
+   */
+  createPost(
+    realmPublicKey: PublicKey,
+    title: string,
+    document: RichTextDocument,
+    requestingUser: User | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    if (!requestingUser) {
+      return TE.left(new errors.Unauthorized());
+    }
+
+    return FN.pipe(
+      this.realmPostService.createPost(
+        realmPublicKey,
+        title,
+        document,
+        requestingUser,
+        environment,
+      ),
+      TE.chainW((post) =>
+        FN.pipe(
+          this.realmFeedItemRepository.create({
+            data: {
+              type: RealmFeedItemType.Post,
+              ref: post.id,
+            },
+            environment,
+            metadata: {
+              relevanceScore: 0,
+              topAllTimeScore: 0,
+              rawScore: 0,
+            },
+            realmPublicKeyStr: realmPublicKey.toBase58(),
+            updated: new Date(),
+          }),
+          (entity) =>
+            TE.tryCatch(
+              () => this.realmFeedItemRepository.save(entity),
+              (e) => new errors.Exception(e),
+            ),
+          TE.map(
+            (feedItemEntity) =>
+              ({
+                post,
+                type: RealmFeedItemType.Post,
+                created: feedItemEntity.created,
+                id: feedItemEntity.id.toString(),
+                score: feedItemEntity.metadata.rawScore,
+                updated: feedItemEntity.updated,
+              } as RealmFeedItemPost),
+          ),
+        ),
+      ),
     );
   }
 

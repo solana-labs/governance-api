@@ -2,11 +2,17 @@ import { ObjectType, Field, ID } from '@nestjs/graphql';
 
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
+import { RealmMember } from '@src/realm-member/dto/RealmMember';
 
 @ObjectType({
   description: 'A post in a Realm',
 })
 export class RealmPost {
+  @Field(() => RealmMember, {
+    description: 'The creator of the post',
+  })
+  author: RealmMember;
+
   @Field(() => Date, {
     description: 'Creation timestamp',
   })

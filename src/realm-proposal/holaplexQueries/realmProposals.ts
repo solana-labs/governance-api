@@ -21,6 +21,9 @@ export const query = gql`
             maxVotingTime
           }
         }
+        tokenOwnerRecord {
+          address
+        }
       }
       ... on ProposalV2 {
         address
@@ -41,6 +44,9 @@ export const query = gql`
         }
         proposalOptions {
           transactionsCount
+        }
+        tokenOwnerRecord {
+          address
         }
       }
     }
@@ -79,6 +85,13 @@ export const respProposal = IT.type({
         transactionsCount: IT.number,
       }),
     ),
+  ]),
+  tokenOwnerRecord: IT.union([
+    IT.null,
+    IT.undefined,
+    IT.type({
+      address: IT.string,
+    }),
   ]),
 });
 

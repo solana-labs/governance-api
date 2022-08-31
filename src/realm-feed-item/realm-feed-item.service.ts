@@ -5,7 +5,7 @@ import { compareDesc, differenceInHours, isEqual } from 'date-fns';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
@@ -21,6 +21,12 @@ import { RealmFeedItemType } from './dto/RealmFeedItemType';
 import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
 import { RealmFeedItem as RealmFeedItemEntity } from './entities/RealmFeedItem.entity';
 import { RealmFeedItemVote as RealmFeedItemVoteEntity } from './entities/RealmFeedItemVote.entity';
+
+interface UserVoteMapping {
+  [feedItem: string]: {
+    [userId: string]: RealmFeedItemVoteType;
+  };
+}
 
 @Injectable()
 export class RealmFeedItemService {
@@ -39,7 +45,7 @@ export class RealmFeedItemService {
   convertEntitiesToFeedItems(
     realmPublicKey: PublicKey,
     entities: RealmFeedItemEntity[],
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     environment: Environment,
   ) {
     if (environment === 'devnet') {
@@ -49,19 +55,29 @@ export class RealmFeedItemService {
     return FN.pipe(
       TE.of(this.splitEntitiesIntoTypes(entities)),
       TE.bindTo('entities'),
-      TE.bindW('posts', ({ entities }) =>
+      TE.bindW('votes', ({ entities }) =>
+        this.getFeedItemVotes(
+          realmPublicKey,
+          entities.posts.concat(entities.proposals).map((entity) => entity.id),
+          requestingUser ? [requestingUser.id] : [],
+          environment,
+        ),
+      ),
+      TE.bindW('posts', ({ entities, votes }) =>
         this.convertPostEntitiesToFeedItems(
           realmPublicKey,
           entities.posts,
           requestingUser,
+          votes,
           environment,
         ),
       ),
-      TE.bindW('proposals', ({ entities }) =>
+      TE.bindW('proposals', ({ entities, votes }) =>
         this.convertProposalEntitiesToFeedItems(
           realmPublicKey,
           entities.proposals,
           requestingUser,
+          votes,
           environment,
         ),
       ),
@@ -122,7 +138,7 @@ export class RealmFeedItemService {
                 post,
                 type: RealmFeedItemType.Post,
                 created: feedItemEntity.created,
-                id: feedItemEntity.id.toString(),
+                id: feedItemEntity.id,
                 score: feedItemEntity.metadata.rawScore,
                 updated: feedItemEntity.updated,
               } as RealmFeedItemPost),
@@ -162,7 +178,7 @@ export class RealmFeedItemService {
   getFeedItem(
     realmPublicKey: PublicKey,
     id: RealmFeedItemEntity['id'],
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     environment: Environment,
   ) {
     if (environment === 'devnet') {
@@ -171,8 +187,17 @@ export class RealmFeedItemService {
 
     return FN.pipe(
       this.getFeedItemEntity(realmPublicKey, id, environment),
-      TE.chainW((entity) =>
-        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, environment),
+      TE.bindTo('entity'),
+      TE.bindW('votes', ({ entity }) =>
+        this.getFeedItemVotes(
+          realmPublicKey,
+          [entity.id],
+          requestingUser ? [requestingUser.id] : [],
+          environment,
+        ),
+      ),
+      TE.chainW(({ entity, votes }) =>
+        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, votes, environment),
       ),
     );
   }
@@ -182,7 +207,7 @@ export class RealmFeedItemService {
    */
   getPinnedFeedItems(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     environment: Environment,
   ) {
     if (environment === 'devnet') {
@@ -231,14 +256,65 @@ export class RealmFeedItemService {
         ),
       ),
       TE.map((entities) => entities.filter(exists)),
-      TE.chainW((entities) =>
+      TE.bindTo('entities'),
+      TE.bindW('votes', ({ entities }) =>
+        this.getFeedItemVotes(
+          realmPublicKey,
+          entities.map((entity) => entity.id),
+          requestingUser ? [requestingUser.id] : [],
+          environment,
+        ),
+      ),
+      TE.chainW(({ entities, votes }) =>
         this.convertProposalEntitiesToFeedItems(
           realmPublicKey,
           entities,
           requestingUser,
+          votes,
           environment,
         ),
       ),
+    );
+  }
+
+  /**
+   * Get a mapping of feed item votes by feed item and user
+   */
+  getFeedItemVotes(
+    realmPublicKey: PublicKey,
+    feedItemIds: number[],
+    userIds: string[],
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      TE.tryCatch(
+        () =>
+          this.realmFeedItemVoteRepository.find({
+            where: {
+              feedItemId: In(feedItemIds),
+              userId: In(userIds),
+              realmPublicKeyStr: realmPublicKey.toBase58(),
+            },
+          }),
+        (e) => new errors.Exception(e),
+      ),
+      TE.map((entities) => {
+        const mapping: UserVoteMapping = {};
+
+        for (const entity of entities) {
+          if (!mapping[entity.feedItemId]) {
+            mapping[entity.feedItemId] = {};
+          }
+
+          mapping[entity.feedItemId][entity.userId] = entity.data.type;
+        }
+
+        return mapping;
+      }),
     );
   }
 
@@ -453,8 +529,17 @@ export class RealmFeedItemService {
           );
         }
       }),
-      TE.chainW((entity) =>
-        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser.publicKey, environment),
+      TE.bindTo('entity'),
+      TE.bindW('votes', ({ entity }) =>
+        this.getFeedItemVotes(
+          realmPublicKey,
+          [entity.id],
+          requestingUser ? [requestingUser.id] : [],
+          environment,
+        ),
+      ),
+      TE.chainW(({ entity, votes }) =>
+        this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, votes, environment),
       ),
     );
   }
@@ -465,7 +550,8 @@ export class RealmFeedItemService {
   private convertEntityToFeedItem(
     realmPublicKey: PublicKey,
     entity: RealmFeedItemEntity,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
+    votes: UserVoteMapping,
     environment: Environment,
   ) {
     switch (entity.data.type) {
@@ -474,7 +560,7 @@ export class RealmFeedItemService {
           this.realmPostService.getPostsForRealmByIds(
             realmPublicKey,
             [entity.data.ref],
-            requestingUser,
+            requestingUser?.publicKey || null,
             environment,
           ),
           TE.map((mapping) => mapping[entity.data.ref]),
@@ -485,7 +571,8 @@ export class RealmFeedItemService {
                 post,
                 type: RealmFeedItemType.Post,
                 created: entity.created,
-                id: entity.id.toString(),
+                id: entity.id,
+                myVote: requestingUser ? votes[entity.id]?.[requestingUser.id] : undefined,
                 score: entity.metadata.rawScore,
                 updated: entity.updated,
               } as typeof RealmFeedItem),
@@ -495,7 +582,7 @@ export class RealmFeedItemService {
         return FN.pipe(
           this.realmProposalService.getProposalForUserByPublicKey(
             new PublicKey(entity.data.ref),
-            requestingUser,
+            requestingUser?.publicKey || null,
             environment,
           ),
           TE.map(
@@ -504,7 +591,8 @@ export class RealmFeedItemService {
                 proposal,
                 type: RealmFeedItemType.Proposal,
                 created: entity.created,
-                id: entity.id.toString(),
+                id: entity.id,
+                myVote: requestingUser ? votes[entity.id]?.[requestingUser.id] : undefined,
                 score: entity.metadata.rawScore,
                 updated: entity.updated,
               } as typeof RealmFeedItem),
@@ -519,14 +607,15 @@ export class RealmFeedItemService {
   private convertPostEntitiesToFeedItems(
     realmPublicKey: PublicKey,
     entities: RealmFeedItemEntity[],
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
+    votes: UserVoteMapping,
     environment: Environment,
   ) {
     return FN.pipe(
       this.realmPostService.getPostsForRealmByIds(
         realmPublicKey,
         entities.map((p) => p.data.ref),
-        requestingUser,
+        requestingUser?.publicKey || null,
         environment,
       ),
       TE.map((postsMap) =>
@@ -535,7 +624,8 @@ export class RealmFeedItemService {
             ({
               type: RealmFeedItemType.Post,
               created: post.created,
-              id: post.id.toString(),
+              id: post.id,
+              myVote: requestingUser ? votes[post.id]?.[requestingUser.id] : undefined,
               post: postsMap[post.data.ref],
               score: post.metadata.rawScore,
               updated: post.updated,
@@ -551,14 +641,15 @@ export class RealmFeedItemService {
   private convertProposalEntitiesToFeedItems(
     realmPublicKey: PublicKey,
     entities: RealmFeedItemEntity[],
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
+    votes: UserVoteMapping,
     environment: Environment,
   ) {
     return FN.pipe(
       this.realmProposalService.getProposalsForRealmAndUserByPublicKeys(
         realmPublicKey,
         entities.map((p) => new PublicKey(p.data.ref)),
-        requestingUser,
+        requestingUser?.publicKey || null,
         environment,
       ),
       TE.map((proposalMap) =>
@@ -568,7 +659,8 @@ export class RealmFeedItemService {
               ({
                 type: RealmFeedItemType.Proposal,
                 created: proposal.created,
-                id: proposal.id.toString(),
+                id: proposal.id,
+                myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
                 proposal: proposalMap[proposal.data.ref],
                 score: proposal.metadata.rawScore,
                 updated: proposal.updated,

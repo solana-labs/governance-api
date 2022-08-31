@@ -195,7 +195,9 @@ export class OnChainService {
                   }>((resp) => resp.json()),
                 (e) => new errors.Exception(e),
               ),
-              TE.map(({ result }) => result),
+              TE.map(({ result }) => {
+                return result;
+              }),
               TE.map(({ value }) => {
                 const publicKey = mintPublicKey;
                 const data = Buffer.from(value.data[0], 'base64');

@@ -20,6 +20,10 @@ export const query = gql`
         governance {
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
           }
         }
         tokenOwnerRecord {
@@ -42,6 +46,10 @@ export const query = gql`
         governance {
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
           }
         }
         proposalOptions {
@@ -74,6 +82,13 @@ export const respProposal = IT.type({
       governanceConfig: IT.union([
         IT.type({
           maxVotingTime: IT.string,
+          voteThresholdPercentage: IT.number,
+        }),
+        IT.null,
+      ]),
+      realm: IT.union([
+        IT.type({
+          address: IT.string,
         }),
         IT.null,
       ]),

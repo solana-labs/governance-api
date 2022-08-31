@@ -1,6 +1,7 @@
 import { getReverseEntry, formatName } from '@cardinal/namespaces';
 import { Injectable } from '@nestjs/common';
 import { Connection, PublicKey } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as OP from 'fp-ts/Option';
@@ -46,8 +47,9 @@ export class RealmMemberService {
       ),
       TE.map(({ tokenOwnerRecords }) => tokenOwnerRecords),
       TE.map(
-        AR.map(({ address }) => ({
+        AR.map(({ address, governingTokenDepositAmount }) => ({
           publicKey: new PublicKey(address),
+          votingPower: new BigNumber(governingTokenDepositAmount),
         })),
       ),
     );

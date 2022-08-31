@@ -22,6 +22,10 @@ export const query = gql`
         governance {
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
           }
         }
         tokenOwnerRecord {
@@ -44,6 +48,10 @@ export const query = gql`
         governance {
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
           }
         }
         proposalOptions {

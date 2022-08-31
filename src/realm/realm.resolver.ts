@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser, User } from '@lib/decorators/CurrentUser';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
-import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
+import { JwtGuard } from '@src/auth/auth.jwt.guard';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RealmFeedItemSort, RealmFeedItemConnection } from '@src/realm-feed-item/dto/pagination';
@@ -40,7 +40,7 @@ export class RealmResolver {
   @ResolveField(() => RealmFeedItemConnection, {
     description: 'Realm feed',
   })
-  @UseGuards(AuthJwtGuard)
+  @UseGuards(JwtGuard)
   @EitherResolver()
   feed(
     @Args() args: ConnectionArgs,
@@ -57,7 +57,7 @@ export class RealmResolver {
   ) {
     return this.realmFeedItemGQLService.getGQLFeedItemsList(
       realm.publicKey,
-      user ? user.publicKey : null,
+      user,
       sort,
       environment,
       args.after as RealmFeedItemCursor | undefined,
@@ -70,18 +70,14 @@ export class RealmResolver {
   @ResolveField(() => [RealmFeedItem], {
     description: 'A list of pinned feed items',
   })
-  @UseGuards(AuthJwtGuard)
+  @UseGuards(JwtGuard)
   @EitherResolver()
   pinnedFeedItems(
     @Root() realm: Realm,
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemService.getPinnedFeedItems(
-      realm.publicKey,
-      user ? user.publicKey : null,
-      environment,
-    );
+    return this.realmFeedItemService.getPinnedFeedItems(realm.publicKey, user, environment);
   }
 
   @Query(() => Realm, {
@@ -138,7 +134,7 @@ export class RealmResolver {
     description: 'List of proposals in the realm',
   })
   @EitherResolver()
-  @UseGuards(AuthJwtGuard)
+  @UseGuards(JwtGuard)
   proposals(
     @Args() args: ConnectionArgs,
     @Args('sort', {

@@ -4,7 +4,7 @@ import { ResolveField, Resolver, Root, Query } from '@nestjs/graphql';
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
-import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
+import { JwtGuard } from '@src/auth/auth.jwt.guard';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { RealmMemberTwitterInfo } from '@src/realm-member/dto/RealmMemberTwitterInfo';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
@@ -33,7 +33,7 @@ export class UserResolver {
       'User making the request, as determined by the jwt bearer token in the authorization header',
     nullable: true,
   })
-  @UseGuards(AuthJwtGuard)
+  @UseGuards(JwtGuard)
   me(@CurrentUser() user: User | null, @CurrentEnvironment() environment: Environment) {
     if (environment === 'devnet') {
       throw new errors.UnsupportedDevnet();

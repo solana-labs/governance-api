@@ -18,8 +18,19 @@ export const query = gql`
         votingAt
         votingCompletedAt
         governance {
+          address
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
+            communityMint
+            realmConfig {
+              communityMintMaxVoteWeight
+              communityMintMaxVoteWeightSource
+              councilMint
+            }
           }
         }
         tokenOwnerRecord {
@@ -40,8 +51,19 @@ export const query = gql`
         votingAt
         votingCompletedAt
         governance {
+          address
           governanceConfig {
             maxVotingTime
+            voteThresholdPercentage
+          }
+          realm {
+            address
+            communityMint
+            realmConfig {
+              communityMintMaxVoteWeight
+              communityMintMaxVoteWeightSource
+              councilMint
+            }
           }
         }
         proposalOptions {
@@ -71,9 +93,26 @@ export const respProposal = IT.type({
   votingCompletedAt: IT.union([IT.string, IT.null]),
   governance: IT.union([
     IT.type({
+      address: IT.string,
       governanceConfig: IT.union([
         IT.type({
           maxVotingTime: IT.string,
+          voteThresholdPercentage: IT.number,
+        }),
+        IT.null,
+      ]),
+      realm: IT.union([
+        IT.type({
+          address: IT.string,
+          communityMint: IT.string,
+          realmConfig: IT.union([
+            IT.null,
+            IT.type({
+              communityMintMaxVoteWeight: IT.string,
+              communityMintMaxVoteWeightSource: IT.string,
+              councilMint: IT.union([IT.null, IT.string]),
+            }),
+          ]),
         }),
         IT.null,
       ]),

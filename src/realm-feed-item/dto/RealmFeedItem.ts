@@ -1,9 +1,11 @@
 import { Field, ObjectType, ID, createUnionType } from '@nestjs/graphql';
 
+import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
 import { RealmPost } from '@src/realm-post/dto/RealmPost';
 import { RealmProposal } from '@src/realm-proposal/dto/RealmProposal';
 
 import { RealmFeedItemType } from './RealmFeedItemType';
+import { RealmFeedItemVoteType } from './RealmFeedItemVoteType';
 
 @ObjectType({
   description: 'A post feed item',
@@ -19,8 +21,14 @@ export class RealmFeedItemPost {
   })
   created: Date;
 
-  @Field(() => ID)
-  id: string;
+  @Field(() => RealmFeedItemIDScalar)
+  id: number;
+
+  @Field(() => RealmFeedItemVoteType, {
+    description: "The requesting user's vote on the feed item",
+    nullable: true,
+  })
+  myVote?: RealmFeedItemVoteType;
 
   @Field(() => RealmPost, {
     description: 'The post',
@@ -52,8 +60,14 @@ export class RealmFeedItemProposal {
   })
   created: Date;
 
-  @Field(() => ID)
-  id: string;
+  @Field(() => RealmFeedItemIDScalar)
+  id: number;
+
+  @Field(() => RealmFeedItemVoteType, {
+    description: "The requesting user's vote on the feed item",
+    nullable: true,
+  })
+  myVote?: RealmFeedItemVoteType;
 
   @Field(() => RealmProposal, {
     description: 'The proposal',

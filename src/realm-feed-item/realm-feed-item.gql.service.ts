@@ -11,6 +11,7 @@ import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
+import { User } from '@src/lib/decorators/CurrentUser';
 
 import { RealmFeedItemSort } from './dto/pagination';
 import { RealmFeedItem } from './dto/RealmFeedItem';
@@ -35,7 +36,7 @@ export class RealmFeedItemGQLService {
    */
   getFirstNFeedItems(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     n: number,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
@@ -67,7 +68,7 @@ export class RealmFeedItemGQLService {
    */
   getLastNFeedItems(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     n: number,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
@@ -102,7 +103,7 @@ export class RealmFeedItemGQLService {
    */
   getNFeedItemsAfter(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     n: number,
     after: RealmFeedItemCursor,
     sortOrder: RealmFeedItemSort,
@@ -144,7 +145,7 @@ export class RealmFeedItemGQLService {
    */
   getNFeedItemsBefore(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     n: number,
     after: RealmFeedItemCursor,
     sortOrder: RealmFeedItemSort,
@@ -189,7 +190,7 @@ export class RealmFeedItemGQLService {
    */
   getGQLFeedItemsList(
     realmPublicKey: PublicKey,
-    requestingUser: PublicKey | null,
+    requestingUser: User | null,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
     after?: RealmFeedItemCursor,

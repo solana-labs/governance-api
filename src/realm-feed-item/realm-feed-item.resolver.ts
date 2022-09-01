@@ -9,10 +9,10 @@ import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
+import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
 
 import { RealmFeedItem, RealmFeedItemPost } from './dto/RealmFeedItem';
 import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
-
 import { RealmFeedItemService } from './realm-feed-item.service';
 
 @Resolver(() => RealmFeedItem)
@@ -22,7 +22,6 @@ export class RealmFeedItemResolver {
   @Query(() => RealmFeedItem, {
     description: "An individual item in a Realm's feed",
   })
-  @UseGuards(AuthJwtGuard)
   @EitherResolver()
   feedItem(
     @Args('realm', {
@@ -38,18 +37,12 @@ export class RealmFeedItemResolver {
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemService.getFeedItem(
-      realm,
-      parseInt(id, 10),
-      user ? user.publicKey : null,
-      environment,
-    );
+    return this.realmFeedItemService.getFeedItem(realm, parseInt(id, 10), user, environment);
   }
 
   @Query(() => [RealmFeedItem], {
     description: 'A list of feed items that have been pinned',
   })
-  @UseGuards(AuthJwtGuard)
   @EitherResolver()
   pinnedFeedItems(
     @Args('realm', {
@@ -60,11 +53,7 @@ export class RealmFeedItemResolver {
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemService.getPinnedFeedItems(
-      realm,
-      user ? user.publicKey : null,
-      environment,
-    );
+    return this.realmFeedItemService.getPinnedFeedItems(realm, user, environment);
   }
 
   @Mutation(() => RealmFeedItemPost, {
@@ -107,10 +96,10 @@ export class RealmFeedItemResolver {
     })
     realm: PublicKey,
     @Args('feedItemId', {
-      type: () => ID,
+      type: () => RealmFeedItemIDScalar,
       description: 'The ID of the feed item being voted on',
     })
-    id: string,
+    id: number,
     @Args('vote', {
       type: () => RealmFeedItemVoteType,
       description: 'The type of vote',
@@ -120,6 +109,6 @@ export class RealmFeedItemResolver {
     environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemService.submitVote(realm, parseInt(id, 10), vote, user, environment);
+    return this.realmFeedItemService.submitVote(realm, id, vote, user, environment);
   }
 }

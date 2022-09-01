@@ -14,6 +14,8 @@ import { convertTextToRichTextDocument } from '@lib/textManipulation/convertText
 import { Environment } from '@lib/types/Environment';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { OnChainService } from '@src/on-chain/on-chain.service';
+import { RealmGovernanceService, Governance } from '@src/realm-governance/realm-governance.service';
+import { RealmMemberService } from '@src/realm-member/realm-member.service';
 
 import { RealmProposalSort } from './dto/pagination';
 import { RealmProposal } from './dto/RealmProposal';
@@ -27,6 +29,8 @@ export class RealmProposalService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly holaplexService: HolaplexService,
     private readonly onChainService: OnChainService,
+    private readonly realmGovernanceService: RealmGovernanceService,
+    private readonly realmMemberService: RealmMemberService,
   ) {}
 
   /**
@@ -57,14 +61,49 @@ export class RealmProposalService {
       TE.bindW('proposalMints', ({ proposal }) =>
         this.getGoverningTokenMintsForHolaplexProposals([proposal], environment),
       ),
-      TE.chainW(({ proposal, proposalMints, proposalVoteRecords }) =>
+      TE.bindW('totalVoterPower', ({ proposal }) => {
+        if (proposal.governance?.realm?.address) {
+          return this.getTotalVoteWeightInRealm(
+            new PublicKey(proposal.governance.realm.address),
+            environment,
+          );
+        }
+
+        return TE.right(undefined);
+      }),
+      TE.bindW('governances', ({ proposal }) => {
+        if (proposal.governance?.address) {
+          const governance: Governance = {
+            address: new PublicKey(proposal.governance.address),
+            communityMint: proposal.governance.realm?.communityMint
+              ? new PublicKey(proposal.governance.realm.communityMint)
+              : null,
+            councilMint: proposal.governance.realm?.realmConfig?.councilMint
+              ? new PublicKey(proposal.governance.realm.realmConfig.councilMint)
+              : null,
+            communityMintMaxVoteWeight: proposal.governance.realm?.realmConfig
+              ?.communityMintMaxVoteWeight
+              ? new BigNumber(proposal.governance.realm.realmConfig.communityMintMaxVoteWeight)
+              : null,
+            communityMintMaxVoteWeightSource:
+              proposal.governance.realm?.realmConfig?.communityMintMaxVoteWeightSource || null,
+          };
+
+          return TE.right([governance]);
+        }
+
+        return TE.right([]);
+      }),
+      TE.chainW(({ governances, proposal, proposalMints, proposalVoteRecords, totalVoterPower }) =>
         TE.tryCatch(
           () =>
             this.buildProposalFromHolaplexRespose(
               proposal,
               [],
               proposalVoteRecords[proposal.address] || [],
+              governances,
               proposalMints[proposal.address]?.account,
+              totalVoterPower,
             ),
           (e) => new errors.Exception(e),
         ),
@@ -121,17 +160,60 @@ export class RealmProposalService {
           TE.map(({ voteRecords }) => voteRecords),
         ),
       ),
-      TE.chainW(({ proposal, proposalMints, proposalVoteRecords, userVoteRecords }) =>
-        TE.tryCatch(
-          () =>
-            this.buildProposalFromHolaplexRespose(
-              proposal,
-              userVoteRecords,
-              proposalVoteRecords[proposal.address] || [],
-              proposalMints[proposal.address]?.account,
-            ),
-          (e) => new errors.Exception(e),
-        ),
+      TE.bindW('totalVoterPower', ({ proposal }) => {
+        if (proposal.governance?.realm?.address) {
+          return this.getTotalVoteWeightInRealm(
+            new PublicKey(proposal.governance.realm.address),
+            environment,
+          );
+        }
+
+        return TE.right(undefined);
+      }),
+      TE.bindW('governances', ({ proposal }) => {
+        if (proposal.governance?.address) {
+          const governance: Governance = {
+            address: new PublicKey(proposal.governance.address),
+            communityMint: proposal.governance.realm?.communityMint
+              ? new PublicKey(proposal.governance.realm.communityMint)
+              : null,
+            councilMint: proposal.governance.realm?.realmConfig?.councilMint
+              ? new PublicKey(proposal.governance.realm.realmConfig.councilMint)
+              : null,
+            communityMintMaxVoteWeight: proposal.governance.realm?.realmConfig
+              ?.communityMintMaxVoteWeight
+              ? new BigNumber(proposal.governance.realm.realmConfig.communityMintMaxVoteWeight)
+              : null,
+            communityMintMaxVoteWeightSource:
+              proposal.governance.realm?.realmConfig?.communityMintMaxVoteWeightSource || null,
+          };
+
+          return TE.right([governance]);
+        }
+
+        return TE.right([]);
+      }),
+      TE.chainW(
+        ({
+          governances,
+          proposal,
+          proposalMints,
+          proposalVoteRecords,
+          totalVoterPower,
+          userVoteRecords,
+        }) =>
+          TE.tryCatch(
+            () =>
+              this.buildProposalFromHolaplexRespose(
+                proposal,
+                userVoteRecords,
+                proposalVoteRecords[proposal.address] || [],
+                governances,
+                proposalMints[proposal.address]?.account,
+                totalVoterPower,
+              ),
+            (e) => new errors.Exception(e),
+          ),
       ),
     );
   }
@@ -145,27 +227,30 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.onChainService.getGovernancesForRealm(realmPublicKey, environment),
-      TE.chainW((governances) =>
+      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.bindTo('governances'),
+      TE.bindW('resp', ({ governances }) =>
         this.holaplexService.requestV1(
           {
             query: queries.realmProposals.query,
             variables: {
-              governances: governances.map((g) => g.toBase58()),
+              governances: governances.map((g) => g.address.toBase58()),
             },
           },
           queries.realmProposals.resp,
         ),
       ),
-      TE.map(({ proposals }) => proposals),
-      TE.bindTo('proposals'),
+      TE.bindW('proposals', ({ resp }) => TE.right(resp.proposals)),
       TE.bindW('proposalVoteRecords', ({ proposals }) =>
         this.getVoteRecordsForHolaplexProposals(proposals, environment),
       ),
       TE.bindW('proposalMints', ({ proposals }) =>
         this.getGoverningTokenMintsForHolaplexProposals(proposals, environment),
       ),
-      TE.chainW(({ proposals, proposalMints, proposalVoteRecords }) =>
+      TE.bindW('totalVoterPower', () =>
+        this.getTotalVoteWeightInRealm(realmPublicKey, environment),
+      ),
+      TE.chainW(({ governances, proposals, proposalMints, proposalVoteRecords, totalVoterPower }) =>
         TE.sequenceArray(
           proposals.map((proposal) =>
             TE.tryCatch(
@@ -174,7 +259,9 @@ export class RealmProposalService {
                   proposal,
                   [],
                   proposalVoteRecords[proposal.address] || [],
+                  governances,
                   proposalMints[proposal.address]?.account,
+                  totalVoterPower,
                 ),
               (e) => new errors.Exception(e),
             ),
@@ -198,20 +285,20 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.onChainService.getGovernancesForRealm(realmPublicKey, environment),
-      TE.chainW((governances) =>
+      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.bindTo('governances'),
+      TE.bindW('resp', ({ governances }) =>
         this.holaplexService.requestV1(
           {
             query: queries.realmProposals.query,
             variables: {
-              governances: governances.map((g) => g.toBase58()),
+              governances: governances.map((g) => g.address.toBase58()),
             },
           },
           queries.realmProposals.resp,
         ),
       ),
-      TE.map(({ proposals }) => proposals),
-      TE.bindTo('proposals'),
+      TE.bindW('proposals', ({ resp }) => TE.right(resp.proposals)),
       TE.bindW('proposalVoteRecords', ({ proposals }) =>
         this.getVoteRecordsForHolaplexProposals(proposals, environment),
       ),
@@ -235,21 +322,34 @@ export class RealmProposalService {
           TE.map(({ voteRecords }) => voteRecords),
         ),
       ),
-      TE.chainW(({ proposals, proposalMints, proposalVoteRecords, userVoteRecords }) =>
-        TE.sequenceArray(
-          proposals.map((proposal) =>
-            TE.tryCatch(
-              () =>
-                this.buildProposalFromHolaplexRespose(
-                  proposal,
-                  userVoteRecords,
-                  proposalVoteRecords[proposal.address] || [],
-                  proposalMints[proposal.address]?.account,
-                ),
-              (e) => new errors.Exception(e),
+      TE.bindW('totalVoterPower', () =>
+        this.getTotalVoteWeightInRealm(realmPublicKey, environment),
+      ),
+      TE.chainW(
+        ({
+          governances,
+          proposals,
+          proposalMints,
+          proposalVoteRecords,
+          userVoteRecords,
+          totalVoterPower,
+        }) =>
+          TE.sequenceArray(
+            proposals.map((proposal) =>
+              TE.tryCatch(
+                () =>
+                  this.buildProposalFromHolaplexRespose(
+                    proposal,
+                    userVoteRecords,
+                    proposalVoteRecords[proposal.address] || [],
+                    governances,
+                    proposalMints[proposal.address]?.account,
+                    totalVoterPower,
+                  ),
+                (e) => new errors.Exception(e),
+              ),
             ),
           ),
-        ),
       ),
       TE.map((proposals) => {
         switch (sortOrder) {
@@ -309,21 +409,30 @@ export class RealmProposalService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
+    const mints = new Set<string>([]);
+    for (const proposal of proposals) {
+      mints.add(proposal.governingTokenMint);
+    }
+    const mintPks = Array.from(mints).map((address) => new PublicKey(address));
+
     return FN.pipe(
       TE.sequenceArray(
-        proposals.map((proposal) =>
+        mintPks.map((mint) =>
           FN.pipe(
-            this.onChainService.getTokenMintInfo(
-              new PublicKey(proposal.governingTokenMint),
-              environment,
-            ),
-            TE.map((mint) => ({ [proposal.address]: mint })),
+            this.onChainService.getTokenMintInfo(mint, environment),
+            TE.map((mintInfo) => ({ [mint.toBase58()]: mintInfo })),
           ),
         ),
       ),
       TE.map((mints) =>
         mints.reduce((acc, mint) => {
           return { ...acc, ...mint };
+        }, {} as { [address: string]: { publicKey: PublicKey; account: MintInfo } }),
+      ),
+      TE.map((mintMapping) =>
+        proposals.reduce((acc, proposal) => {
+          acc[proposal.address] = mintMapping[proposal.governingTokenMint];
+          return acc;
         }, {} as { [address: string]: { publicKey: PublicKey; account: MintInfo } }),
       ),
     );
@@ -436,7 +545,9 @@ export class RealmProposalService {
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
     userVoteRecords: IT.TypeOf<typeof queries.voteRecordsForUser.respVoteRecord>[],
     proposalVoteRecords: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[],
+    governances: Governance[],
     mint?: MintInfo,
+    totalVoterPower?: BigNumber,
   ) => {
     return {
       author: holaplexProposal.tokenOwnerRecord
@@ -456,6 +567,10 @@ export class RealmProposalService {
         holaplexProposal,
         proposalVoteRecords,
         mint,
+        totalVoterPower,
+        governances.find(
+          (governance) => governance.address.toBase58() === holaplexProposal.governance?.address,
+        ),
       ),
     };
   };
@@ -604,10 +719,17 @@ export class RealmProposalService {
     holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
     proposalVoteRecords: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[],
     mint?: MintInfo,
+    totalVoterPower?: BigNumber,
+    governance?: Governance,
   ) {
+    const FULL_SUPPLY = new BigNumber(10000000000);
     const decimals = mint?.decimals || 0;
-    let totalYesWeight = new BigNumber(0);
+    let percentThresholdMet: number | null = null;
+    let threshold: BigNumber | null = null;
     let totalNoWeight = new BigNumber(0);
+    let totalYesWeight = new BigNumber(0);
+    let votingEndTime: number | null = null;
+    let totalPossibleWeight: BigNumber | null = totalVoterPower || null;
 
     for (const voteRecord of proposalVoteRecords) {
       if (voteRecord.voteType === 'YES' && voteRecord.voteWeight) {
@@ -621,12 +743,69 @@ export class RealmProposalService {
       }
     }
 
+    if (holaplexProposal.governance?.governanceConfig?.maxVotingTime) {
+      const maxVotingTime = parseInt(
+        holaplexProposal.governance?.governanceConfig?.maxVotingTime,
+        10,
+      );
+      const maxVotingTimeInMs = maxVotingTime * 1000;
+
+      if (holaplexProposal.votingAt) {
+        const start = new Date(holaplexProposal.votingAt);
+        votingEndTime = start.getTime() + maxVotingTimeInMs;
+      }
+    }
+
+    if (
+      governance?.communityMintMaxVoteWeight &&
+      governance.communityMint &&
+      governance.communityMint.toBase58() === holaplexProposal.governingTokenMint &&
+      totalVoterPower
+    ) {
+      const supply = governance.communityMintMaxVoteWeight;
+
+      if (supply.eq(FULL_SUPPLY)) {
+        if (mint?.supply) {
+          totalPossibleWeight = new BigNumber(mint.supply.toString());
+        }
+      } else {
+        totalPossibleWeight = supply.multipliedBy(totalVoterPower);
+      }
+    }
+
+    if (
+      holaplexProposal.governance?.governanceConfig?.voteThresholdPercentage &&
+      totalPossibleWeight
+    ) {
+      const voteThresholdPercentage =
+        holaplexProposal.governance.governanceConfig.voteThresholdPercentage;
+
+      threshold = totalPossibleWeight.multipliedBy(voteThresholdPercentage / 100);
+      percentThresholdMet = totalYesWeight.isGreaterThanOrEqualTo(threshold)
+        ? 100
+        : totalYesWeight.dividedBy(threshold).multipliedBy(100).toNumber();
+    }
+
     return {
-      percentThresholdMet: null,
-      threshold: null,
+      percentThresholdMet,
+      threshold: threshold?.shiftedBy(-decimals),
       totalNoWeight: totalNoWeight.shiftedBy(-decimals),
+      totalPossibleWeight: totalPossibleWeight?.shiftedBy(-decimals) || null,
       totalYesWeight: totalYesWeight.shiftedBy(-decimals),
+      voteThresholdPercentage:
+        holaplexProposal.governance?.governanceConfig?.voteThresholdPercentage || null,
+      votingEnd: votingEndTime ? new Date(votingEndTime) : null,
     };
+  }
+
+  /**
+   * Get the total vote weight capacity in a Realm
+   */
+  private getTotalVoteWeightInRealm(realm: PublicKey, environment: Environment) {
+    return FN.pipe(
+      this.realmMemberService.getMembersForRealm(realm, environment),
+      TE.map(AR.reduce(new BigNumber(0), (acc, cur) => acc.plus(cur.votingPower))),
+    );
   }
 
   /**

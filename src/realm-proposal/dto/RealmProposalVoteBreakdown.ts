@@ -28,4 +28,22 @@ export class RealmProposalVoteBreakdown {
     description: 'The total amount of `Yes` votes',
   })
   totalYesWeight: BigNumber;
+
+  @Field(() => BigNumberScalar, {
+    description: 'The total possible amount of votes in the realm',
+    nullable: true,
+  })
+  totalPossibleWeight?: BigNumber | null;
+
+  @Field(() => Number, {
+    description: 'The approval quorum needed as a percentage',
+    nullable: true,
+  })
+  voteThresholdPercentage?: number | null;
+
+  @Field(() => Date, {
+    description: 'When voting on the proposal ends or ended',
+    nullable: true,
+  })
+  votingEnd?: Date | null;
 }

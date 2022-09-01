@@ -9,7 +9,7 @@ const TOKEN_OWNER_OFFSET = 32;
  * through an RPC.
  */
 export function getRawAssetAccounts(owners: PublicKey[], commitment?: string) {
-  return fetch('https://rpc.theindex.io', {
+  return fetch('http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

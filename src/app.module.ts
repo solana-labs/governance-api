@@ -1,6 +1,7 @@
 import { join } from 'path';
 
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { GraphQLModule } from '@nestjs/graphql';
 import { MercuriusDriver, MercuriusDriverConfig } from '@nestjs/mercurius';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,6 +13,7 @@ import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { AppController } from '@src/app.controller';
 import { AppService } from '@src/app.service';
+import { AuthJwtInterceptor } from '@src/auth/auth.jwt.interceptor';
 import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
@@ -26,6 +28,8 @@ import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
 import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { RealmModule } from '@src/realm/realm.module';
 import { UserModule } from '@src/user/user.module';
+
+import { RealmGovernanceModule } from './realm-governance/realm-governance.module';
 
 @Module({
   imports: [
@@ -72,8 +76,15 @@ import { UserModule } from '@src/user/user.module';
     RealmPostModule,
     RealmTreasuryModule,
     OnChainModule,
+    RealmGovernanceModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuthJwtInterceptor,
+    },
+  ],
 })
 export class AppModule {}

@@ -1,4 +1,3 @@
-import { UseGuards } from '@nestjs/common';
 import { Args, Resolver, Query } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
@@ -7,7 +6,6 @@ import { CurrentUser, User } from '@lib/decorators/CurrentUser';
 import { EitherResolver } from '@lib/decorators/EitherResolver';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
-import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 import { RealmFeedItemConnection, RealmFeedItemSort } from '@src/realm-feed-item/dto/pagination';
 import {
   RealmFeedItemGQLService,
@@ -27,7 +25,6 @@ export class RealmFeedResolver {
     description: 'A feed for a Realm',
   })
   @EitherResolver()
-  @UseGuards(AuthJwtGuard)
   feed(
     @Args() args: ConnectionArgs,
     @Args('realm', {
@@ -47,7 +44,7 @@ export class RealmFeedResolver {
   ) {
     return this.realmFeedItemGQLService.getGQLFeedItemsList(
       realm,
-      user ? user.publicKey : null,
+      user,
       sort,
       environment,
       args.after as RealmFeedItemCursor | undefined,

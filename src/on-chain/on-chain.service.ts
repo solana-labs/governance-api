@@ -1,11 +1,5 @@
 import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
-import {
-  getGovernanceAccounts,
-  Governance,
-  pubkeyFilter,
-  MemcmpFilter,
-  getNativeTreasuryAddress,
-} from '@solana/spl-governance';
+import { getNativeTreasuryAddress } from '@solana/spl-governance';
 import { MintInfo } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Cache } from 'cache-manager';
@@ -21,6 +15,7 @@ import { parseMintAccountData } from '@lib/treasuryAssets/parseMintAccountData';
 import { parseTokenAccountData } from '@lib/treasuryAssets/parseTokenAccountData';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
+import { RealmGovernanceService } from '@src/realm-governance/realm-governance.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 
 function dedupe<T extends { publicKey: PublicKey }>(list: T[]) {
@@ -51,6 +46,7 @@ interface AssetOwner {
 export class OnChainService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmSettingsService: RealmSettingsService,
   ) {}
 
@@ -115,16 +111,19 @@ export class OnChainService {
     return FN.pipe(
       this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
       TE.bindTo('settings'),
-      TE.bind('governances', () => this.getGovernancesForRealm(realmPublicKey, environment)),
-      TE.chain(({ governances, settings }) =>
+      TE.bind('governances', () =>
+        this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      ),
+      TE.chainW(({ governances, settings }) =>
         FN.pipe(
           TE.sequenceArray(
             governances.map((governance) =>
               TE.tryCatch(
                 () =>
-                  getNativeTreasuryAddress(new PublicKey(settings.programId), governance).then(
-                    (wallet) => ({ governance, wallet }),
-                  ),
+                  getNativeTreasuryAddress(
+                    new PublicKey(settings.programId),
+                    governance.address,
+                  ).then((wallet) => ({ wallet, governance: governance.address })),
                 (e) => new errors.Exception(e),
               ),
             ),
@@ -142,7 +141,9 @@ export class OnChainService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    const connection = new Connection('https://rpc.theindex.io');
+    const connection = new Connection(
+      'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/',
+    );
     const cacheKey = mintPublicKey.toBase58();
 
     return FN.pipe(
@@ -192,7 +193,9 @@ export class OnChainService {
                         rentEpoch: number;
                       };
                     };
-                  }>((resp) => resp.json()),
+                  }>((resp) => {
+                    return resp.json();
+                  }),
                 (e) => new errors.Exception(e),
               ),
               TE.map(({ result }) => {
@@ -223,7 +226,9 @@ export class OnChainService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    const connection = new Connection('https://rpc.theindex.io');
+    const connection = new Connection(
+      'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/',
+    );
 
     return FN.pipe(
       this.getAssetOwnersInRealm(realmPublicKey, environment),
@@ -254,7 +259,9 @@ export class OnChainService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    const connection = new Connection('https://rpc.theindex.io');
+    const connection = new Connection(
+      'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/',
+    );
     const auxilliaryAccounts = AUXILIARY_TOKEN_ASSETS[realmPublicKey.toBase58()] || [];
 
     if (!auxilliaryAccounts.length) {
@@ -305,32 +312,6 @@ export class OnChainService {
       TE.chainW(({ rawTokenAccounts, assetOwners }) =>
         this.convertRawTokenAssets(rawTokenAccounts, [...assetOwners], environment),
       ),
-    );
-  }
-
-  /**
-   * Get a list of governances for a realm
-   */
-  getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
-
-    return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
-      TE.chainW(({ programId }) =>
-        TE.tryCatch(
-          () =>
-            getGovernanceAccounts(
-              new Connection('https://rpc.theindex.io'),
-              new PublicKey(programId),
-              Governance,
-              [pubkeyFilter(1, realmPublicKey) as MemcmpFilter],
-            ),
-          (e) => new errors.Exception(e),
-        ),
-      ),
-      TE.map(AR.map((governance) => governance.pubkey)),
     );
   }
 }

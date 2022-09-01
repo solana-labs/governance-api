@@ -20,12 +20,19 @@ export const query = gql`
         votingAt
         votingCompletedAt
         governance {
+          address
           governanceConfig {
             maxVotingTime
             voteThresholdPercentage
           }
           realm {
             address
+            communityMint
+            realmConfig {
+              communityMintMaxVoteWeight
+              communityMintMaxVoteWeightSource
+              councilMint
+            }
           }
         }
         tokenOwnerRecord {
@@ -46,12 +53,19 @@ export const query = gql`
         votingAt
         votingCompletedAt
         governance {
+          address
           governanceConfig {
             maxVotingTime
             voteThresholdPercentage
           }
           realm {
             address
+            communityMint
+            realmConfig {
+              communityMintMaxVoteWeight
+              communityMintMaxVoteWeightSource
+              councilMint
+            }
           }
         }
         proposalOptions {

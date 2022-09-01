@@ -7,6 +7,7 @@ import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
 import { UserModule } from '@src/user/user.module';
 
+import { AuthJwtInterceptor } from './auth.jwt.interceptor';
 import { AuthJwtStrategy } from './auth.jwt.strategy';
 import { AuthResolver } from './auth.resolver';
 import { AuthService } from './auth.service';
@@ -28,7 +29,7 @@ import { AuthClaim } from './entities/AuthClaim.entity';
     }),
     TypeOrmModule.forFeature([Auth, AuthClaim]),
   ],
-  providers: [AuthResolver, AuthService, AuthJwtStrategy],
+  providers: [AuthResolver, AuthService, AuthJwtInterceptor, AuthJwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

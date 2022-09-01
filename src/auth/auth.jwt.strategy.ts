@@ -9,13 +9,10 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@src/config/config.service';
 import { UserService } from '@src/user/user.service';
 
-import { AuthService } from './auth.service';
-
 @Injectable()
 export class AuthJwtStrategy extends PassportStrategy(Strategy, 'authJwt') {
   constructor(
     private readonly configService: ConfigService,
-    private readonly authService: AuthService,
     private readonly userService: UserService,
   ) {
     super({

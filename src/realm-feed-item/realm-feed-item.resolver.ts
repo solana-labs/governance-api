@@ -8,7 +8,7 @@ import { EitherResolver } from '@lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
-import { AuthJwtGuard, JwtGuard } from '@src/auth/auth.jwt.guard';
+import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
 
 import { RealmFeedItem, RealmFeedItemPost } from './dto/RealmFeedItem';
@@ -22,7 +22,6 @@ export class RealmFeedItemResolver {
   @Query(() => RealmFeedItem, {
     description: "An individual item in a Realm's feed",
   })
-  @UseGuards(JwtGuard)
   @EitherResolver()
   feedItem(
     @Args('realm', {
@@ -44,7 +43,6 @@ export class RealmFeedItemResolver {
   @Query(() => [RealmFeedItem], {
     description: 'A list of feed items that have been pinned',
   })
-  @UseGuards(JwtGuard)
   @EitherResolver()
   pinnedFeedItems(
     @Args('realm', {

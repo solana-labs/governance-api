@@ -1,4 +1,3 @@
-import { UseGuards } from '@nestjs/common';
 import { Args, Int, ResolveField, Resolver, Root, Query } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 import * as EI from 'fp-ts/Either';
@@ -10,7 +9,6 @@ import { EitherResolver } from '@lib/decorators/EitherResolver';
 import * as errors from '@lib/errors/gql';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
-import { JwtGuard } from '@src/auth/auth.jwt.guard';
 import { ClippedRichTextDocument } from '@src/lib/gqlTypes/ClippedRichTextDocument';
 import { clipRichTextDocument } from '@src/lib/textManipulation/clipRichTextDocument';
 
@@ -48,7 +46,6 @@ export class RealmProposalResolver {
     description: 'A list of proposals for a Realm',
   })
   @EitherResolver()
-  @UseGuards(JwtGuard)
   proposals(
     @Args() args: ConnectionArgs,
     @Args('realm', {

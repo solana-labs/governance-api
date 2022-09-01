@@ -1,11 +1,9 @@
-import { UseGuards } from '@nestjs/common';
 import { Resolver, Query, Args, ResolveField, Root, Int } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser, User } from '@lib/decorators/CurrentUser';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
-import { JwtGuard } from '@src/auth/auth.jwt.guard';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RealmFeedItemSort, RealmFeedItemConnection } from '@src/realm-feed-item/dto/pagination';
@@ -40,7 +38,6 @@ export class RealmResolver {
   @ResolveField(() => RealmFeedItemConnection, {
     description: 'Realm feed',
   })
-  @UseGuards(JwtGuard)
   @EitherResolver()
   feed(
     @Args() args: ConnectionArgs,
@@ -70,7 +67,6 @@ export class RealmResolver {
   @ResolveField(() => [RealmFeedItem], {
     description: 'A list of pinned feed items',
   })
-  @UseGuards(JwtGuard)
   @EitherResolver()
   pinnedFeedItems(
     @Root() realm: Realm,
@@ -134,7 +130,6 @@ export class RealmResolver {
     description: 'List of proposals in the realm',
   })
   @EitherResolver()
-  @UseGuards(JwtGuard)
   proposals(
     @Args() args: ConnectionArgs,
     @Args('sort', {

@@ -15,6 +15,7 @@ import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
+import { TaskDedupeService } from '@src/task-dedupe/task-dedupe.service';
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
 import { RealmFeedItemType } from './dto/RealmFeedItemType';
@@ -37,6 +38,7 @@ export class RealmFeedItemService {
     private readonly realmFeedItemVoteRepository: Repository<RealmFeedItemVoteEntity>,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
+    private readonly taskDedupeService: TaskDedupeService,
   ) {}
 
   /**
@@ -215,7 +217,8 @@ export class RealmFeedItemService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
+      this.syncProposalsToFeedItems(realmPublicKey, environment),
+      TE.chainW(() => this.realmProposalService.getProposalsForRealm(realmPublicKey, environment)),
       TE.map((proposals) => proposals.slice()),
       TE.map(
         AR.filter(
@@ -326,77 +329,81 @@ export class RealmFeedItemService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    return FN.pipe(
-      this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
-      TE.bindTo('proposals'),
-      TE.bindW('existingEntities', ({ proposals }) =>
-        TE.tryCatch(
-          () =>
-            this.realmFeedItemRepository
-              .createQueryBuilder('feeditem')
-              .where('feeditem.environment = :env', { env: environment })
-              .andWhere(`"feeditem"."data"->'ref' IN (:...ids)`, {
-                ids: proposals.map((p) => JSON.stringify(p.publicKey.toBase58())),
-              })
-              .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
-              .andWhere(`"feeditem"."data"->'type' = :type`, {
-                type: JSON.stringify(RealmFeedItemType.Proposal),
-              })
-              .getMany(),
-          (e) => new errors.Exception(e),
+    return this.taskDedupeService.dedupe({
+      key: `syncProposalsToFeedItems-${realmPublicKey.toBase58()}-${environment}`,
+      ttl: 10,
+      fn: FN.pipe(
+        this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
+        TE.bindTo('proposals'),
+        TE.bindW('existingEntities', ({ proposals }) =>
+          TE.tryCatch(
+            () =>
+              this.realmFeedItemRepository
+                .createQueryBuilder('feeditem')
+                .where('feeditem.environment = :env', { env: environment })
+                .andWhere(`"feeditem"."data"->'ref' IN (:...ids)`, {
+                  ids: proposals.map((p) => JSON.stringify(p.publicKey.toBase58())),
+                })
+                .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+                .andWhere(`"feeditem"."data"->'type' = :type`, {
+                  type: JSON.stringify(RealmFeedItemType.Proposal),
+                })
+                .getMany(),
+            (e) => new errors.Exception(e),
+          ),
         ),
-      ),
-      TE.chainW(({ proposals, existingEntities }) => {
-        let updateExisting = false;
-        const existing = new Set<string>();
+        TE.chainW(({ proposals, existingEntities }) => {
+          let updateExisting = false;
+          const existing = new Set<string>();
 
-        // Ensure that the dates line up
-        for (const ent of existingEntities) {
-          for (const proposal of proposals) {
-            if (ent.data.ref === proposal.publicKey.toBase58()) {
-              existing.add(proposal.publicKey.toBase58());
+          // Ensure that the dates line up
+          for (const ent of existingEntities) {
+            for (const proposal of proposals) {
+              if (ent.data.ref === proposal.publicKey.toBase58()) {
+                existing.add(proposal.publicKey.toBase58());
 
-              if (!isEqual(ent.updated, proposal.updated)) {
-                ent.updated = proposal.updated;
-                updateExisting = true;
+                if (!isEqual(ent.updated, proposal.updated)) {
+                  ent.updated = proposal.updated;
+                  updateExisting = true;
+                }
               }
             }
           }
-        }
 
-        const newProposals = proposals.filter(
-          (proposal) => !existing.has(proposal.publicKey.toBase58()),
-        );
+          const newProposals = proposals.filter(
+            (proposal) => !existing.has(proposal.publicKey.toBase58()),
+          );
 
-        if (!updateExisting && !newProposals.length) {
-          return TE.right([]);
-        }
+          if (!updateExisting && !newProposals.length) {
+            return TE.right([]);
+          }
 
-        return TE.tryCatch(
-          () =>
-            this.realmFeedItemRepository.save([
-              ...(updateExisting ? existingEntities : []),
-              ...newProposals.map((proposal) =>
-                this.realmFeedItemRepository.create({
-                  environment,
-                  data: {
-                    type: RealmFeedItemType.Proposal,
-                    ref: proposal.publicKey.toBase58(),
-                  },
-                  metadata: {
-                    relevanceScore: 0,
-                    topAllTimeScore: 0,
-                    rawScore: 0,
-                  },
-                  realmPublicKeyStr: realmPublicKey.toBase58(),
-                  updated: proposal.updated,
-                }),
-              ),
-            ]),
-          (e) => new errors.Exception(e),
-        );
-      }),
-    );
+          return TE.tryCatch(
+            () =>
+              this.realmFeedItemRepository.save([
+                ...(updateExisting ? existingEntities : []),
+                ...newProposals.map((proposal) =>
+                  this.realmFeedItemRepository.create({
+                    environment,
+                    data: {
+                      type: RealmFeedItemType.Proposal,
+                      ref: proposal.publicKey.toBase58(),
+                    },
+                    metadata: {
+                      relevanceScore: 0,
+                      topAllTimeScore: 0,
+                      rawScore: 0,
+                    },
+                    realmPublicKeyStr: realmPublicKey.toBase58(),
+                    updated: proposal.updated,
+                  }),
+                ),
+              ]),
+            (e) => new errors.Exception(e),
+          );
+        }),
+      ),
+    });
   }
 
   /**
@@ -570,10 +577,13 @@ export class RealmFeedItemService {
               ({
                 post,
                 type: RealmFeedItemType.Post,
+                author: post.author,
                 created: entity.created,
+                document: post.document,
                 id: entity.id,
                 myVote: requestingUser ? votes[entity.id]?.[requestingUser.id] : undefined,
                 score: entity.metadata.rawScore,
+                title: post.title,
                 updated: entity.updated,
               } as typeof RealmFeedItem),
           ),
@@ -590,10 +600,13 @@ export class RealmFeedItemService {
               ({
                 proposal,
                 type: RealmFeedItemType.Proposal,
+                author: proposal.author,
                 created: entity.created,
+                document: proposal.document,
                 id: entity.id,
                 myVote: requestingUser ? votes[entity.id]?.[requestingUser.id] : undefined,
                 score: entity.metadata.rawScore,
+                title: proposal.title,
                 updated: entity.updated,
               } as typeof RealmFeedItem),
           ),
@@ -623,11 +636,14 @@ export class RealmFeedItemService {
           (post) =>
             ({
               type: RealmFeedItemType.Post,
+              author: postsMap[post.data.ref].author,
               created: post.created,
+              document: postsMap[post.data.ref].document,
               id: post.id,
               myVote: requestingUser ? votes[post.id]?.[requestingUser.id] : undefined,
               post: postsMap[post.data.ref],
               score: post.metadata.rawScore,
+              title: postsMap[post.data.ref].title,
               updated: post.updated,
             } as RealmFeedItemPost),
         ),
@@ -658,11 +674,14 @@ export class RealmFeedItemService {
             (proposal) =>
               ({
                 type: RealmFeedItemType.Proposal,
+                author: proposalMap[proposal.data.ref].author,
                 created: proposal.created,
+                document: proposalMap[proposal.data.ref].document,
                 id: proposal.id,
                 myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
                 proposal: proposalMap[proposal.data.ref],
                 score: proposal.metadata.rawScore,
+                title: proposalMap[proposal.data.ref].title,
                 updated: proposal.updated,
               } as RealmFeedItemProposal),
           )

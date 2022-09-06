@@ -3,11 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
+import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 
 import { RealmFeedItem } from './entities/RealmFeedItem.entity';
 import { RealmFeedItemVote } from './entities/RealmFeedItemVote.entity';
 import { RealmFeedItemGQLService } from './realm-feed-item.gql.service';
-import { RealmFeedItemResolver } from './realm-feed-item.resolver';
+import {
+  RealmFeedItemResolver,
+  RealmFeedItemPostResolver,
+  RealmFeedItemProposalResolver,
+} from './realm-feed-item.resolver';
 import { RealmFeedItemService } from './realm-feed-item.service';
 
 @Module({
@@ -15,8 +20,15 @@ import { RealmFeedItemService } from './realm-feed-item.service';
     TypeOrmModule.forFeature([RealmFeedItem, RealmFeedItemVote]),
     RealmPostModule,
     RealmProposalModule,
+    TaskDedupeModule,
   ],
-  providers: [RealmFeedItemResolver, RealmFeedItemGQLService, RealmFeedItemService],
+  providers: [
+    RealmFeedItemResolver,
+    RealmFeedItemGQLService,
+    RealmFeedItemService,
+    RealmFeedItemPostResolver,
+    RealmFeedItemProposalResolver,
+  ],
   exports: [RealmFeedItemGQLService, RealmFeedItemService],
 })
 export class RealmFeedItemModule {}

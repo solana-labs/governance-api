@@ -1,6 +1,9 @@
-import { Field, ObjectType, ID, createUnionType } from '@nestjs/graphql';
+import { Field, ObjectType, createUnionType } from '@nestjs/graphql';
 
+import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
+import { RealmMember } from '@src/realm-member/dto/RealmMember';
 import { RealmPost } from '@src/realm-post/dto/RealmPost';
 import { RealmProposal } from '@src/realm-proposal/dto/RealmProposal';
 
@@ -16,10 +19,21 @@ export class RealmFeedItemPost {
   })
   type: RealmFeedItemType.Post;
 
+  @Field(() => RealmMember, {
+    description: 'The creator of the post',
+    nullable: true,
+  })
+  author: RealmMember;
+
   @Field(() => Date, {
     description: 'When the feed item was created',
   })
   created: Date;
+
+  @Field(() => RichTextDocumentScalar, {
+    description: 'Post body text',
+  })
+  document: RichTextDocument;
 
   @Field(() => RealmFeedItemIDScalar)
   id: number;
@@ -40,6 +54,11 @@ export class RealmFeedItemPost {
   })
   score: number;
 
+  @Field(() => String, {
+    description: 'Title for the post',
+  })
+  title: string;
+
   @Field(() => Date, {
     description: 'When the feed item was last updated',
   })
@@ -55,10 +74,21 @@ export class RealmFeedItemProposal {
   })
   type: RealmFeedItemType.Proposal;
 
+  @Field(() => RealmMember, {
+    description: 'The creator of the proposal',
+    nullable: true,
+  })
+  author?: RealmMember;
+
   @Field(() => Date, {
     description: 'When the feed item was created',
   })
   created: Date;
+
+  @Field(() => RichTextDocumentScalar, {
+    description: 'Proposal body text',
+  })
+  document: RichTextDocument;
 
   @Field(() => RealmFeedItemIDScalar)
   id: number;
@@ -78,6 +108,11 @@ export class RealmFeedItemProposal {
     description: 'The total raw score for the feed item',
   })
   score: number;
+
+  @Field(() => String, {
+    description: 'Title for the proposal',
+  })
+  title: string;
 
   @Field(() => Date, {
     description: 'When the feed item was last updated',

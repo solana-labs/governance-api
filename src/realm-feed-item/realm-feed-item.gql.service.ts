@@ -475,7 +475,7 @@ export class RealmFeedItemGQLService {
         };
       case RealmFeedItemSort.Relevance:
         return {
-          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHHMI')::decimal) / 10))`]:
+          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal)) / 10)`]:
             desc,
         };
       case RealmFeedItemSort.TopAllTime:

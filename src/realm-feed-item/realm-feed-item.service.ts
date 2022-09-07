@@ -139,9 +139,12 @@ export class RealmFeedItemService {
               ({
                 post,
                 type: RealmFeedItemType.Post,
+                author: post.author,
                 created: feedItemEntity.created,
+                document: post.document,
                 id: feedItemEntity.id,
                 score: feedItemEntity.metadata.rawScore,
+                title: post.title,
                 updated: feedItemEntity.updated,
               } as RealmFeedItemPost),
           ),

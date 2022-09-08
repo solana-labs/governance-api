@@ -47,6 +47,13 @@ export class TaskDedupeService {
       return FN.pipe(() => processed);
     }
 
+    let resolver: (result: EI.Either<E | errors.Exception, T>) => void;
+    const promise = new Promise<EI.Either<E | errors.Exception, T>>((resolve) => {
+      resolver = resolve;
+    });
+
+    this.taskMap.set(args.key, promise);
+
     return FN.pipe(
       TE.tryCatch(
         () => this.cacheManager.get<T | undefined>(args.key),
@@ -55,15 +62,10 @@ export class TaskDedupeService {
       TE.chainW((result) => {
         if (result) {
           this.logger.log(`In memory cache of ${args.key}`);
+          resolver(EI.right(result));
+          this.taskMap.delete(args.key);
           return TE.right(result);
         } else {
-          let resolver: (result: EI.Either<E | errors.Exception, T>) => void;
-          const promise = new Promise<EI.Either<E | errors.Exception, T>>((resolve) => {
-            resolver = resolve;
-          });
-
-          this.taskMap.set(args.key, promise);
-
           return FN.pipe(
             TE.tryCatch(
               () => this.taskDedupeRepository.findOne({ where: { key: args.key } }),

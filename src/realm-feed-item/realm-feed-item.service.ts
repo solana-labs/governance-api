@@ -334,7 +334,7 @@ export class RealmFeedItemService {
 
     return this.taskDedupeService.dedupe({
       key: `syncProposalsToFeedItems-${realmPublicKey.toBase58()}-${environment}`,
-      ttl: 10,
+      ttl: 10 * 1000,
       fn: FN.pipe(
         this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
         TE.bindTo('proposals'),

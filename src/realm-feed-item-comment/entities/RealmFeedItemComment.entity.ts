@@ -4,16 +4,17 @@ import {
   DeleteDateColumn,
   Entity,
   PrimaryGeneratedColumn,
-  OneToMany,
+  UpdateDateColumn,
+  ManyToOne,
 } from 'typeorm';
 
-import { RealmFeedItemType } from '../dto/RealmFeedItemType';
 import { Environment } from '@lib/types/Environment';
-import { RealmFeedItemComment } from '@src/realm-feed-item-comment/entities/RealmFeedItemComment.entity';
+import { RichTextDocument } from '@lib/types/RichTextDocument';
+import { RealmFeedItem } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
+import { User } from '@src/user/entities/User.entity';
 
 export interface Data {
-  type: RealmFeedItemType;
-  ref: string;
+  document: RichTextDocument;
 }
 
 export interface Metadata {
@@ -23,12 +24,18 @@ export interface Metadata {
 }
 
 @Entity()
-export class RealmFeedItem {
+export class RealmFeedItemComment {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  authorId: string;
+
   @Column('jsonb')
   data: Data;
+
+  @Column()
+  feedItemId: number;
 
   @Column('varchar')
   environment: Environment;
@@ -36,11 +43,17 @@ export class RealmFeedItem {
   @Column('jsonb')
   metadata: Metadata;
 
+  @Column({ nullable: true })
+  parentCommentId?: number;
+
   @Column()
   realmPublicKeyStr: string;
 
-  @OneToMany('RealmFeedItemComment', 'feedItem')
-  comments: RealmFeedItemComment[];
+  @ManyToOne('User', 'posts')
+  author: User;
+
+  @ManyToOne('RealmFeedItem', 'comments')
+  feedItem: RealmFeedItem;
 
   @CreateDateColumn()
   created: Date;
@@ -48,6 +61,6 @@ export class RealmFeedItem {
   @DeleteDateColumn()
   deleted: Date;
 
-  @Column('timestamptz')
+  @UpdateDateColumn()
   updated: Date;
 }

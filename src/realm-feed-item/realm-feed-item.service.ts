@@ -341,17 +341,19 @@ export class RealmFeedItemService {
         TE.bindW('existingEntities', ({ proposals }) =>
           TE.tryCatch(
             () =>
-              this.realmFeedItemRepository
-                .createQueryBuilder('feeditem')
-                .where('feeditem.environment = :env', { env: environment })
-                .andWhere(`"feeditem"."data"->'ref' IN (:...ids)`, {
-                  ids: proposals.map((p) => JSON.stringify(p.publicKey.toBase58())),
-                })
-                .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
-                .andWhere(`"feeditem"."data"->'type' = :type`, {
-                  type: JSON.stringify(RealmFeedItemType.Proposal),
-                })
-                .getMany(),
+              proposals.length
+                ? this.realmFeedItemRepository
+                    .createQueryBuilder('feeditem')
+                    .where('feeditem.environment = :env', { env: environment })
+                    .andWhere(`"feeditem"."data"->'ref' IN (:...ids)`, {
+                      ids: proposals.map((p) => JSON.stringify(p.publicKey.toBase58())),
+                    })
+                    .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+                    .andWhere(`"feeditem"."data"->'type' = :type`, {
+                      type: JSON.stringify(RealmFeedItemType.Proposal),
+                    })
+                    .getMany()
+                : Promise.resolve([]),
             (e) => new errors.Exception(e),
           ),
         ),

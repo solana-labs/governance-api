@@ -14,6 +14,7 @@ import { RealmFeedItem } from '@src/realm-feed-item/entities/RealmFeedItem.entit
 import { User } from '@src/user/entities/User.entity';
 
 export interface Data {
+  authorPublicKeyStr?: string;
   document: RichTextDocument;
 }
 

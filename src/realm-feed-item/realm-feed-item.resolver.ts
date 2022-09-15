@@ -3,6 +3,7 @@ import { Args, Int, Resolver, ResolveField, Root, Mutation, Query } from '@nestj
 import { PublicKey } from '@solana/web3.js';
 import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
+import * as TE from 'fp-ts/TaskEither';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser, User } from '@lib/decorators/CurrentUser';
@@ -13,8 +14,15 @@ import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { AuthJwtGuard } from '@src/auth/auth.jwt.guard';
 import { ClippedRichTextDocument } from '@src/lib/gqlTypes/ClippedRichTextDocument';
+import { ConnectionArgs } from '@src/lib/gqlTypes/Connection';
 import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
 import { clipRichTextDocument } from '@src/lib/textManipulation/clipRichTextDocument';
+import { RealmFeedItemCommentConnection } from '@src/realm-feed-item-comment/dto/pagination';
+import { RealmFeedItemCommentSort } from '@src/realm-feed-item-comment/dto/pagination';
+import {
+  RealmFeedItemCommentService,
+  RealmFeedItemCommentCursor,
+} from '@src/realm-feed-item-comment/realm-feed-item-comment.service';
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
 import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
@@ -22,6 +30,8 @@ import { RealmFeedItemService } from './realm-feed-item.service';
 
 @Resolver(() => RealmFeedItemPost)
 export class RealmFeedItemPostResolver {
+  constructor(private readonly realmFeedItemCommentService: RealmFeedItemCommentService) {}
+
   @ResolveField(() => ClippedRichTextDocument, {
     description: 'A clipped version of the post document',
   })
@@ -43,10 +53,69 @@ export class RealmFeedItemPostResolver {
       ),
     );
   }
+
+  @ResolveField(() => RealmFeedItemCommentConnection, {
+    description: 'The comment tree for this post',
+  })
+  @EitherResolver()
+  commentTree(
+    @Args() args: ConnectionArgs,
+    @Root() post: RealmFeedItemPost,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User,
+    @Args('depth', {
+      type: () => Number,
+      defaultValue: 3,
+      description: 'The tree depth. Min is 1',
+      nullable: true,
+    })
+    depth = 3,
+    @Args('sort', {
+      type: () => RealmFeedItemCommentSort,
+      description: 'Sort order for the comment tree',
+      defaultValue: RealmFeedItemCommentSort.Relevance,
+      nullable: true,
+    })
+    sort: RealmFeedItemCommentSort = RealmFeedItemCommentSort.Relevance,
+  ) {
+    if (depth < 1) {
+      return TE.left(new errors.MalformedRequest());
+    }
+
+    return this.realmFeedItemCommentService.getCommentTreeForFeedItem({
+      after: args.after ? (args.after as RealmFeedItemCommentCursor) : undefined,
+      before: args.before ? (args.before as RealmFeedItemCommentCursor) : undefined,
+      first: args.first,
+      last: args.last,
+      depth,
+      environment,
+      sort,
+      feedItemId: post.id,
+      requestingUser: user,
+    });
+  }
+
+  @ResolveField(() => Number, {
+    description: 'A count of comments in the post',
+  })
+  @EitherResolver()
+  numComments(
+    @Root() post: RealmFeedItemPost,
+    @CurrentEnvironment()
+    environment: Environment,
+  ) {
+    return this.realmFeedItemCommentService.getCommentCountForFeedItem({
+      environment,
+      feedItemId: post.id,
+    });
+  }
 }
 
 @Resolver(() => RealmFeedItemProposal)
 export class RealmFeedItemProposalResolver {
+  constructor(private readonly realmFeedItemCommentService: RealmFeedItemCommentService) {}
+
   @ResolveField(() => ClippedRichTextDocument, {
     description: 'A clipped version of the proposal document',
   })
@@ -67,6 +136,63 @@ export class RealmFeedItemProposalResolver {
         (e) => new errors.Exception(e),
       ),
     );
+  }
+
+  @ResolveField(() => RealmFeedItemCommentConnection, {
+    description: 'The comment tree for this proposal',
+  })
+  @EitherResolver()
+  commentTree(
+    @Args() args: ConnectionArgs,
+    @Root() proposal: RealmFeedItemProposal,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User,
+    @Args('depth', {
+      type: () => Number,
+      defaultValue: 3,
+      description: 'The tree depth. Min is 1',
+      nullable: true,
+    })
+    depth = 3,
+    @Args('sort', {
+      type: () => RealmFeedItemCommentSort,
+      description: 'Sort order for the comment tree',
+      defaultValue: RealmFeedItemCommentSort.Relevance,
+      nullable: true,
+    })
+    sort: RealmFeedItemCommentSort = RealmFeedItemCommentSort.Relevance,
+  ) {
+    if (depth < 1) {
+      return TE.left(new errors.MalformedRequest());
+    }
+
+    return this.realmFeedItemCommentService.getCommentTreeForFeedItem({
+      after: args.after ? (args.after as RealmFeedItemCommentCursor) : undefined,
+      before: args.before ? (args.before as RealmFeedItemCommentCursor) : undefined,
+      first: args.first,
+      last: args.last,
+      depth,
+      environment,
+      sort,
+      feedItemId: proposal.id,
+      requestingUser: user,
+    });
+  }
+
+  @ResolveField(() => Number, {
+    description: 'A count of comments in the proposal',
+  })
+  @EitherResolver()
+  numComments(
+    @Root() proposal: RealmFeedItemProposal,
+    @CurrentEnvironment()
+    environment: Environment,
+  ) {
+    return this.realmFeedItemCommentService.getCommentCountForFeedItem({
+      environment,
+      feedItemId: proposal.id,
+    });
   }
 }
 

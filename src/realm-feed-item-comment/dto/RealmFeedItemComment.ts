@@ -14,8 +14,9 @@ import { RealmFeedItemCommentVoteType } from './RealmFeedItemCommentVoteType';
 export class RealmFeedItemComment {
   @Field(() => RealmMember, {
     description: 'The creator of the comment',
+    nullable: true,
   })
-  author: RealmMember;
+  author?: RealmMember;
 
   @Field(() => Date, {
     description: 'When the comment was created',
@@ -48,6 +49,17 @@ export class RealmFeedItemComment {
     nullable: true,
   })
   parentCommentId?: number | null;
+
+  @Field(() => [RealmFeedItemComment], {
+    description: 'Replies to the comment',
+    nullable: true,
+  })
+  replies?: RealmFeedItemComment[] | null;
+
+  @Field(() => Number, {
+    description: 'The number of immediate replies to this comment',
+  })
+  repliesCount: number;
 
   @Field(() => Number, {
     description: 'The total raw score for the comment',

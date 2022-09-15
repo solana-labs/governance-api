@@ -9,5 +9,6 @@ import { RealmFeedItemCommentService } from './realm-feed-item-comment.service';
 @Module({
   imports: [TypeOrmModule.forFeature([RealmFeedItemComment, RealmFeedItemCommentVote])],
   providers: [RealmFeedItemCommentService, RealmFeedItemCommentResolver],
+  exports: [RealmFeedItemCommentService],
 })
 export class RealmFeedItemCommentModule {}

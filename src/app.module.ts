@@ -19,6 +19,7 @@ import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
 import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
 import { RealmGovernanceModule } from '@src/realm-governance/realm-governance.module';
@@ -78,6 +79,7 @@ import { UserModule } from '@src/user/user.module';
     OnChainModule,
     RealmGovernanceModule,
     TaskDedupeModule,
+    RealmFeedItemCommentModule,
   ],
   controllers: [AppController],
   providers: [

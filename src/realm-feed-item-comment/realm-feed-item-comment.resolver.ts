@@ -68,6 +68,50 @@ export class RealmFeedItemCommentResolver {
     });
   }
 
+  @Query(() => RealmFeedItemComment, {
+    description: 'A comment on a feed item',
+    nullable: true,
+  })
+  @EitherResolver()
+  feedItemComment(
+    @Args('commentId', {
+      type: () => RealmFeedItemCommentIDScalar,
+      description: 'The feed item comment',
+    })
+    commentId: number,
+    @Args('feedItemId', {
+      type: () => RealmFeedItemIDScalar,
+      description: 'The feed item the comment tree belongs to',
+    })
+    feedItemId: number,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+    @Args('depth', {
+      type: () => Number,
+      defaultValue: 3,
+      description: 'The tree depth. Min is 1',
+      nullable: true,
+    })
+    depth = 3,
+    @Args('sort', {
+      type: () => RealmFeedItemCommentSort,
+      description: 'Sort order for the comment tree',
+      defaultValue: RealmFeedItemCommentSort.Relevance,
+      nullable: true,
+    })
+    sort: RealmFeedItemCommentSort = RealmFeedItemCommentSort.Relevance,
+  ) {
+    return this.realmFeedItemCommentService.getCommentTreeForComment({
+      commentId,
+      depth,
+      environment,
+      feedItemId,
+      sort,
+      requestingUser: user,
+    });
+  }
+
   @Query(() => RealmFeedItemCommentConnection, {
     description: 'A comment tree for a feed item',
   })
@@ -81,7 +125,7 @@ export class RealmFeedItemCommentResolver {
     feedItemId: number,
     @CurrentEnvironment()
     environment: Environment,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User | null,
     @Args('depth', {
       type: () => Number,
       defaultValue: 3,

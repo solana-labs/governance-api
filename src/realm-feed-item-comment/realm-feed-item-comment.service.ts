@@ -120,11 +120,7 @@ export class RealmFeedItemCommentService {
   /**
    * Get a comment entity from the db
    */
-  getCommentEntity(args: {
-    environment: Environment;
-    id: RealmFeedItemCommentEntity['id'];
-    realmPublicKey: PublicKey;
-  }) {
+  getCommentEntity(args: { environment: Environment; id: RealmFeedItemCommentEntity['id'] }) {
     return FN.pipe(
       TE.tryCatch(
         () =>
@@ -132,7 +128,6 @@ export class RealmFeedItemCommentService {
             where: {
               id: args.id,
               environment: args.environment,
-              realmPublicKeyStr: args.realmPublicKey.toBase58(),
             },
           }),
         (e) => new errors.Exception(e),
@@ -144,6 +139,54 @@ export class RealmFeedItemCommentService {
 
         return TE.left(new errors.NotFound());
       }),
+    );
+  }
+
+  /**
+   * Get a comment tree for a another comment
+   */
+  getCommentTreeForComment(args: {
+    commentId: number;
+    depth: number;
+    environment: Environment;
+    feedItemId: number;
+    requestingUser?: User | null;
+    sort: RealmFeedItemCommentSort;
+  }) {
+    return FN.pipe(
+      this.getCommentEntity({ environment: args.environment, id: args.commentId }),
+      TE.bindTo('entity'),
+      TE.bindW('commentTreeData', ({ entity }) =>
+        this.getCommentTree({
+          commentIds: [entity.id],
+          currentDepth: 1,
+          currentTree: { map: {}, replies: {}, ids: [] },
+          environment: args.environment,
+          feedItemId: args.feedItemId,
+          requestingUser: args.requestingUser,
+          sort: args.sort,
+          targetDepth: args.depth,
+        }),
+      ),
+      TE.bindW('userVotes', ({ commentTreeData, entity }) =>
+        this.getCommentVotes({
+          commentIds: [entity.id].concat(commentTreeData.ids),
+          feedItemId: args.feedItemId,
+          userIds: args.requestingUser ? [args.requestingUser.id] : [],
+          environment: args.environment,
+        }),
+      ),
+      TE.map(({ commentTreeData, entity, userVotes }) =>
+        this.buildTree({
+          entity,
+          currentDepth: 1,
+          environment: args.environment,
+          requestingUser: args.requestingUser,
+          targetDepth: args.depth,
+          tree: commentTreeData,
+          votes: userVotes,
+        }),
+      ),
     );
   }
 
@@ -317,7 +360,6 @@ export class RealmFeedItemCommentService {
       this.getCommentEntity({
         environment: args.environment,
         id: args.id,
-        realmPublicKey: args.realmPublicKey,
       }),
       TE.bindTo('comment'),
       TE.bindW('existingVote', ({ comment }) =>
@@ -407,7 +449,7 @@ export class RealmFeedItemCommentService {
         // submit a new vote
         else {
           const hours = differenceInHours(Date.now(), comment.created);
-          const relevanceWeight = Math.ceil(hours / 4);
+          const relevanceWeight = 1 - Math.min(1, Math.ceil(hours / 4));
 
           if (args.type === RealmFeedItemCommentVoteType.Approve) {
             comment.metadata.relevanceScore += relevanceWeight;
@@ -445,14 +487,24 @@ export class RealmFeedItemCommentService {
           );
         }
       }),
-      TE.map(({ comment, userVoteMap }) =>
-        this.convertEntityToFeedItem({
+      TE.bindW('replies', ({ comment }) =>
+        this.getCommentReplies({
+          commentIds: [comment.id],
+          environment: args.environment,
+          feedItemId: comment.feedItemId,
+          sort: RealmFeedItemCommentSort.Relevance,
+          requestingUser: args.requestingUser,
+        }),
+      ),
+      TE.map(({ comment, replies, userVoteMap }) => ({
+        ...this.convertEntityToFeedItem({
           requestingUser,
           entity: comment,
           environment: args.environment,
           votes: userVoteMap,
         }),
-      ),
+        repliesCount: replies.replies[comment.id]?.length || 0,
+      })),
     );
   }
 
@@ -917,7 +969,7 @@ export class RealmFeedItemCommentService {
         };
       case RealmFeedItemCommentSort.Relevance:
         return {
-          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal)) / 10)`]:
+          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / 10))`]:
             desc,
         };
       case RealmFeedItemCommentSort.TopAllTime:

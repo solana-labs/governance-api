@@ -88,13 +88,12 @@ export class RealmFeedItemCommentService {
         () => this.realmFeedItemCommentRepository.save(comment),
         (e) => new errors.Exception(e),
       ),
-      TE.chainW((entity) =>
-        this.submitVote({
+      TE.map((entity) =>
+        this.convertEntityToFeedItem({
+          entity,
           environment: args.environment,
-          id: entity.id,
-          realmPublicKey: args.realmPublicKey,
           requestingUser: args.requestingUser,
-          type: RealmFeedItemCommentVoteType.Approve,
+          votes: { [entity.id]: {} },
         }),
       ),
     );

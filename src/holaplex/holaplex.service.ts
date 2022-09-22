@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
-import { request, RequestDocument } from 'graphql-request';
+import { request as _request, RequestDocument } from 'graphql-request';
 import * as IT from 'io-ts';
 
 import * as errors from '@lib/errors/gql';
+import { dedupe } from '@src/lib/cacheAndDedupe';
+
+const request = dedupe(_request, {
+  key: (...args) => JSON.stringify(args),
+  ttl: 60 * 1000,
+});
 
 @Injectable()
 export class HolaplexService {

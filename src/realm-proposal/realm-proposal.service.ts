@@ -221,7 +221,11 @@ export class RealmProposalService {
   /**
    * Get a list of proposals in a realm
    */
-  getProposalsForRealm(realmPublicKey: PublicKey, environment: Environment) {
+  getProposalsForRealm(
+    realmPublicKey: PublicKey,
+    environment: Environment,
+    parentTimerId?: string,
+  ) {
     if (environment === 'devnet') {
       return TE.left(new errors.UnsupportedDevnet());
     }
@@ -267,6 +271,36 @@ export class RealmProposalService {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /**
+   * Get a list of proposal addresses
+   */
+  getProposalAddressesForRealm(realmPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    return FN.pipe(
+      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.chainW((governances) =>
+        this.holaplexService.requestV1(
+          {
+            query: queries.realmProposalAddresses.query,
+            variables: {
+              governances: governances.map((g) => g.address.toBase58()),
+            },
+          },
+          queries.realmProposalAddresses.resp,
+        ),
+      ),
+      TE.map(({ proposals }) =>
+        proposals.map((p) => ({
+          publicKey: new PublicKey(p.address),
+          updated: this.buildPropsalUpdatedFromHolaplexResponse(p),
+        })),
       ),
     );
   }
@@ -642,7 +676,16 @@ export class RealmProposalService {
    * Get a timestamp of when the proposal was last updated
    */
   private buildPropsalUpdatedFromHolaplexResponse = (
-    holaplexProposal: IT.TypeOf<typeof queries.realmProposals.respProposal>,
+    holaplexProposal: Pick<
+      IT.TypeOf<typeof queries.realmProposals.respProposal>,
+      | 'closedAt'
+      | 'executingAt'
+      | 'votingCompletedAt'
+      | 'votingAt'
+      | 'startVotingAt'
+      | 'signingOffAt'
+      | 'draftAt'
+    >,
   ) => {
     if (holaplexProposal.closedAt) {
       return new Date(holaplexProposal.closedAt);

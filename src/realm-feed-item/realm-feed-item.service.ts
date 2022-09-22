@@ -336,7 +336,7 @@ export class RealmFeedItemService {
       key: `syncProposalsToFeedItems-${realmPublicKey.toBase58()}-${environment}`,
       ttl: 10 * 1000,
       fn: FN.pipe(
-        this.realmProposalService.getProposalsForRealm(realmPublicKey, environment),
+        this.realmProposalService.getProposalAddressesForRealm(realmPublicKey, environment),
         TE.bindTo('proposals'),
         TE.bindW('existingEntities', ({ proposals }) =>
           TE.tryCatch(

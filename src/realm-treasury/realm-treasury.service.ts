@@ -48,11 +48,11 @@ export class RealmTreasuryService {
               ),
               TE.fromTask,
               TE.flatten,
-              TE.map((price) =>
-                new BigNumber(account.account.amount.toString())
+              TE.map((price) => {
+                return new BigNumber(account.account.amount.toString())
                   .shiftedBy(-account.mintInfo.account.decimals)
-                  .times(price),
-              ),
+                  .times(price);
+              }),
             ),
           ),
         ),

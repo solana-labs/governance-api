@@ -14,11 +14,14 @@ export const query = gql`
         executingAt
         instructionsCount
         governingTokenMint
+        maxVoteWeight
         name
+        noVotesCount
         signingOffAt
         state
         votingAt
         votingCompletedAt
+        yesVotesCount
         governance {
           address
           governanceConfig {
@@ -42,10 +45,12 @@ export const query = gql`
       ... on ProposalV2 {
         address
         closedAt
+        denyVoteWeight
         description
         draftAt
         executingAt
         governingTokenMint
+        maxVoteWeight
         name
         signingOffAt
         startVotingAt
@@ -70,6 +75,7 @@ export const query = gql`
         }
         proposalOptions {
           transactionsCount
+          voteWeight
         }
         tokenOwnerRecord {
           address

@@ -6,12 +6,17 @@ import { Cache } from 'cache-manager';
 import * as FN from 'fp-ts/function';
 import * as OP from 'fp-ts/Option';
 import * as TE from 'fp-ts/TaskEither';
+import { mergeDeepRight } from 'ramda';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { OnChainService } from '@src/on-chain/on-chain.service';
 
 const PRICE_ENDPOINT = 'https://api.coingecko.com/api/v3/simple/price';
+
+interface TokenOverrides {
+  [mintAddress: string]: Partial<TokenInfo>;
+}
 
 @Injectable()
 export class RealmTreasuryService {
@@ -132,8 +137,19 @@ export class RealmTreasuryService {
                 () => new TokenListProvider().resolve(),
                 (e) => new errors.Exception(e),
               ),
-              TE.map((tokenListContainer) =>
-                tokenListContainer.filterByClusterSlug('mainnet-beta').getList(),
+              TE.bindTo('tokenListContainer'),
+              TE.bindW('overrides', () => this.fetchTokenOverrides(environment)),
+              TE.map(({ tokenListContainer, overrides }) =>
+                tokenListContainer
+                  .filterByClusterSlug('mainnet-beta')
+                  .getList()
+                  .map((tokenInfo) => {
+                    if (overrides[tokenInfo.address]) {
+                      return mergeDeepRight(tokenInfo, overrides[tokenInfo.address]) as TokenInfo;
+                    }
+
+                    return tokenInfo;
+                  }),
               ),
               TE.chainW((tokenList) =>
                 TE.tryCatch(
@@ -157,6 +173,40 @@ export class RealmTreasuryService {
           acc[token.address] = token;
           return acc;
         }, {} as { [key: string]: TokenInfo }),
+      ),
+    );
+  }
+
+  /**
+   * Get manual overrides for token info
+   */
+  fetchTokenOverrides(environment: Environment) {
+    const cacheKey = `realm-token-overrides-${environment}`;
+
+    return FN.pipe(
+      TE.tryCatch(
+        () => this.cacheManager.get<TokenOverrides>(cacheKey),
+        (e) => new errors.Exception(e),
+      ),
+      TE.map(OP.fromNullable),
+      TE.chainW((overrides) =>
+        OP.isSome(overrides)
+          ? TE.right(overrides.value)
+          : FN.pipe(
+              TE.tryCatch(
+                () =>
+                  fetch(
+                    'https://app.realms.today/realms/token-overrides.json',
+                  ).then<TokenOverrides>((response) => response.json()),
+                (e) => new errors.Exception(e),
+              ),
+              TE.chain((overrides) =>
+                TE.tryCatch(
+                  () => this.cacheManager.set(cacheKey, overrides, { ttl: 60 }),
+                  (e) => new errors.Exception(e),
+                ),
+              ),
+            ),
       ),
     );
   }

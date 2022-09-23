@@ -27,6 +27,8 @@ import { RealmGovernanceService } from '@src/realm-governance/realm-governance.s
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 
 const SOL_MINT_PK = new PublicKey('So11111111111111111111111111111111111111112');
+const DEFAULT_NFT_TREASURY_MINT = 'GNFTm5rz1Kzvq94G7DJkcrEUnCypeQYf7Ya8arPoHWvw';
+const DEFAULT_NATIVE_SOL_MINT = 'GSoLvSToqaUmMyqP12GffzcirPAickrpZmVUFtek6x5u';
 
 const SOL_MINT = {
   publicKey: SOL_MINT_PK,
@@ -312,27 +314,41 @@ export class OnChainService {
 
         const unaccountedSolAccounts = new Set(Object.keys(lamportMap));
 
-        const accounts = tokenAccounts.map((account) => {
-          let amount = account.account.amount;
+        const accounts = tokenAccounts
+          .map((account) => {
+            let amount = account.account.amount;
 
-          if (account.account.isNative) {
-            const wallet = account.walletPublicKey.toBase58();
-            const solAmount = lamportMap[wallet];
+            if (account.account.isNative) {
+              const wallet = account.walletPublicKey.toBase58();
+              const solAmount = lamportMap[wallet];
 
-            if (solAmount) {
-              amount = new u64(solAmount);
-              unaccountedSolAccounts.delete(wallet);
+              if (solAmount) {
+                amount = new u64(solAmount);
+                unaccountedSolAccounts.delete(wallet);
+              }
             }
-          }
 
-          return {
-            ...account,
-            account: {
-              ...account.account,
-              amount,
-            },
-          };
-        });
+            return {
+              ...account,
+              account: {
+                ...account.account,
+                amount,
+              },
+            };
+          })
+          .filter((account) => {
+            // ignore NFT accounts
+            if (account.mintInfo.account.mintAuthority?.toBase58() === DEFAULT_NFT_TREASURY_MINT) {
+              return false;
+            }
+
+            // ignore 1 supply tokens
+            if (account.mintInfo.account.supply.cmpn(1) === 0) {
+              return false;
+            }
+
+            return true;
+          });
 
         const unaccounted: Account[] = [];
 

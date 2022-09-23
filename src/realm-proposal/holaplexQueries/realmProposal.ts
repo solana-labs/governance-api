@@ -12,11 +12,14 @@ export const query = gql`
         executingAt
         instructionsCount
         governingTokenMint
+        maxVoteWeight
         name
+        noVotesCount
         signingOffAt
         state
         votingAt
         votingCompletedAt
+        yesVotesCount
         governance {
           address
           governanceConfig {
@@ -40,10 +43,12 @@ export const query = gql`
       ... on ProposalV2 {
         address
         closedAt
+        denyVoteWeight
         description
         draftAt
         executingAt
         governingTokenMint
+        maxVoteWeight
         name
         signingOffAt
         startVotingAt
@@ -68,6 +73,7 @@ export const query = gql`
         }
         proposalOptions {
           transactionsCount
+          voteWeight
         }
         tokenOwnerRecord {
           address
@@ -80,17 +86,21 @@ export const query = gql`
 export const respProposal = IT.type({
   address: IT.string,
   closedAt: IT.union([IT.string, IT.null]),
+  denyVoteWeight: IT.union([IT.string, IT.null, IT.undefined]),
   description: IT.string,
   draftAt: IT.string,
   executingAt: IT.union([IT.string, IT.null]),
   instructionsCount: IT.union([IT.number, IT.null, IT.undefined]),
   governingTokenMint: IT.string,
+  maxVoteWeight: IT.union([IT.string, IT.null, IT.undefined]),
   name: IT.string,
+  noVotesCount: IT.union([IT.string, IT.null, IT.undefined]),
   signingOffAt: IT.union([IT.string, IT.null]),
   startVotingAt: IT.union([IT.string, IT.null, IT.undefined]),
   state: IT.string,
   votingAt: IT.union([IT.string, IT.null]),
   votingCompletedAt: IT.union([IT.string, IT.null]),
+  yesVotesCount: IT.union([IT.string, IT.null, IT.undefined]),
   governance: IT.union([
     IT.type({
       address: IT.string,
@@ -125,6 +135,7 @@ export const respProposal = IT.type({
     IT.array(
       IT.type({
         transactionsCount: IT.number,
+        voteWeight: IT.string,
       }),
     ),
   ]),

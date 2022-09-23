@@ -27,9 +27,12 @@ export const respVoteRecord = IT.type({
   voteWeight: IT.union([IT.null, IT.undefined, IT.string]),
   voterWeight: IT.union([IT.null, IT.undefined, IT.string]),
   voteType: IT.union([IT.null, IT.undefined, IT.string]),
-  proposal: IT.type({
-    address: IT.string,
-  }),
+  proposal: IT.union([
+    IT.null,
+    IT.type({
+      address: IT.string,
+    }),
+  ]),
 });
 
 export const resp = IT.type({

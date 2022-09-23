@@ -539,11 +539,13 @@ export class RealmProposalService {
         } = {};
 
         for (const voteRecord of voteRecords) {
-          if (!mapping[voteRecord.proposal.address]) {
-            mapping[voteRecord.proposal.address] = [];
-          }
+          if (voteRecord.proposal) {
+            if (!mapping[voteRecord.proposal.address]) {
+              mapping[voteRecord.proposal.address] = [];
+            }
 
-          mapping[voteRecord.proposal.address].push(voteRecord);
+            mapping[voteRecord.proposal.address].push(voteRecord);
+          }
         }
 
         return mapping;
@@ -709,7 +711,7 @@ export class RealmProposalService {
     voteRecords: IT.TypeOf<typeof queries.voteRecordsForUser.respVoteRecord>[],
     proposalAddress: string,
   ): RealmProposalUserVote | null => {
-    const record = voteRecords.find((record) => record.proposal.address === proposalAddress);
+    const record = voteRecords.find((record) => record.proposal?.address === proposalAddress);
 
     if (record) {
       let type: RealmProposalUserVoteType | null = null;
@@ -772,17 +774,28 @@ export class RealmProposalService {
     let totalNoWeight = new BigNumber(0);
     let totalYesWeight = new BigNumber(0);
     let votingEndTime: number | null = null;
-    let totalPossibleWeight: BigNumber | null = totalVoterPower || null;
 
-    for (const voteRecord of proposalVoteRecords) {
-      if (voteRecord.voteType === 'YES' && voteRecord.voteWeight) {
-        totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voteWeight));
-      } else if (voteRecord.voteType === 'NO' && voteRecord.voteWeight) {
-        totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voteWeight));
-      } else if (voteRecord.vote === 'APPROVE' && voteRecord.voterWeight) {
-        totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voterWeight));
-      } else if (voteRecord.vote === 'DENY' && voteRecord.voterWeight) {
-        totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voterWeight));
+    let totalPossibleWeight: BigNumber | null = holaplexProposal.maxVoteWeight
+      ? new BigNumber(holaplexProposal.maxVoteWeight)
+      : totalVoterPower || null;
+
+    if (holaplexProposal.noVotesCount && holaplexProposal.yesVotesCount) {
+      totalYesWeight = new BigNumber(holaplexProposal.yesVotesCount);
+      totalNoWeight = new BigNumber(holaplexProposal.noVotesCount);
+    } else if (holaplexProposal.denyVoteWeight && holaplexProposal.proposalOptions?.length) {
+      totalYesWeight = new BigNumber(holaplexProposal.proposalOptions[0].voteWeight);
+      totalNoWeight = new BigNumber(holaplexProposal.denyVoteWeight);
+    } else {
+      for (const voteRecord of proposalVoteRecords) {
+        if (voteRecord.voteType === 'YES' && voteRecord.voteWeight) {
+          totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voteWeight));
+        } else if (voteRecord.voteType === 'NO' && voteRecord.voteWeight) {
+          totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voteWeight));
+        } else if (voteRecord.vote === 'APPROVE' && voteRecord.voterWeight) {
+          totalYesWeight = totalYesWeight.plus(new BigNumber(voteRecord.voterWeight));
+        } else if (voteRecord.vote === 'DENY' && voteRecord.voterWeight) {
+          totalNoWeight = totalNoWeight.plus(new BigNumber(voteRecord.voterWeight));
+        }
       }
     }
 
@@ -803,17 +816,22 @@ export class RealmProposalService {
       governance?.communityMintMaxVoteWeight &&
       governance.communityMint &&
       governance.communityMint.toBase58() === holaplexProposal.governingTokenMint &&
-      totalVoterPower
+      totalPossibleWeight &&
+      mint
     ) {
       const supply = governance.communityMintMaxVoteWeight;
 
-      if (supply.eq(FULL_SUPPLY)) {
-        if (mint?.supply) {
-          totalPossibleWeight = new BigNumber(mint.supply.toString());
-        }
-      } else {
-        totalPossibleWeight = supply.multipliedBy(totalVoterPower);
+      if (!supply.eq(FULL_SUPPLY)) {
+        totalPossibleWeight = supply
+          .multipliedBy(mint.supply.toString())
+          .shiftedBy(-10)
+          .decimalPlaces(0, BigNumber.ROUND_DOWN);
       }
+    } else if (
+      mint &&
+      governance?.councilMint?.toBase58() === holaplexProposal.governingTokenMint
+    ) {
+      totalPossibleWeight = new BigNumber(mint.supply.toString());
     }
 
     if (

@@ -17,7 +17,7 @@ COPY --chown=node:node yarn.lock ./
 RUN apk add --no-cache git g++ make py3-pip
 
 # Install app dependencies
-RUN yarn install --skip-integrity-check
+RUN yarn install --skip-integrity-check --network-concurrency 1
 
 # Bundle app source
 COPY --chown=node:node . .
@@ -50,7 +50,7 @@ RUN yarn build
 ENV NODE_ENV production
 
 # Passing in --frozen-lockfile ensures that only the lockfile must match the package.json
-RUN yarn install --skip-integrity-check --frozen-lockfile && yarn cache clean
+RUN yarn install --skip-integrity-check --frozen-lockfile --network-concurrency 1 && yarn cache clean
 
 USER node
 

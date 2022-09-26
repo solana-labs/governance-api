@@ -60,7 +60,7 @@ export class RealmService {
         publicKey: new PublicKey(address),
       })),
       TE.bindTo('onchaindata'),
-      TE.bind('codecommitted', () =>
+      TE.bindW('codecommitted', () =>
         FN.pipe(
           this.realmSettingsService.getCodeCommittedSettingsForRealm(publicKey, environment),
           TE.match(

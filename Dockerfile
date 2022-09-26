@@ -14,7 +14,7 @@ COPY --chown=node:node package*.json ./
 COPY --chown=node:node yarn.lock ./
 
 # Install app dependencies
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
 # Bundle app source
 COPY --chown=node:node . .

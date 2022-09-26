@@ -14,7 +14,7 @@ COPY --chown=node:node package*.json ./
 COPY --chown=node:node yarn.lock ./
 
 # Ensure git is installed
-RUN apk add --no-cache git
+RUN apk add --no-cache git g++ make py3-pip
 
 # Install app dependencies
 RUN yarn install
@@ -41,7 +41,7 @@ COPY --chown=node:node --from=development /usr/src/app/node_modules ./node_modul
 COPY --chown=node:node . .
 
 # Ensure git is installed
-RUN apk add --no-cache git
+RUN apk add --no-cache git g++ make py3-pip
 
 # Run the build command which creates the production bundle
 RUN yarn build

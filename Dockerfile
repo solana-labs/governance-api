@@ -13,6 +13,9 @@ WORKDIR /usr/src/app
 COPY --chown=node:node package*.json ./
 COPY --chown=node:node yarn.lock ./
 
+# Ensure git is installed
+RUN apk add --no-cache git
+
 # Install app dependencies
 RUN yarn install
 
@@ -36,6 +39,9 @@ COPY --chown=node:node package*.json ./
 COPY --chown=node:node --from=development /usr/src/app/node_modules ./node_modules
 
 COPY --chown=node:node . .
+
+# Ensure git is installed
+RUN apk add --no-cache git
 
 # Run the build command which creates the production bundle
 RUN yarn build

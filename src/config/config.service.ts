@@ -15,6 +15,9 @@ export interface Config {
     username: string | undefined;
     useSsl: boolean;
   };
+  external: {
+    twitterBearerKey: string | undefined;
+  };
   jwt: {
     userSecret: string;
   };

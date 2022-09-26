@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@cardinal/namespaces": "^4.1.56",
+    "@civic/profile": "^0.1.2",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.0.0",

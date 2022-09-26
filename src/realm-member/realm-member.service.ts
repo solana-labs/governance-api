@@ -1,7 +1,9 @@
-import { getReverseEntry, formatName } from '@cardinal/namespaces';
-import { Injectable } from '@nestjs/common';
+import { getNamespaceByName, nameForDisplay } from '@cardinal/namespaces';
+import { CivicProfile } from '@civic/profile';
+import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
 import { Connection, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
+import { Cache } from 'cache-manager';
 import * as AR from 'fp-ts/Array';
 import * as FN from 'fp-ts/function';
 import * as OP from 'fp-ts/Option';
@@ -12,7 +14,9 @@ import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
 import { Environment } from '@lib/decorators/CurrentEnvironment';
 import * as errors from '@lib/errors/gql';
+import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
+import { dedupe } from '@src/lib/cacheAndDedupe';
 
 import { RealmMemberSort } from './dto/pagination';
 import { RealmMember } from './dto/RealmMember';
@@ -21,11 +25,107 @@ import * as queries from './holaplexQueries';
 export const RealmMemberCursor = BrandedString('realm member cursor');
 export type RealmMemberCursor = IT.TypeOf<typeof RealmMemberCursor>;
 
+const ENDPOINT =
+  'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/';
 const PAGE_SIZE = 25;
+
+const getCivicDetails = dedupe(
+  async (publicKey: PublicKey) => {
+    const connection = new Connection(ENDPOINT);
+
+    const details = await CivicProfile.get(publicKey.toBase58(), {
+      solana: { connection },
+    });
+
+    if (details.name) {
+      return {
+        handle: details.name.value,
+        avatarUrl: details.image?.url,
+        isVerified: details.name.verified,
+      };
+    }
+
+    return undefined;
+  },
+  {
+    key: (publicKey) => publicKey.toBase58(),
+  },
+);
+
+const getTwitterDetails = dedupe(
+  async (publicKey: PublicKey, bearerToken: string) => {
+    const connection = new Connection(ENDPOINT);
+    const namespace = await getNamespaceByName(connection, 'twitter');
+    const displayName = await nameForDisplay(connection, publicKey, namespace.pubkey);
+    const username = displayName.replace('@', '');
+
+    return fetch(
+      `https://api.twitter.com/2/users/by/username/${username}?user.fields=profile_image_url`,
+      {
+        method: 'get',
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
+      },
+    )
+      .then<{
+        data: { profile_image_url: string };
+      }>((resp) => resp.json())
+      .then((result) => result?.data?.profile_image_url)
+      .then((url) => ({
+        avatarUrl: url ? url.replace('_normal', '') : undefined,
+        handle: displayName,
+      }));
+  },
+  {
+    key: (publicKey, bearerToken) => publicKey.toBase58() + bearerToken,
+  },
+);
 
 @Injectable()
 export class RealmMemberService {
-  constructor(private readonly holaplexService: HolaplexService) {}
+  constructor(
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly configService: ConfigService,
+    private readonly holaplexService: HolaplexService,
+  ) {}
+
+  /**
+   * Returns a user's civic handle, if it exists
+   */
+  getCivicHandleForPublicKey(userPublicKey: PublicKey, environment: Environment) {
+    if (environment === 'devnet') {
+      return TE.left(new errors.UnsupportedDevnet());
+    }
+
+    const cacheKey = `civic-handle-${userPublicKey.toBase58()}`;
+
+    return FN.pipe(
+      TE.tryCatch(
+        () =>
+          this.cacheManager.get<{ handle: string; avatarlUrl?: string; isVerified: boolean }>(
+            cacheKey,
+          ),
+        (e) => new errors.Exception(e),
+      ),
+      TE.chainW((result) =>
+        result
+          ? TE.right(result)
+          : FN.pipe(
+              TE.tryCatch(
+                () => getCivicDetails(userPublicKey),
+                (e) => new errors.Exception(e),
+              ),
+              TE.chainW((result) =>
+                TE.tryCatch(
+                  () => this.cacheManager.set(cacheKey, result, { ttl: 10 * 60 }),
+                  (e) => new errors.Exception(e),
+                ),
+              ),
+            ),
+      ),
+    );
+  }
 
   /**
    * Fetch a list of members in a Realm
@@ -85,39 +185,33 @@ export class RealmMemberService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    const connection = new Connection('https://rpc.theindex.io');
+    const cacheKey = `twitter-handle-${userPublicKey.toBase58()}`;
 
     return FN.pipe(
       TE.tryCatch(
-        () => getReverseEntry(connection, userPublicKey),
+        () => this.cacheManager.get<{ handle: string; avatarlUrl?: string }>(cacheKey),
         (e) => new errors.Exception(e),
       ),
-      TE.map((result) => formatName(result.parsed.namespaceName, result.parsed.entryName)),
-      TE.matchW(
-        () => TE.of(null),
-        (handle) =>
-          FN.pipe(
-            TE.tryCatch(
-              () =>
-                fetch(
-                  `https://api.cardinal.so//twitter/proxy?url=https://api.twitter.com/2/users/by&usernames=${handle}&user.fields=profile_image_url`,
-                ).then<{
-                  data: { profile_image_url: string }[];
-                }>((resp) => resp.json()),
-              (e) => new errors.Exception(e),
+      TE.chainW((result) =>
+        result
+          ? TE.right(result)
+          : FN.pipe(
+              TE.tryCatch(
+                () =>
+                  getTwitterDetails(
+                    userPublicKey,
+                    this.configService.get('external.twitterBearerKey'),
+                  ),
+                (e) => new errors.Exception(e),
+              ),
+              TE.chainW((result) =>
+                TE.tryCatch(
+                  () => this.cacheManager.set(cacheKey, result, { ttl: 10 * 60 }),
+                  (e) => new errors.Exception(e),
+                ),
+              ),
             ),
-            TE.map((result) => result.data || []),
-            TE.map(AR.head),
-            TE.map((result) => ({
-              avatarUrl: OP.isSome(result)
-                ? result.value.profile_image_url.replace('_normal', '')
-                : undefined,
-              handle,
-            })),
-          ),
       ),
-      TE.fromTask,
-      TE.flatten,
     );
   }
 

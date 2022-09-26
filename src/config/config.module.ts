@@ -26,6 +26,9 @@ import { ConfigService } from './config.service';
               username: process.env.DATABASE_USERNAME,
               useSsl: process.env.DATABASE_USE_SSL === 'true',
             },
+            external: {
+              twitterBearerKey: process.env.TWITTER_API_BEARER_KEY,
+            },
             jwt: {
               userSecret: process.env.JWT_USER_SECRET || '',
             },

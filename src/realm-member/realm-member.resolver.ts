@@ -8,12 +8,22 @@ import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 
 import { RealmMemberConnection, RealmMemberSort } from './dto/pagination';
 import { RealmMember } from './dto/RealmMember';
+import { RealmMemberCivicInfo } from './dto/RealmMemberCivicInfo';
 import { RealmMemberTwitterInfo } from './dto/RealmMemberTwitterInfo';
 import { RealmMemberService, RealmMemberCursor } from './realm-member.service';
 
 @Resolver(() => RealmMember)
 export class RealmMemberResolver {
   constructor(private readonly realmMemberService: RealmMemberService) {}
+
+  @ResolveField(() => RealmMemberCivicInfo, {
+    description: "User's civic handle info",
+    nullable: true,
+  })
+  @EitherResolver()
+  civicInfo(@Root() member: RealmMember, @CurrentEnvironment() environment: Environment) {
+    return this.realmMemberService.getCivicHandleForPublicKey(member.publicKey, environment);
+  }
 
   @ResolveField(() => RealmMemberTwitterInfo, {
     description: "User's twitter handle info",

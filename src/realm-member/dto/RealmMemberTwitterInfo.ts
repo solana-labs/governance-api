@@ -1,7 +1,7 @@
 import { ObjectType, Field } from '@nestjs/graphql';
 
 @ObjectType({
-  description: 'Connected Twitter info served by Carddinal',
+  description: 'Connected Twitter info served by Cardinal',
 })
 export class RealmMemberTwitterInfo {
   @Field(() => String, {

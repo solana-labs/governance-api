@@ -83,6 +83,7 @@ export class RealmService {
               ? new PublicKey(codecommitted.programId)
               : undefined,
             publicKey: onchaindata.publicKey,
+            shortDescription: codecommitted.shortDescription,
             symbol: codecommitted.symbol,
             twitterHandle: codecommitted.twitter,
             websiteUrl: codecommitted.website,

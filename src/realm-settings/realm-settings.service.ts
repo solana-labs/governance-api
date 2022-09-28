@@ -22,6 +22,7 @@ export interface CodeCommittedSettings {
   programId: string;
   realmId?: string;
   sharedWalletId?: string;
+  shortDescription?: string;
   sortRank?: number;
   symbol?: string;
   twitter?: string;

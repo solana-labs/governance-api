@@ -36,6 +36,12 @@ export class Realm {
   publicKey: PublicKey;
 
   @Field({
+    description: 'A short text description of the Realm',
+    nullable: true,
+  })
+  shortDescription?: string;
+
+  @Field({
     description: 'Symbol for the Realm',
     nullable: true,
   })

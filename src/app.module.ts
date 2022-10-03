@@ -32,6 +32,8 @@ import { RealmModule } from '@src/realm/realm.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 import { UserModule } from '@src/user/user.module';
 
+import { RealmHubModule } from './realm-hub/realm-hub.module';
+
 @Module({
   imports: [
     ConfigModule,
@@ -80,6 +82,7 @@ import { UserModule } from '@src/user/user.module';
     RealmGovernanceModule,
     TaskDedupeModule,
     RealmFeedItemCommentModule,
+    RealmHubModule,
   ],
   controllers: [AppController],
   providers: [

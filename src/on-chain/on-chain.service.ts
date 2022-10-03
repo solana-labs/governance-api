@@ -28,7 +28,7 @@ import { RealmSettingsService } from '@src/realm-settings/realm-settings.service
 
 const SOL_MINT_PK = new PublicKey('So11111111111111111111111111111111111111112');
 const DEFAULT_NFT_TREASURY_MINT = 'GNFTm5rz1Kzvq94G7DJkcrEUnCypeQYf7Ya8arPoHWvw';
-const DEFAULT_NATIVE_SOL_MINT = 'GSoLvSToqaUmMyqP12GffzcirPAickrpZmVUFtek6x5u';
+// const DEFAULT_NATIVE_SOL_MINT = 'GSoLvSToqaUmMyqP12GffzcirPAickrpZmVUFtek6x5u';
 
 const SOL_MINT = {
   publicKey: SOL_MINT_PK,
@@ -116,8 +116,7 @@ const getAssets = dedupe(
   },
 );
 
-type UnPromise<X> = X extends Promise<infer Y> ? Y : never;
-type RawTokenAsset = UnPromise<ReturnType<typeof getRawAssetAccounts>>[number]['result'][number];
+type RawTokenAsset = Awaited<ReturnType<typeof getRawAssetAccounts>>[number]['result'][number];
 
 interface AssetOwner {
   governance: PublicKey;

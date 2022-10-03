@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ConfigModule } from '@src/config/config.module';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
@@ -11,6 +12,7 @@ import { RealmService } from './realm.service';
 
 @Module({
   imports: [
+    ConfigModule,
     HolaplexModule,
     RealmFeedItemModule,
     RealmMemberModule,

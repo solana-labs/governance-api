@@ -17,6 +17,7 @@ import { ConfigService } from './config.service';
             app: {
               port,
               host: process.env.HOST,
+              codeCommitedInfoUrl: process.env.CODE_COMMITED_INFO_URL || 'https://app.realms.today',
             },
             database: {
               host: process.env.DATABASE_HOST || '',

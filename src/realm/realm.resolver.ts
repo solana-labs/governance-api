@@ -13,6 +13,7 @@ import {
   RealmFeedItemCursor,
 } from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
+import { RealmHub } from '@src/realm-hub/dto/RealmHub';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
 import { RealmProposalSort, RealmProposalConnection } from '@src/realm-proposal/dto/pagination';
@@ -62,6 +63,13 @@ export class RealmResolver {
       args.first,
       args.last,
     );
+  }
+
+  @ResolveField(() => RealmHub, {
+    description: 'The hub for this Realm',
+  })
+  hub(@Root() realm: Realm) {
+    return { realm: realm.publicKey };
   }
 
   @ResolveField(() => [RealmFeedItem], {

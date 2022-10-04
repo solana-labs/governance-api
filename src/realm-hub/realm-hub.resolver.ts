@@ -23,6 +23,13 @@ export class RealmHubResolver {
     return this.realmHubService.getCodeCommittedHubInfoForRealm(hub.realm, environment);
   }
 
+  @ResolveField(() => Number, {
+    description: 'Number of twitter followers',
+  })
+  twitterFollowerCount(@Root() hub: RealmHub, @CurrentEnvironment() environment: Environment) {
+    return this.realmHubService.getTwitterFollowerCount(hub.realm, environment);
+  }
+
   @Query(() => RealmHub, {
     description: 'A Realm Hub',
   })

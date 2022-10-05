@@ -1,13 +1,12 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { PublicKey } from '@solana/web3.js';
 
-import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@src/lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@src/lib/types/RichTextDocument';
 
 import { RealmHubInfoAboutSection } from './RealmHubInfoAboutSection';
 import { RealmHubInfoDocumentation } from './RealmHubInfoDocumentation';
 import { RealmHubInfoFaqItem } from './RealmHubInfoFaqItem';
+import { RealmHubInfoGalleryItem } from './RealmHubInfoGalleryItem';
 import { RealmHubInfoResource } from './RealmHubInfoResource';
 import { RealmHubInfoRoadmap } from './RealmHubInfoRoadmap';
 import { RealmHubInfoTeamMember } from './RealmHubInfoTeamMember';
@@ -32,6 +31,11 @@ export class RealmHubInfo {
     description: 'Frequently asked questions in the Realm',
   })
   faq: RealmHubInfoFaqItem[];
+
+  @Field(() => [RealmHubInfoGalleryItem], {
+    description: 'A list of items in the gallery',
+  })
+  gallery: RealmHubInfoGalleryItem[];
 
   @Field(() => RichTextDocumentScalar, {
     description: 'An optional tagline or heading for the Realm',

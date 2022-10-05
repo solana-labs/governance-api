@@ -96,6 +96,12 @@ export interface CodeCommittedHubInfo {
     question?: string;
     answer?: string[];
   }[];
+  gallery?: {
+    url?: string;
+    caption?: string;
+    height?: number;
+    width?: number;
+  }[];
   heading?: string;
   resources?: {
     title?: string;
@@ -215,6 +221,7 @@ export class RealmHubService {
               )
             ).filter(filterHas(['question', 'answer']))
           : [],
+        gallery: info.gallery?.filter(filterHas(['height', 'url', 'width'])) || [],
         heading: info.heading ? await convertTextToRichTextDocument(info.heading) : undefined,
         resources: info.resources
           ? (
@@ -230,6 +237,9 @@ export class RealmHubService {
           : [],
         roadmap: {
           ...info.roadmap,
+          description: info.roadmap?.description
+            ? await convertTextToRichTextDocument(info.roadmap.description.join('\n'))
+            : undefined,
           items:
             info.roadmap?.items
               ?.map((item) => ({

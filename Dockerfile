@@ -19,7 +19,6 @@ RUN apk add --no-cache git g++ make py3-pip
 # Install app dependencies
 RUN mkdir .yarncache
 RUN yarn install --skip-integrity-check --cache-folder ./.yarncache
-RUN rm -rf .yarncache
 
 # Bundle app source
 COPY --chown=node:node . .
@@ -39,11 +38,13 @@ COPY --chown=node:node package*.json ./
 
 # In order to run `yarn build` we need access to the Nest CLI which is a dev dependency. In the previous development stage we ran `yarn install` which installed all dependencies, so we can copy over the node_modules directory from the development image
 COPY --chown=node:node --from=development /usr/src/app/node_modules ./node_modules
+COPY --chown=node:node --from=development /usr/src/app/.yarncache ./.yarncache
 
 COPY --chown=node:node . .
 
 # Ensure git is installed
 RUN apk add --no-cache git g++ make py3-pip
+RUN git config --global --add safe.directory '*'
 
 # Run the build command which creates the production bundle
 RUN yarn build
@@ -52,7 +53,6 @@ RUN yarn build
 ENV NODE_ENV production
 
 # Passing in --frozen-lockfile ensures that only the lockfile must match the package.json
-RUN mkdir .yarncache
 RUN yarn install --skip-integrity-check --frozen-lockfile --cache-folder ./.yarncache && yarn cache clean
 RUN rm -rf .yarncache
 

@@ -221,11 +221,7 @@ export class RealmProposalService {
   /**
    * Get a list of proposals in a realm
    */
-  getProposalsForRealm(
-    realmPublicKey: PublicKey,
-    environment: Environment,
-    parentTimerId?: string,
-  ) {
+  getProposalsForRealm(realmPublicKey: PublicKey, environment: Environment) {
     if (environment === 'devnet') {
       return TE.left(new errors.UnsupportedDevnet());
     }

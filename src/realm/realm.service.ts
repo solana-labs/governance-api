@@ -7,6 +7,7 @@ import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
+import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import {
   CodeCommittedSettings,
@@ -19,9 +20,9 @@ import * as queries from './holaplexQueries';
  * Sometimes the URLs point to paths relative to app.realms.today. This will
  * normalize those
  */
-function normalizeCodeCommittedUrl(url: string) {
+function normalizeCodeCommittedUrl(url: string, baseUrl: string) {
   if (url.startsWith('/')) {
-    return 'https://app.realms.today' + url;
+    return baseUrl + url;
   }
 
   return url;
@@ -30,6 +31,7 @@ function normalizeCodeCommittedUrl(url: string) {
 @Injectable()
 export class RealmService {
   constructor(
+    private readonly configService: ConfigService,
     private readonly holaplexService: HolaplexService,
     private readonly realmSettingsService: RealmSettingsService,
   ) {}
@@ -73,10 +75,16 @@ export class RealmService {
         ({ onchaindata, codecommitted }) =>
           ({
             bannerImageUrl: codecommitted.bannerImage
-              ? normalizeCodeCommittedUrl(codecommitted.bannerImage)
+              ? normalizeCodeCommittedUrl(
+                  codecommitted.bannerImage,
+                  this.configService.get('app.codeCommitedInfoUrl'),
+                )
               : undefined,
             iconUrl: codecommitted.ogImage
-              ? normalizeCodeCommittedUrl(codecommitted.ogImage)
+              ? normalizeCodeCommittedUrl(
+                  codecommitted.ogImage,
+                  this.configService.get('app.codeCommitedInfoUrl'),
+                )
               : undefined,
             name: codecommitted.displayName || onchaindata.name,
             programPublicKey: codecommitted.programId

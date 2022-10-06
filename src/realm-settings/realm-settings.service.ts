@@ -8,6 +8,7 @@ import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
+import { ConfigService } from '@src/config/config.service';
 
 const DEFAULT_GOVERNANCE_PROGRAM = 'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw';
 
@@ -31,7 +32,10 @@ export interface CodeCommittedSettings {
 
 @Injectable()
 export class RealmSettingsService {
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+  constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Get's all the settings checked into the app.realms.today github repo
@@ -52,7 +56,7 @@ export class RealmSettingsService {
               TE.tryCatch(
                 () =>
                   fetch(
-                    `https://app.realms.today/realms/${
+                    `${this.configService.get('app.codeCommitedInfoUrl')}/realms/${
                       environment === 'mainnet' ? 'mainnet-beta' : 'devnet'
                     }.json`,
                   ).then<CodeCommittedSettings[]>((response) => response.json()),

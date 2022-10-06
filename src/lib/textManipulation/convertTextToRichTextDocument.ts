@@ -14,15 +14,15 @@ export async function convertTextToRichTextDocument(text: string) {
 
   return {
     attachments: [],
-    content: parts.map((part) => ({
+    content: await Promise.all(parts.map(async (part) => ({
       t: RTD.BlockNodeType.Block,
-      c: convertStringBlockToRTDBlock(part),
+      c: await convertStringBlockToRTDBlock(part),
       s: RTD.BlockStyle.P,
-    })),
+    }))),
   } as RTD.RichTextDocument;
 }
 
-export function convertStringBlockToRTDBlock(stringBlock: string) {
+export async function convertStringBlockToRTDBlock(stringBlock: string) {
   // We're going to do some light formatting. We're going to extract valid urls
   // and convert those. The remaining text will be treated as plain text.
   const parts = stringBlock.split(' ');

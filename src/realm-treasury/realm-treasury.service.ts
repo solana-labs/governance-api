@@ -10,6 +10,7 @@ import { mergeDeepRight } from 'ramda';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
+import { ConfigService } from '@src/config/config.service';
 import { OnChainService } from '@src/on-chain/on-chain.service';
 
 const PRICE_ENDPOINT = 'https://api.coingecko.com/api/v3/simple/price';
@@ -22,6 +23,7 @@ interface TokenOverrides {
 export class RealmTreasuryService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly configService: ConfigService,
     private readonly onChainService: OnChainService,
   ) {}
 
@@ -196,7 +198,9 @@ export class RealmTreasuryService {
               TE.tryCatch(
                 () =>
                   fetch(
-                    'https://app.realms.today/realms/token-overrides.json',
+                    `${this.configService.get(
+                      'app.codeCommitedInfoUrl',
+                    )}/realms/token-overrides.json`,
                   ).then<TokenOverrides>((response) => response.json()),
                 (e) => new errors.Exception(e),
               ),

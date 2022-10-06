@@ -1,14 +1,18 @@
-import { Args, Query, ResolveField, Resolver, Root } from '@nestjs/graphql';
+import { Args, Int, Query, ResolveField, Resolver, Root } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 import * as EI from 'fp-ts/Either';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { abbreviateAddress } from '@lib/textManipulation/abbreviateAddress';
+import { ClippedRichTextDocument } from '@src/lib/gqlTypes/ClippedRichTextDocument';
+import { clipRichTextDocument } from '@src/lib/textManipulation/clipRichTextDocument';
+import { wait } from '@src/lib/wait';
 import { RealmTreasuryService } from '@src/realm-treasury/realm-treasury.service';
 
 import { RealmHub } from './dto/RealmHub';
 import { RealmHubInfo } from './dto/RealmHubInfo';
+import { RealmHubInfoFaqItem } from './dto/RealmHubInfoFaqItem';
 import { RealmHubInfoTokenDetails } from './dto/RealmHubInfoTokenDetails';
 import { RealmHubService } from './realm-hub.service';
 
@@ -44,6 +48,25 @@ export class RealmHubResolver {
   }
 }
 
+@Resolver(() => RealmHubInfoFaqItem)
+export class RealmHubInfoFaqItemResolver {
+  @ResolveField(() => ClippedRichTextDocument, {
+    description: 'A clipped answer to a FAQ item question',
+  })
+  clippedAnswer(
+    @Root() faqItem: RealmHubInfoFaqItem,
+    @Args('charLimit', {
+      type: () => Int,
+      description: 'The character count to clip the document at',
+      nullable: true,
+      defaultValue: 400,
+    })
+    charLimit = 400,
+  ) {
+    return clipRichTextDocument(faqItem.answer, charLimit);
+  }
+}
+
 @Resolver(() => RealmHubInfoTokenDetails)
 export class RealmHubInfoTokenDetailsResolver {
   constructor(
@@ -58,7 +81,18 @@ export class RealmHubInfoTokenDetailsResolver {
     @Root() token: RealmHubInfoTokenDetails,
     @CurrentEnvironment() environment: Environment,
   ) {
-    const price = await this.realmTreasuryService.getTokenPrice(token.mint, environment)();
+    const price = await Promise.race([
+      this.realmTreasuryService.getTokenPrice(token.mint, environment)(),
+      wait(2000),
+    ]).catch(() => 0);
+
+    if (typeof price === 'boolean') {
+      return 0;
+    }
+
+    if (typeof price === 'number') {
+      return price;
+    }
 
     if (EI.isLeft(price)) {
       throw price.left;

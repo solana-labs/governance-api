@@ -270,6 +270,7 @@ export class RealmHubService {
       about: [],
       documentation: undefined,
       faq: [],
+      gallery: [],
       heading: undefined,
       resources: [],
       roadmap: {

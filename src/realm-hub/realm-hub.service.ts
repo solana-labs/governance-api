@@ -63,25 +63,30 @@ function extractRoadmapStatus(status?: string) {
   return undefined;
 }
 
-const getFollowerCount = dedupe(async (handle: string, bearerToken: string) => {
-  const username = handle.replace('@', '');
+const getFollowerCount = dedupe(
+  async (handle: string, bearerToken: string) => {
+    const username = handle.replace('@', '');
 
-  return fetch(
-    `https://api.twitter.com/2/users/by/username/${username}?user.fields=public_metrics`,
-    {
-      method: 'get',
-      headers: {
-        Authorization: `Bearer ${bearerToken}`,
+    return fetch(
+      `https://api.twitter.com/2/users/by/username/${username}?user.fields=public_metrics`,
+      {
+        method: 'get',
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
       },
-    },
-  )
-    .then<{
-      data: { public_metrics: { followers_count: number } };
-    }>((resp) => resp.json())
-    .then((result) => {
-      return result?.data?.public_metrics?.followers_count || 0;
-    });
-});
+    )
+      .then<{
+        data: { public_metrics: { followers_count: number } };
+      }>((resp) => resp.json())
+      .then((result) => {
+        return result?.data?.public_metrics?.followers_count || 0;
+      });
+  },
+  {
+    key: (handle, bearerToken) => handle + bearerToken,
+  },
+);
 
 export interface CodeCommittedHubInfo {
   about?: {

@@ -13,6 +13,7 @@ import { RealmTreasuryService } from '@src/realm-treasury/realm-treasury.service
 import { RealmHub } from './dto/RealmHub';
 import { RealmHubInfo } from './dto/RealmHubInfo';
 import { RealmHubInfoFaqItem } from './dto/RealmHubInfoFaqItem';
+import { RealmHubInfoTeamMember } from './dto/RealmHubInfoTeamMember';
 import { RealmHubInfoTokenDetails } from './dto/RealmHubInfoTokenDetails';
 import { RealmHubService } from './realm-hub.service';
 
@@ -27,7 +28,7 @@ export class RealmHubResolver {
     return this.realmHubService.getCodeCommittedHubInfoForRealm(hub.realm, environment);
   }
 
-  @ResolveField(() => Number, {
+  @ResolveField(() => Int, {
     description: 'Number of twitter followers',
   })
   twitterFollowerCount(@Root() hub: RealmHub, @CurrentEnvironment() environment: Environment) {
@@ -116,5 +117,21 @@ export class RealmHubInfoTokenDetailsResolver {
 
     const tokenDetails = allTokens.right[token.mint.toBase58()];
     return tokenDetails?.symbol || abbreviateAddress(token.mint);
+  }
+}
+
+@Resolver(() => RealmHubInfoTeamMember)
+export class RealmHubInfoTeamMemberResolver {
+  constructor(private readonly realmHubService: RealmHubService) {}
+
+  @ResolveField(() => Int, {
+    description: 'Number of twitter followers',
+  })
+  twitterFollowerCount(@Root() member: RealmHubInfoTeamMember) {
+    if (member.twitter) {
+      return this.realmHubService.getTwitterFollowerCountForHandle(member.twitter);
+    }
+
+    return 0;
   }
 }

@@ -8,6 +8,7 @@ import {
   RealmHubResolver,
   RealmHubInfoFaqItemResolver,
   RealmHubInfoTokenDetailsResolver,
+  RealmHubInfoTeamMemberResolver,
 } from './realm-hub.resolver';
 import { RealmHubService } from './realm-hub.service';
 
@@ -18,6 +19,7 @@ import { RealmHubService } from './realm-hub.service';
     RealmHubResolver,
     RealmHubInfoFaqItemResolver,
     RealmHubInfoTokenDetailsResolver,
+    RealmHubInfoTeamMemberResolver,
   ],
   exports: [RealmHubService],
 })

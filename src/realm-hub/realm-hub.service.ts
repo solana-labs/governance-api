@@ -184,7 +184,14 @@ export class RealmHubService {
       return 0;
     }
 
-    return getFollowerCount(twitterHandle, this.configService.get('external.twitterBearerKey'));
+    return this.getTwitterFollowerCountForHandle(twitterHandle);
+  }
+
+  /**
+   * Get a count of twitter followers for a twitter handle
+   */
+  async getTwitterFollowerCountForHandle(handle: string) {
+    return getFollowerCount(handle, this.configService.get('external.twitterBearerKey'));
   }
 
   /**

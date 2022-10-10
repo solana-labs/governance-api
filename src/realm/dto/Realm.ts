@@ -14,6 +14,30 @@ export class Realm {
   bannerImageUrl?: string;
 
   @Field({
+    description: 'Discord link',
+    nullable: true,
+  })
+  discordUrl?: string;
+
+  @Field({
+    description: 'Github link',
+    nullable: true,
+  })
+  githubUrl?: string;
+
+  @Field({
+    description: 'Instagram url',
+    nullable: true,
+  })
+  instagramUrl?: string;
+
+  @Field({
+    description: 'LinkedIn url',
+    nullable: true,
+  })
+  linkedInUrl?: string;
+
+  @Field({
     description: "Url for the Realm's icon",
     nullable: true,
   })

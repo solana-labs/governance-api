@@ -26,6 +26,11 @@ export interface CodeCommittedSettings {
   shortDescription?: string;
   sortRank?: number;
   symbol?: string;
+  // external links
+  discord?: string;
+  github?: string;
+  instagram?: string;
+  linkedin?: string;
   twitter?: string;
   website?: string;
 }

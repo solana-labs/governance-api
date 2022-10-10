@@ -93,6 +93,11 @@ export class RealmService {
             publicKey: onchaindata.publicKey,
             shortDescription: codecommitted.shortDescription,
             symbol: codecommitted.symbol,
+            // external links
+            discordUrl: codecommitted.discord,
+            githubUrl: codecommitted.github,
+            instagramUrl: codecommitted.instagram,
+            linkedInUrl: codecommitted.linkedin,
             twitterHandle: codecommitted.twitter,
             websiteUrl: codecommitted.website,
           } as const),

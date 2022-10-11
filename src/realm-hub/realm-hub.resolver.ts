@@ -63,8 +63,15 @@ export class RealmHubInfoFaqItemResolver {
       defaultValue: 400,
     })
     charLimit = 400,
+    @Args('attachmentLimit', {
+      type: () => Int,
+      description: 'The maximum number of attachments to include',
+      nullable: true,
+      defaultValue: 0,
+    })
+    attachmentLimit = 0,
   ) {
-    return clipRichTextDocument(faqItem.answer, charLimit);
+    return clipRichTextDocument(faqItem.answer, charLimit, attachmentLimit);
   }
 }
 

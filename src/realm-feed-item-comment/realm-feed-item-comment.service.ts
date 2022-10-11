@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
 import { compareDesc, differenceInHours, format } from 'date-fns';
+import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as IT from 'io-ts';
@@ -11,7 +12,9 @@ import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
 import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
+import { enhanceRichTextDocument } from '@lib/textManipulation/enhanceRichTextDocument';
 import { Environment } from '@lib/types/Environment';
+import { ConfigService } from '@src/config/config.service';
 import { exists } from '@src/lib/typeGuards/exists';
 import { RichTextDocument } from '@src/lib/types/RichTextDocument';
 
@@ -49,6 +52,7 @@ export class RealmFeedItemCommentService {
     private readonly realmFeedItemCommentRepository: Repository<RealmFeedItemCommentEntity>,
     @InjectRepository(RealmFeedItemCommentVoteEntity)
     private readonly realmFeedItemCommentVoteRepository: Repository<RealmFeedItemCommentVoteEntity>,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -66,27 +70,39 @@ export class RealmFeedItemCommentService {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    if (!args.requestingUser) {
+    const { requestingUser } = args;
+
+    if (!requestingUser) {
       return TE.left(new errors.Unauthorized());
     }
 
-    const comment = this.realmFeedItemCommentRepository.create({
-      authorId: args.requestingUser.id,
-      data: {
-        authorPublicKeyStr: args.requestingUser.publicKey.toBase58(),
-        document: args.document,
-      },
-      environment: args.environment,
-      feedItemId: args.feedItemId,
-      metadata: { relevanceScore: 0, topAllTimeScore: 0, rawScore: 0 },
-      parentCommentId: args.parentCommentId || undefined,
-      realmPublicKeyStr: args.realmPublicKey.toBase58(),
-    });
-
     return FN.pipe(
       TE.tryCatch(
-        () => this.realmFeedItemCommentRepository.save(comment),
+        () =>
+          enhanceRichTextDocument(args.document, {
+            twitterBearerToken: this.configService.get('external.twitterBearerKey'),
+          }),
         (e) => new errors.Exception(e),
+      ),
+      TE.map((document) =>
+        this.realmFeedItemCommentRepository.create({
+          authorId: requestingUser.id,
+          data: {
+            authorPublicKeyStr: requestingUser.publicKey.toBase58(),
+            document: document,
+          },
+          environment: args.environment,
+          feedItemId: args.feedItemId,
+          metadata: { relevanceScore: 0, topAllTimeScore: 0, rawScore: 0 },
+          parentCommentId: args.parentCommentId || undefined,
+          realmPublicKeyStr: args.realmPublicKey.toBase58(),
+        }),
+      ),
+      TE.chainW((comment) =>
+        TE.tryCatch(
+          () => this.realmFeedItemCommentRepository.save(comment),
+          (e) => new errors.Exception(e),
+        ),
       ),
       TE.map((entity) =>
         this.convertEntityToFeedItem({

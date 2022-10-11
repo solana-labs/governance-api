@@ -23,11 +23,18 @@ export class RealmPostResolver {
       defaultValue: 400,
     })
     charLimit = 400,
+    @Args('attachmentLimit', {
+      type: () => Int,
+      description: 'The maximum number of attachments to include',
+      nullable: true,
+      defaultValue: 0,
+    })
+    attachmentLimit = 0,
     @Root() post: RealmPost,
   ) {
     return FN.pipe(
       EI.tryCatch(
-        () => clipRichTextDocument(post.document, charLimit),
+        () => clipRichTextDocument(post.document, charLimit, attachmentLimit),
         (e) => new errors.Exception(e),
       ),
     );

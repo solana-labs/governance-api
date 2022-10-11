@@ -1,16 +1,32 @@
-import { AnchorNode, RichTextDocument, BlockNodeType, BlockNode, InlineNodeType, InlineNode } from "../types/RichTextDocument";
+import {
+  AnchorNode,
+  AttachmentType,
+  RichTextDocument,
+  BlockNodeType,
+  BlockNode,
+  InlineNodeType,
+  InlineNode,
+  PublicKeyNode,
+} from "../types/RichTextDocument";
 
-export function clipRichTextDocument(document: RichTextDocument, charLimit: number) {
+export function clipRichTextDocument(
+  document: RichTextDocument,
+  charLimit: number,
+  attachmentLimit: number,
+) {
   const clippedDocument: RichTextDocument = {
     attachments: [],
     content: [],
   };
 
   let budget = charLimit;
+  let clippedIndex = 0;
   let isClipped = false;
   let nodesSkipped = false;
 
-  for (const block of document.content) {
+  for (let index = 0; index < document.content.length; index++) {
+    const block = document.content[index];
+
     if (isClipped) {
       break;
     }
@@ -37,19 +53,23 @@ export function clipRichTextDocument(document: RichTextDocument, charLimit: numb
               newNode.c.push(i);
               budget -= text.length;
             } else {
-              const newInlineNode: InlineNode = {
+              const newInlineNode: InlineNode | PublicKeyNode = {
                 ...i,
                 c: text.slice(0, budget),
               };
               budget = 0;
               isClipped = true;
+              clippedIndex = index;
               newNode.c.push(newInlineNode);
             }
           }
 
           newBlock.c.push(newNode);
-        } else if (node.t === InlineNodeType.Inline) {
-          const newNode: InlineNode = { ...node, c: '' };
+        } else if (
+          node.t === InlineNodeType.Inline ||
+          node.t === InlineNodeType.PublicKey
+        ) {
+          const newNode = { ...node, c: '' };
           const text = node.c;
 
           if (budget > text.length) {
@@ -59,6 +79,7 @@ export function clipRichTextDocument(document: RichTextDocument, charLimit: numb
             newNode.c = text.slice(0, budget);
             budget = 0;
             isClipped = true;
+            clippedIndex = index;
           }
 
           newBlock.c.push(newNode);
@@ -66,6 +87,17 @@ export function clipRichTextDocument(document: RichTextDocument, charLimit: numb
       }
 
       clippedDocument.content.push(newBlock);
+    } else if (block.t === BlockNodeType.TwitterEmbed) {
+      if (clippedDocument.attachments.length < attachmentLimit && (
+        !isClipped || (index === clippedIndex + 1)
+      )) {
+        clippedDocument.attachments.push({
+          t: AttachmentType.TwitterEmbed,
+          c: block.c,
+        });
+      } else {
+        nodesSkipped = true;
+      }
     } else {
       nodesSkipped = true;
     }

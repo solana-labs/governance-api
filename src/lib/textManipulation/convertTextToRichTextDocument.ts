@@ -1,3 +1,6 @@
+import { parse } from 'url';
+
+import { buildPublicKeyEmbed } from '@lib/textManipulation/buildPublicKeyEmbed';
 import * as RTD from '@lib/types/RichTextDocument';
 import { isValidUrl } from '@lib/url/isValidUrl';
 
@@ -26,17 +29,23 @@ export async function convertStringBlockToRTDBlock(stringBlock: string) {
   // We're going to do some light formatting. We're going to extract valid urls
   // and convert those. The remaining text will be treated as plain text.
   const parts = stringBlock.split(' ');
-  const nodes: (RTD.InlineNode | RTD.AnchorNode)[] = [];
+  const nodes: (RTD.InlineNode | RTD.AnchorNode | RTD.PublicKeyNode)[] = [];
   let contiguousStrings: string[] = [];
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     const isLast = i === parts.length - 1;
 
+    // See if we have a Public Key
+    const publicKey = buildPublicKeyEmbed(part);
+
+    // Check if we're dealing with a url
+    const isUrl = isValidUrl(part, ['http', 'https']);
+
     // If we've found a url, we're going to first flush any of the text we've
     // seen so far. Then, using the url we discovered, we'll construct an
     // anchor node
-    if (isValidUrl(part, ['http', 'https'])) {
+    if (isUrl || publicKey) {
       if (contiguousStrings.length) {
         const text = contiguousStrings.join(' ') + ' ';
         nodes.push({
@@ -46,16 +55,24 @@ export async function convertStringBlockToRTDBlock(stringBlock: string) {
         contiguousStrings = [];
       }
 
-      nodes.push({
-        t: RTD.InlineNodeType.Anchor,
-        c: [
-          {
-            t: RTD.InlineNodeType.Inline,
-            c: part,
-          },
-        ],
-        u: part,
-      });
+      if (isUrl) {
+        const urlParts = parse(part);
+
+        nodes.push({
+          t: RTD.InlineNodeType.Anchor,
+          c: [
+            {
+              t: RTD.InlineNodeType.Inline,
+              c: (urlParts.host || 'link') + (
+                urlParts.path ? urlParts.path.slice(0, 4) + "…" : ''
+              ),
+            },
+          ],
+          u: part,
+        });
+      } else if (publicKey) {
+        nodes.push(publicKey);
+      }
 
       // If the anchor node isn't the last element, add back the space that was
       // removed when we called `.split(' ')` above.
@@ -70,6 +87,7 @@ export async function convertStringBlockToRTDBlock(stringBlock: string) {
       contiguousStrings.push(part);
     }
   }
+
 
   // If we've made it to the end, we might have some text we haven't flushed
   // yet. Handle this text.

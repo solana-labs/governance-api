@@ -44,11 +44,18 @@ export class RealmFeedItemPostResolver {
       defaultValue: 400,
     })
     charLimit = 400,
+    @Args('attachmentLimit', {
+      type: () => Int,
+      description: 'The maximum number of attachments to include',
+      nullable: true,
+      defaultValue: 0,
+    })
+    attachmentLimit = 0,
     @Root() post: RealmFeedItemPost,
   ) {
     return FN.pipe(
       EI.tryCatch(
-        () => clipRichTextDocument(post.document, charLimit),
+        () => clipRichTextDocument(post.document, charLimit, attachmentLimit),
         (e) => new errors.Exception(e),
       ),
     );
@@ -128,11 +135,18 @@ export class RealmFeedItemProposalResolver {
       defaultValue: 400,
     })
     charLimit = 400,
+    @Args('attachmentLimit', {
+      type: () => Int,
+      description: 'The maximum number of attachments to include',
+      nullable: true,
+      defaultValue: 0,
+    })
+    attachmentLimit = 0,
     @Root() proposal: RealmFeedItemProposal,
   ) {
     return FN.pipe(
       EI.tryCatch(
-        () => clipRichTextDocument(proposal.document, charLimit),
+        () => clipRichTextDocument(proposal.document, charLimit, attachmentLimit),
         (e) => new errors.Exception(e),
       ),
     );

@@ -12,11 +12,11 @@ import * as IT from 'io-ts';
 
 import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
+import { dedupe } from '@lib/cacheAndDedupe';
 import { Environment } from '@lib/decorators/CurrentEnvironment';
 import * as errors from '@lib/errors/gql';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
-import { dedupe } from '@src/lib/cacheAndDedupe';
 
 import { RealmMemberSort } from './dto/pagination';
 import { RealmMember } from './dto/RealmMember';

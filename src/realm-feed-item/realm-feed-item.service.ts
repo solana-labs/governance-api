@@ -9,9 +9,11 @@ import { In, Repository } from 'typeorm';
 
 import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
+import { enhanceRichTextDocument } from '@lib/textManipulation/enhanceRichTextDocument';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
+import { ConfigService } from '@src/config/config.service';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
@@ -36,6 +38,7 @@ export class RealmFeedItemService {
     private readonly realmFeedItemRepository: Repository<RealmFeedItemEntity>,
     @InjectRepository(RealmFeedItemVoteEntity)
     private readonly realmFeedItemVoteRepository: Repository<RealmFeedItemVoteEntity>,
+    private readonly configService: ConfigService,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
     private readonly taskDedupeService: TaskDedupeService,
@@ -106,12 +109,21 @@ export class RealmFeedItemService {
     }
 
     return FN.pipe(
-      this.realmPostService.createPost(
-        realmPublicKey,
-        title,
-        document,
-        requestingUser,
-        environment,
+      TE.tryCatch(
+        () =>
+          enhanceRichTextDocument(document, {
+            twitterBearerToken: this.configService.get('external.twitterBearerKey'),
+          }),
+        (e) => new errors.Exception(e),
+      ),
+      TE.chainW((document) =>
+        this.realmPostService.createPost(
+          realmPublicKey,
+          title,
+          document,
+          requestingUser,
+          environment,
+        ),
       ),
       TE.chainW((post) =>
         FN.pipe(

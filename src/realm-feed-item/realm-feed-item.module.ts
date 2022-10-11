@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '@src/config/config.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
@@ -23,6 +24,7 @@ import { RealmFeedItemService } from './realm-feed-item.service';
     RealmProposalModule,
     TaskDedupeModule,
     RealmFeedItemCommentModule,
+    ConfigModule,
   ],
   providers: [
     RealmFeedItemResolver,

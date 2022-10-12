@@ -19,6 +19,7 @@ export function clipRichTextDocument(
     content: [],
   };
 
+  const maxParagraphs = Math.ceil(charLimit / 100);
   let budget = charLimit;
   let clippedIndex = 0;
   let isClipped = false;
@@ -28,6 +29,12 @@ export function clipRichTextDocument(
     const block = document.content[index];
 
     if (isClipped) {
+      break;
+    }
+
+    if (index > maxParagraphs) {
+      isClipped = true;
+      clippedIndex = index;
       break;
     }
 

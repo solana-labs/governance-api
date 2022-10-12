@@ -1,7 +1,6 @@
 import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 import { Cache } from 'cache-manager';
-import * as EI from 'fp-ts/Either';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';

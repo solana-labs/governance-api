@@ -87,7 +87,6 @@ export class RealmResolver {
   @Query(() => Realm, {
     description: 'A Realm',
   })
-  @EitherResolver()
   realm(
     @Args('publicKey', {
       description: 'The public key of the Realm',

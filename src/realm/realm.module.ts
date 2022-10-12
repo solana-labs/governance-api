@@ -6,6 +6,7 @@ import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
+import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 
 import { RealmResolver } from './realm.resolver';
 import { RealmService } from './realm.service';
@@ -13,6 +14,7 @@ import { RealmService } from './realm.service';
 @Module({
   imports: [
     ConfigModule,
+    StaleCacheModule,
     HolaplexModule,
     RealmFeedItemModule,
     RealmMemberModule,

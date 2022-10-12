@@ -177,13 +177,9 @@ export class RealmHubService {
     const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
       realmPublicKey,
       environment,
-    )();
+    );
 
-    if (EI.isLeft(settings)) {
-      throw settings.left;
-    }
-
-    const twitterHandle = settings.right.twitter;
+    const twitterHandle = settings.twitter;
 
     if (!twitterHandle) {
       return 0;

@@ -449,7 +449,10 @@ export class RealmProposalService {
       TE.sequenceArray(
         mintPks.map((mint) =>
           FN.pipe(
-            this.onChainService.getTokenMintInfo(mint, environment),
+            TE.tryCatch(
+              () => this.onChainService.getTokenMintInfo(mint, environment),
+              (e) => new errors.Exception(e),
+            ),
             TE.map((mintInfo) => ({ [mint.toBase58()]: mintInfo })),
           ),
         ),

@@ -64,7 +64,11 @@ export class RealmService {
       TE.bindTo('onchaindata'),
       TE.bindW('codecommitted', () =>
         FN.pipe(
-          this.realmSettingsService.getCodeCommittedSettingsForRealm(publicKey, environment),
+          TE.tryCatch(
+            () =>
+              this.realmSettingsService.getCodeCommittedSettingsForRealm(publicKey, environment),
+            (e) => new errors.Exception(e),
+          ),
           TE.match(
             () => EI.right({} as Partial<CodeCommittedSettings>),
             (settings) => EI.right(settings as Partial<CodeCommittedSettings>),

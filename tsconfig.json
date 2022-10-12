@@ -18,10 +18,18 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@src/": ["src/"],
-      "@src/*": ["src/*"],
-      "@lib/": ["src/lib/"],
-      "@lib/*": ["src/lib/*"]
+      "@src/": [
+        "src/"
+      ],
+      "@src/*": [
+        "src/*"
+      ],
+      "@lib/": [
+        "src/lib/"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ]
     }
   }
 }

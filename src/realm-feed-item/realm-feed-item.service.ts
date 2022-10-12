@@ -17,6 +17,7 @@ import { ConfigService } from '@src/config/config.service';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 import { TaskDedupeService } from '@src/task-dedupe/task-dedupe.service';
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
@@ -41,6 +42,7 @@ export class RealmFeedItemService {
     private readonly configService: ConfigService,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
+    private readonly staleCacheService: StaleCacheService,
     private readonly taskDedupeService: TaskDedupeService,
   ) {}
 

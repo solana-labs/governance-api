@@ -3,8 +3,9 @@ import { MintInfo } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
 import { Cache } from 'cache-manager';
-import { compareDesc } from 'date-fns';
+import { compareDesc, hoursToMilliseconds } from 'date-fns';
 import * as AR from 'fp-ts/Array';
+import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as IT from 'io-ts';
@@ -16,6 +17,7 @@ import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { OnChainService } from '@src/on-chain/on-chain.service';
 import { RealmGovernanceService, Governance } from '@src/realm-governance/realm-governance.service';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import { RealmProposalSort } from './dto/pagination';
 import { RealmProposal } from './dto/RealmProposal';
@@ -31,6 +33,7 @@ export class RealmProposalService {
     private readonly onChainService: OnChainService,
     private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmMemberService: RealmMemberService,
+    private readonly staleCacheService: StaleCacheService,
   ) {}
 
   /**
@@ -42,18 +45,10 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.holaplexService.requestV1(
-        {
-          query: queries.realmProposal.query,
-          variables: {
-            proposal: proposalPublicKey.toBase58(),
-          },
-        },
-        queries.realmProposal.resp,
+      TE.tryCatch(
+        () => this.holaplexGetProposal(proposalPublicKey),
+        (e) => new errors.Exception(e),
       ),
-      TE.map(({ proposals }) => proposals),
-      TE.map(AR.head),
-      TE.chainW(TE.fromOption(() => new errors.NotFound())),
       TE.bindTo('proposal'),
       TE.bindW('proposalVoteRecords', ({ proposal }) =>
         this.getVoteRecordsForHolaplexProposals([proposal], environment),
@@ -124,18 +119,10 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.holaplexService.requestV1(
-        {
-          query: queries.realmProposal.query,
-          variables: {
-            proposal: proposalPublicKey.toBase58(),
-          },
-        },
-        queries.realmProposal.resp,
+      TE.tryCatch(
+        () => this.holaplexGetProposal(proposalPublicKey),
+        (e) => new errors.Exception(e),
       ),
-      TE.map(({ proposals }) => proposals),
-      TE.map(AR.head),
-      TE.chainW(TE.fromOption(() => new errors.NotFound())),
       TE.bindTo('proposal'),
       TE.bindW('proposalVoteRecords', ({ proposal }) =>
         this.getVoteRecordsForHolaplexProposals([proposal], environment),
@@ -144,21 +131,15 @@ export class RealmProposalService {
         this.getGoverningTokenMintsForHolaplexProposals([proposal], environment),
       ),
       TE.bindW('userVoteRecords', ({ proposal }) =>
-        FN.pipe(
-          requestingUser
-            ? this.holaplexService.requestV1(
-                {
-                  query: queries.voteRecordsForUser.query,
-                  variables: {
-                    user: requestingUser.toBase58(),
-                    proposals: [proposal.address],
-                  },
-                },
-                queries.voteRecordsForUser.resp,
-              )
-            : TE.right({ voteRecords: [] }),
-          TE.map(({ voteRecords }) => voteRecords),
-        ),
+        requestingUser
+          ? TE.tryCatch(
+              () =>
+                this.holaplexGetVoteRecordsForUser(requestingUser, [
+                  new PublicKey(proposal.address),
+                ]),
+              (e) => new errors.Exception(e),
+            )
+          : TE.right([]),
       ),
       TE.bindW('totalVoterPower', ({ proposal }) => {
         if (proposal.governance?.realm?.address) {
@@ -229,18 +210,12 @@ export class RealmProposalService {
     return FN.pipe(
       this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
       TE.bindTo('governances'),
-      TE.bindW('resp', ({ governances }) =>
-        this.holaplexService.requestV1(
-          {
-            query: queries.realmProposals.query,
-            variables: {
-              governances: governances.map((g) => g.address.toBase58()),
-            },
-          },
-          queries.realmProposals.resp,
+      TE.bindW('proposals', ({ governances }) =>
+        TE.tryCatch(
+          () => this.holaplexGetProposals(governances.map((g) => g.address)),
+          (e) => new errors.Exception(e),
         ),
       ),
-      TE.bindW('proposals', ({ resp }) => TE.right(resp.proposals)),
       TE.bindW('proposalVoteRecords', ({ proposals }) =>
         this.getVoteRecordsForHolaplexProposals(proposals, environment),
       ),
@@ -282,17 +257,12 @@ export class RealmProposalService {
     return FN.pipe(
       this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
       TE.chainW((governances) =>
-        this.holaplexService.requestV1(
-          {
-            query: queries.realmProposalAddresses.query,
-            variables: {
-              governances: governances.map((g) => g.address.toBase58()),
-            },
-          },
-          queries.realmProposalAddresses.resp,
+        TE.tryCatch(
+          () => this.holaplexGetProposals(governances.map((g) => g.address)),
+          (e) => new errors.Exception(e),
         ),
       ),
-      TE.map(({ proposals }) =>
+      TE.map((proposals) =>
         proposals.map((p) => ({
           publicKey: new PublicKey(p.address),
           updated: this.buildPropsalUpdatedFromHolaplexResponse(p),
@@ -317,18 +287,12 @@ export class RealmProposalService {
     return FN.pipe(
       this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
       TE.bindTo('governances'),
-      TE.bindW('resp', ({ governances }) =>
-        this.holaplexService.requestV1(
-          {
-            query: queries.realmProposals.query,
-            variables: {
-              governances: governances.map((g) => g.address.toBase58()),
-            },
-          },
-          queries.realmProposals.resp,
+      TE.bindW('proposals', ({ governances }) =>
+        TE.tryCatch(
+          () => this.holaplexGetProposals(governances.map((g) => g.address)),
+          (e) => new errors.Exception(e),
         ),
       ),
-      TE.bindW('proposals', ({ resp }) => TE.right(resp.proposals)),
       TE.bindW('proposalVoteRecords', ({ proposals }) =>
         this.getVoteRecordsForHolaplexProposals(proposals, environment),
       ),
@@ -336,21 +300,16 @@ export class RealmProposalService {
         this.getGoverningTokenMintsForHolaplexProposals(proposals, environment),
       ),
       TE.bindW('userVoteRecords', ({ proposals }) =>
-        FN.pipe(
-          requestingUser
-            ? this.holaplexService.requestV1(
-                {
-                  query: queries.voteRecordsForUser.query,
-                  variables: {
-                    user: requestingUser.toBase58(),
-                    proposals: proposals.map((p) => p.address),
-                  },
-                },
-                queries.voteRecordsForUser.resp,
-              )
-            : TE.right({ voteRecords: [] }),
-          TE.map(({ voteRecords }) => voteRecords),
-        ),
+        requestingUser
+          ? TE.tryCatch(
+              () =>
+                this.holaplexGetVoteRecordsForUser(
+                  requestingUser,
+                  proposals.map((p) => new PublicKey(p.address)),
+                ),
+              (e) => new errors.Exception(e),
+            )
+          : TE.right([]),
       ),
       TE.bindW('totalVoterPower', () =>
         this.getTotalVoteWeightInRealm(realmPublicKey, environment),
@@ -522,17 +481,12 @@ export class RealmProposalService {
       ),
       TE.chainW(() => TE.right(missing.concat(notCacheable))),
       TE.chainW((proposals) =>
-        this.holaplexService.requestV1(
-          {
-            query: queries.voteRecordsForProposal.query,
-            variables: {
-              proposals: proposals.map((proposal) => proposal.address),
-            },
-          },
-          queries.voteRecordsForProposal.resp,
+        TE.tryCatch(
+          () => this.holaplexGetVoteRecords(proposals.map((p) => new PublicKey(p.address))),
+          (e) => new errors.Exception(e),
         ),
       ),
-      TE.map(({ voteRecords }) => {
+      TE.map((voteRecords) => {
         const mapping: {
           [key: string]: IT.TypeOf<typeof queries.voteRecordsForProposal.respVoteRecord>[];
         } = {};
@@ -857,6 +811,122 @@ export class RealmProposalService {
       votingEnd: votingEndTime ? new Date(votingEndTime) : null,
     };
   }
+
+  /**
+   * Get a proposal from holaplex
+   */
+  private holaplexGetProposal = this.staleCacheService.dedupe(
+    async (proposalPublicKey: PublicKey) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.realmProposal.query,
+          variables: {
+            proposal: proposalPublicKey.toBase58(),
+          },
+        },
+        queries.realmProposal.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      const { proposals } = resp.right;
+      const proposal = proposals[0];
+
+      if (!proposal) {
+        throw new errors.NotFound();
+      }
+
+      return proposal;
+    },
+    {
+      dedupeKey: (pk) => pk.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get all the proposals belongs to a list of governances
+   */
+  private holaplexGetProposals = this.staleCacheService.dedupe(
+    async (governances: PublicKey[]) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.realmProposals.query,
+          variables: {
+            governances: governances.map((g) => g.toBase58()),
+          },
+        },
+        queries.realmProposals.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right.proposals;
+    },
+    {
+      dedupeKey: (governances) => governances.map((g) => g.toBase58()).join('-'),
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get all the vote records for a list of proposals
+   */
+  private holaplexGetVoteRecords = this.staleCacheService.dedupe(
+    async (proposals: PublicKey[]) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.voteRecordsForProposal.query,
+          variables: {
+            proposals: proposals.map((proposal) => proposal.toBase58()),
+          },
+        },
+        queries.voteRecordsForProposal.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right.voteRecords;
+    },
+    {
+      dedupeKey: (proposals) => proposals.map((p) => p.toBase58()).join('-'),
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get all the vote records for a user and proposal
+   */
+  private holaplexGetVoteRecordsForUser = this.staleCacheService.dedupe(
+    async (user: PublicKey, proposals: PublicKey[]) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.voteRecordsForUser.query,
+          variables: {
+            user: user.toBase58(),
+            proposals: proposals.map((p) => p.toBase58()),
+          },
+        },
+        queries.voteRecordsForUser.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right.voteRecords;
+    },
+    {
+      dedupeKey: (user, proposals) => user.toBase58() + proposals.map((p) => p.toBase58()).join(''),
+      maxStaleAgeMs: hoursToMilliseconds(6),
+    },
+  );
 
   /**
    * Get the total vote weight capacity in a Realm

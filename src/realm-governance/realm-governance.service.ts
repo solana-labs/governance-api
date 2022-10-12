@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 import { BigNumber } from 'bignumber.js';
+import { hoursToMilliseconds } from 'date-fns';
 import * as AR from 'fp-ts/Array';
+import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { Environment } from '@src/lib/types/Environment';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import * as queries from './holaplexQueries';
 
@@ -21,7 +24,10 @@ export interface Governance {
 
 @Injectable()
 export class RealmGovernanceService {
-  constructor(private readonly holaplexService: HolaplexService) {}
+  constructor(
+    private readonly holaplexService: HolaplexService,
+    private readonly staleCacheService: StaleCacheService,
+  ) {}
 
   /**
    * Get a list of governances for a realm
@@ -32,16 +38,10 @@ export class RealmGovernanceService {
     }
 
     return FN.pipe(
-      this.holaplexService.requestV1(
-        {
-          query: queries.realmGovernance.query,
-          variables: {
-            realms: [realmPublicKey.toBase58()],
-          },
-        },
-        queries.realmGovernance.resp,
+      TE.tryCatch(
+        () => this.holaplexGetGovernances(realmPublicKey),
+        (e) => new errors.Exception(e),
       ),
-      TE.map(({ governances }) => governances),
       TE.map(
         AR.map((data) => {
           const governance: Governance = {
@@ -64,4 +64,31 @@ export class RealmGovernanceService {
       ),
     );
   }
+
+  /**
+   * Get governances from holaplex
+   */
+  private readonly holaplexGetGovernances = this.staleCacheService.dedupe(
+    async (realm: PublicKey) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.realmGovernance.query,
+          variables: {
+            realms: [realm.toBase58()],
+          },
+        },
+        queries.realmGovernance.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right.governances;
+    },
+    {
+      dedupeKey: (realm) => realm.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(6),
+    },
+  );
 }

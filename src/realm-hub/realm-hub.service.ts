@@ -1,13 +1,14 @@
 import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 import { Cache } from 'cache-manager';
+import { hoursToMilliseconds } from 'date-fns';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
-import { dedupe } from '@src/lib/cacheAndDedupe';
 import { convertTextToRichTextDocument } from '@src/lib/textManipulation/convertTextToRichTextDocument';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import { RealmHubInfoRoadmapItemStatus } from './dto/RealmHubInfoRoadmapItemStatus';
 
@@ -61,31 +62,6 @@ function extractRoadmapStatus(status?: string) {
 
   return undefined;
 }
-
-const getFollowerCount = dedupe(
-  async (handle: string, bearerToken: string) => {
-    const username = handle.replace('@', '');
-
-    return fetch(
-      `https://api.twitter.com/2/users/by/username/${username}?user.fields=public_metrics`,
-      {
-        method: 'get',
-        headers: {
-          Authorization: `Bearer ${bearerToken}`,
-        },
-      },
-    )
-      .then<{
-        data: { public_metrics: { followers_count: number } };
-      }>((resp) => resp.json())
-      .then((result) => {
-        return result?.data?.public_metrics?.followers_count || 0;
-      });
-  },
-  {
-    key: (handle, bearerToken) => handle + bearerToken,
-  },
-);
 
 export interface CodeCommittedHubInfo {
   about?: {
@@ -141,6 +117,7 @@ export class RealmHubService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly configService: ConfigService,
     private readonly realmSettingsService: RealmSettingsService,
+    private readonly staleCacheService: StaleCacheService,
   ) {}
 
   /**
@@ -191,7 +168,7 @@ export class RealmHubService {
    * Get a count of twitter followers for a twitter handle
    */
   async getTwitterFollowerCountForHandle(handle: string) {
-    return getFollowerCount(handle, this.configService.get('external.twitterBearerKey'));
+    return this.getFollowerCount(handle, this.configService.get('external.twitterBearerKey'));
   }
 
   /**
@@ -288,4 +265,33 @@ export class RealmHubService {
       team: [],
     };
   }
+
+  /**
+   * Get a count of twitter followers
+   */
+  private getFollowerCount = this.staleCacheService.dedupe(
+    async (handle: string, bearerToken: string) => {
+      const username = handle.replace('@', '');
+
+      return fetch(
+        `https://api.twitter.com/2/users/by/username/${username}?user.fields=public_metrics`,
+        {
+          method: 'get',
+          headers: {
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        },
+      )
+        .then<{
+          data: { public_metrics: { followers_count: number } };
+        }>((resp) => resp.json())
+        .then((result) => {
+          return result?.data?.public_metrics?.followers_count || 0;
+        });
+    },
+    {
+      dedupeKey: (handle, bearerToken) => handle + bearerToken,
+      maxStaleAgeMs: hoursToMilliseconds(24),
+    },
+  );
 }

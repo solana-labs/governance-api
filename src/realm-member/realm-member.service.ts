@@ -4,7 +4,9 @@ import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
 import { Connection, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
 import { Cache } from 'cache-manager';
+import { hoursToMilliseconds } from 'date-fns';
 import * as AR from 'fp-ts/Array';
+import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as OP from 'fp-ts/Option';
 import * as TE from 'fp-ts/TaskEither';
@@ -12,11 +14,11 @@ import * as IT from 'io-ts';
 
 import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
-import { dedupe } from '@lib/cacheAndDedupe';
 import { Environment } from '@lib/decorators/CurrentEnvironment';
 import * as errors from '@lib/errors/gql';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import { RealmMemberSort } from './dto/pagination';
 import { RealmMember } from './dto/RealmMember';
@@ -29,65 +31,13 @@ const ENDPOINT =
   'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/';
 const PAGE_SIZE = 25;
 
-const getCivicDetails = dedupe(
-  async (publicKey: PublicKey) => {
-    const connection = new Connection(ENDPOINT);
-
-    const details = await CivicProfile.get(publicKey.toBase58(), {
-      solana: { connection },
-    });
-
-    if (details.name) {
-      return {
-        handle: details.name.value,
-        avatarUrl: details.image?.url,
-        isVerified: details.name.verified,
-      };
-    }
-
-    return undefined;
-  },
-  {
-    key: (publicKey) => publicKey.toBase58(),
-  },
-);
-
-const getTwitterDetails = dedupe(
-  async (publicKey: PublicKey, bearerToken: string) => {
-    const connection = new Connection(ENDPOINT);
-    const namespace = await getNamespaceByName(connection, 'twitter');
-    const displayName = await nameForDisplay(connection, publicKey, namespace.pubkey);
-    const username = displayName.replace('@', '');
-
-    return fetch(
-      `https://api.twitter.com/2/users/by/username/${username}?user.fields=profile_image_url`,
-      {
-        method: 'get',
-        headers: {
-          Authorization: `Bearer ${bearerToken}`,
-        },
-      },
-    )
-      .then<{
-        data: { profile_image_url: string };
-      }>((resp) => resp.json())
-      .then((result) => result?.data?.profile_image_url)
-      .then((url) => ({
-        avatarUrl: url ? url.replace('_normal', '') : undefined,
-        handle: displayName,
-      }));
-  },
-  {
-    key: (publicKey, bearerToken) => publicKey.toBase58() + bearerToken,
-  },
-);
-
 @Injectable()
 export class RealmMemberService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
     private readonly holaplexService: HolaplexService,
+    private readonly staleCacheService: StaleCacheService,
   ) {}
 
   /**
@@ -113,7 +63,7 @@ export class RealmMemberService {
           ? TE.right(result)
           : FN.pipe(
               TE.tryCatch(
-                () => getCivicDetails(userPublicKey),
+                () => this.getCivicDetails(userPublicKey),
                 (e) => new errors.Exception(e),
               ),
               TE.chainW((result) =>
@@ -136,16 +86,10 @@ export class RealmMemberService {
     }
 
     return FN.pipe(
-      this.holaplexService.requestV1(
-        {
-          query: queries.realmMembers.query,
-          variables: {
-            realm: realmPublicKey.toBase58(),
-          },
-        },
-        queries.realmMembers.resp,
+      TE.tryCatch(
+        () => this.holaplexGetTokenOwnerRecords(realmPublicKey),
+        (e) => new errors.Exception(e),
       ),
-      TE.map(({ tokenOwnerRecords }) => tokenOwnerRecords),
       TE.map(
         AR.map(({ address, governingTokenDepositAmount }) => ({
           publicKey: new PublicKey(address),
@@ -164,16 +108,11 @@ export class RealmMemberService {
     }
 
     return FN.pipe(
-      this.holaplexService.requestV1(
-        {
-          query: queries.realmMembers.query,
-          variables: {
-            realm: realmPublicKey.toBase58(),
-          },
-        },
-        queries.realmMembers.resp,
+      TE.tryCatch(
+        () => this.holaplexGetTokenOwnerRecords(realmPublicKey),
+        (e) => new errors.Exception(e),
       ),
-      TE.map(({ tokenOwnerRecords }) => tokenOwnerRecords.length),
+      TE.map((tokenOwnerRecords) => tokenOwnerRecords.length),
     );
   }
 
@@ -198,7 +137,7 @@ export class RealmMemberService {
           : FN.pipe(
               TE.tryCatch(
                 () =>
-                  getTwitterDetails(
+                  this.getTwitterDetails(
                     userPublicKey,
                     this.configService.get('external.twitterBearerKey'),
                   ),
@@ -461,6 +400,33 @@ export class RealmMemberService {
   }
 
   /**
+   * Get a list of token owner records from holaplex
+   */
+  private holaplexGetTokenOwnerRecords = this.staleCacheService.dedupe(
+    async (realmPublicKey: PublicKey) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.realmMembers.query,
+          variables: {
+            realm: realmPublicKey.toBase58(),
+          },
+        },
+        queries.realmMembers.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right.tokenOwnerRecords;
+    },
+    {
+      dedupeKey: (pk) => pk.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(6),
+    },
+  );
+
+  /**
    * Create a GQL list edge
    */
   private buildEdge(member: RealmMember, sort: RealmMemberSort) {
@@ -469,6 +435,67 @@ export class RealmMemberService {
       cursor: this.toCursor(member, sort),
     };
   }
+
+  /**
+   * Get civic details about a user
+   */
+  private getCivicDetails = this.staleCacheService.dedupe(
+    async (publicKey: PublicKey) => {
+      const connection = new Connection(ENDPOINT);
+
+      const details = await CivicProfile.get(publicKey.toBase58(), {
+        solana: { connection },
+      });
+
+      if (details.name) {
+        return {
+          handle: details.name.value,
+          avatarUrl: details.image?.url,
+          isVerified: details.name.verified,
+        };
+      }
+
+      return undefined;
+    },
+    {
+      dedupeKey: (publicKey) => publicKey.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get twitter details about a user
+   */
+  private getTwitterDetails = this.staleCacheService.dedupe(
+    async (publicKey: PublicKey, bearerToken: string) => {
+      const connection = new Connection(ENDPOINT);
+      const namespace = await getNamespaceByName(connection, 'twitter');
+      const displayName = await nameForDisplay(connection, publicKey, namespace.pubkey);
+      const username = displayName.replace('@', '');
+
+      return fetch(
+        `https://api.twitter.com/2/users/by/username/${username}?user.fields=profile_image_url`,
+        {
+          method: 'get',
+          headers: {
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        },
+      )
+        .then<{
+          data: { profile_image_url: string };
+        }>((resp) => resp.json())
+        .then((result) => result?.data?.profile_image_url)
+        .then((url) => ({
+          avatarUrl: url ? url.replace('_normal', '') : undefined,
+          handle: displayName,
+        }));
+    },
+    {
+      dedupeKey: (publicKey, bearerToken) => publicKey.toBase58() + bearerToken,
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
 
   /**
    * Sorts a list of members alphabetically

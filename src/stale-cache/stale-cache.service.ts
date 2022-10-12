@@ -52,7 +52,15 @@ export class StaleCacheService {
               res(result.value);
             })
             .catch((e) => {
-              this.logger.error(e);
+              if (e instanceof Error) {
+                this.logger.error({
+                  name: e.name,
+                  message: e.message,
+                  stack: e.stack,
+                });
+              } else {
+                this.logger.error(e);
+              }
 
               if (cachedValue) {
                 res(cachedValue.value);

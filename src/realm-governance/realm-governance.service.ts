@@ -32,37 +32,28 @@ export class RealmGovernanceService {
   /**
    * Get a list of governances for a realm
    */
-  getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
+  async getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
-    return FN.pipe(
-      TE.tryCatch(
-        () => this.holaplexGetGovernances(realmPublicKey),
-        (e) => new errors.Exception(e),
-      ),
-      TE.map(
-        AR.map((data) => {
-          const governance: Governance = {
-            address: new PublicKey(data.address),
-            communityMint: data.realm?.communityMint
-              ? new PublicKey(data.realm.communityMint)
-              : null,
-            councilMint: data.realm?.realmConfig?.councilMint
-              ? new PublicKey(data.realm.realmConfig.councilMint)
-              : null,
-            communityMintMaxVoteWeight: data.realm?.realmConfig?.communityMintMaxVoteWeight
-              ? new BigNumber(data.realm.realmConfig.communityMintMaxVoteWeight)
-              : null,
-            communityMintMaxVoteWeightSource:
-              data.realm?.realmConfig?.communityMintMaxVoteWeightSource || null,
-          };
+    const governances = await this.holaplexGetGovernances(realmPublicKey);
+    return governances.map((data) => {
+      const governance: Governance = {
+        address: new PublicKey(data.address),
+        communityMint: data.realm?.communityMint ? new PublicKey(data.realm.communityMint) : null,
+        councilMint: data.realm?.realmConfig?.councilMint
+          ? new PublicKey(data.realm.realmConfig.councilMint)
+          : null,
+        communityMintMaxVoteWeight: data.realm?.realmConfig?.communityMintMaxVoteWeight
+          ? new BigNumber(data.realm.realmConfig.communityMintMaxVoteWeight)
+          : null,
+        communityMintMaxVoteWeightSource:
+          data.realm?.realmConfig?.communityMintMaxVoteWeightSource || null,
+      };
 
-          return governance;
-        }),
-      ),
-    );
+      return governance;
+    });
   }
 
   /**

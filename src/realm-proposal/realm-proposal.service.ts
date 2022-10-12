@@ -208,7 +208,10 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.tryCatch(
+        () => this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+        (e) => new errors.Exception(e),
+      ),
       TE.bindTo('governances'),
       TE.bindW('proposals', ({ governances }) =>
         TE.tryCatch(
@@ -255,7 +258,10 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.tryCatch(
+        () => this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+        (e) => new errors.Exception(e),
+      ),
       TE.chainW((governances) =>
         TE.tryCatch(
           () => this.holaplexGetProposals(governances.map((g) => g.address)),
@@ -285,7 +291,10 @@ export class RealmProposalService {
     }
 
     return FN.pipe(
-      this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+      TE.tryCatch(
+        () => this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
+        (e) => new errors.Exception(e),
+      ),
       TE.bindTo('governances'),
       TE.bindW('proposals', ({ governances }) =>
         TE.tryCatch(

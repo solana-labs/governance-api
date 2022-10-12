@@ -150,16 +150,11 @@ export class OnChainService {
         environment,
       );
 
-      const governancesResp = await this.realmGovernanceService.getGovernancesForRealm(
+      const governances = await this.realmGovernanceService.getGovernancesForRealm(
         realmPublicKey,
         environment,
-      )();
+      );
 
-      if (EI.isLeft(governancesResp)) {
-        throw governancesResp.left;
-      }
-
-      const governances = governancesResp.right;
       const owners = await Promise.all(
         governances.map((governance) =>
           getNativeTreasuryAddress(new PublicKey(settings.programId), governance.address).then(

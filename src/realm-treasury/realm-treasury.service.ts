@@ -36,10 +36,14 @@ export class RealmTreasuryService {
     }
 
     return FN.pipe(
-      TE.sequenceArray([
-        this.onChainService.getTokenAccountsInRealm(realmPublicKey, environment),
-        this.onChainService.getAuxiliaryTokenAccountsInRealm(realmPublicKey, environment),
-      ]),
+      TE.tryCatch(
+        () =>
+          Promise.all([
+            this.onChainService.getTokenAccountsInRealm(realmPublicKey, environment),
+            this.onChainService.getAuxiliaryTokenAccountsInRealm(realmPublicKey, environment),
+          ]),
+        (e) => new errors.Exception(e),
+      ),
       TE.map(([tokenAccounts, auxiliaryTokenAccounts]) => [
         ...tokenAccounts,
         ...auxiliaryTokenAccounts,

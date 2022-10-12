@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
-import * as AR from 'fp-ts/Array';
+import { hoursToMilliseconds } from 'date-fns';
 import * as EI from 'fp-ts/Either';
-import * as FN from 'fp-ts/function';
-import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
-import {
-  CodeCommittedSettings,
-  RealmSettingsService,
-} from '@src/realm-settings/realm-settings.service';
+import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import * as queries from './holaplexQueries';
 
@@ -34,18 +30,54 @@ export class RealmService {
     private readonly configService: ConfigService,
     private readonly holaplexService: HolaplexService,
     private readonly realmSettingsService: RealmSettingsService,
+    private readonly staleCacheService: StaleCacheService,
   ) {}
 
   /**
    * Fetch a Realm
    */
-  getRealm(publicKey: PublicKey, environment: Environment) {
+  async getRealm(publicKey: PublicKey, environment: Environment) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
-    return FN.pipe(
-      this.holaplexService.requestV1(
+    const { name } = await this.getHolaplexRealm(publicKey);
+    const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
+      publicKey,
+      environment,
+    );
+
+    return {
+      bannerImageUrl: settings.bannerImage
+        ? normalizeCodeCommittedUrl(
+            settings.bannerImage,
+            this.configService.get('app.codeCommitedInfoUrl'),
+          )
+        : undefined,
+      iconUrl: settings.ogImage
+        ? normalizeCodeCommittedUrl(
+            settings.ogImage,
+            this.configService.get('app.codeCommitedInfoUrl'),
+          )
+        : undefined,
+      name: settings.displayName || name,
+      programPublicKey: settings.programId ? new PublicKey(settings.programId) : undefined,
+      publicKey: publicKey,
+      shortDescription: settings.shortDescription,
+      symbol: settings.symbol,
+      // external links
+      discordUrl: settings.discord,
+      githubUrl: settings.github,
+      instagramUrl: settings.instagram,
+      linkedInUrl: settings.linkedin,
+      twitterHandle: settings.twitter,
+      websiteUrl: settings.website,
+    } as const;
+  }
+
+  private readonly getHolaplexRealm = this.staleCacheService.dedupe(
+    async (publicKey: PublicKey) => {
+      const resp = await this.holaplexService.requestV1(
         {
           query: queries.realm.query,
           variables: {
@@ -53,55 +85,23 @@ export class RealmService {
           },
         },
         queries.realm.resp,
-      ),
-      TE.map(({ realms }) => realms),
-      TE.map(AR.head),
-      TE.chainW(TE.fromOption(() => new errors.NotFound())),
-      TE.map(({ address, name }) => ({
-        name,
-        publicKey: new PublicKey(address),
-      })),
-      TE.bindTo('onchaindata'),
-      TE.bindW('codecommitted', () =>
-        FN.pipe(
-          this.realmSettingsService.getCodeCommittedSettingsForRealm(publicKey, environment),
-          TE.match(
-            () => EI.right({} as Partial<CodeCommittedSettings>),
-            (settings) => EI.right(settings as Partial<CodeCommittedSettings>),
-          ),
-        ),
-      ),
-      TE.map(
-        ({ onchaindata, codecommitted }) =>
-          ({
-            bannerImageUrl: codecommitted.bannerImage
-              ? normalizeCodeCommittedUrl(
-                  codecommitted.bannerImage,
-                  this.configService.get('app.codeCommitedInfoUrl'),
-                )
-              : undefined,
-            iconUrl: codecommitted.ogImage
-              ? normalizeCodeCommittedUrl(
-                  codecommitted.ogImage,
-                  this.configService.get('app.codeCommitedInfoUrl'),
-                )
-              : undefined,
-            name: codecommitted.displayName || onchaindata.name,
-            programPublicKey: codecommitted.programId
-              ? new PublicKey(codecommitted.programId)
-              : undefined,
-            publicKey: onchaindata.publicKey,
-            shortDescription: codecommitted.shortDescription,
-            symbol: codecommitted.symbol,
-            // external links
-            discordUrl: codecommitted.discord,
-            githubUrl: codecommitted.github,
-            instagramUrl: codecommitted.instagram,
-            linkedInUrl: codecommitted.linkedin,
-            twitterHandle: codecommitted.twitter,
-            websiteUrl: codecommitted.website,
-          } as const),
-      ),
-    );
-  }
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      const realm = resp.right.realms[0];
+
+      if (!realm) {
+        throw new errors.NotFound();
+      }
+
+      return realm;
+    },
+    {
+      dedupeKey: (pk) => pk.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(12),
+    },
+  );
 }

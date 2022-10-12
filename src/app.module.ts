@@ -33,6 +33,7 @@ import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 import { UserModule } from '@src/user/user.module';
 
 import { RealmHubModule } from './realm-hub/realm-hub.module';
+import { StaleCacheModule } from './stale-cache/stale-cache.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { RealmHubModule } from './realm-hub/realm-hub.module';
     TaskDedupeModule,
     RealmFeedItemCommentModule,
     RealmHubModule,
+    StaleCacheModule,
   ],
   controllers: [AppController],
   providers: [

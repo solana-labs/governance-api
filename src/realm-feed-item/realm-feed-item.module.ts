@@ -5,6 +5,7 @@ import { ConfigModule } from '@src/config/config.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
+import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 
 import { RealmFeedItem } from './entities/RealmFeedItem.entity';
@@ -25,6 +26,7 @@ import { RealmFeedItemService } from './realm-feed-item.service';
     TaskDedupeModule,
     RealmFeedItemCommentModule,
     ConfigModule,
+    StaleCacheModule,
   ],
   providers: [
     RealmFeedItemResolver,

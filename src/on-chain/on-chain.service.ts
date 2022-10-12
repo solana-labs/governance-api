@@ -9,10 +9,8 @@ import {
 import { AccountInfo, MintInfo, u64 } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Cache } from 'cache-manager';
-import * as AR from 'fp-ts/Array';
-import * as FN from 'fp-ts/function';
-import * as OP from 'fp-ts/Option';
-import * as TE from 'fp-ts/TaskEither';
+import { hoursToMilliseconds } from 'date-fns';
+import * as EI from 'fp-ts/Either';
 
 import * as errors from '@lib/errors/gql';
 import { AUXILIARY_TOKEN_ASSETS } from '@lib/treasuryAssets/AUXILIARY_TOKEN_ASSETS';
@@ -22,9 +20,9 @@ import { parseMintAccountData } from '@lib/treasuryAssets/parseMintAccountData';
 import { parseTokenAccountData } from '@lib/treasuryAssets/parseTokenAccountData';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
-import { dedupe } from '@src/lib/cacheAndDedupe';
 import { RealmGovernanceService } from '@src/realm-governance/realm-governance.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
+import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 const SOL_MINT_PK = new PublicKey('So11111111111111111111111111111111111111112');
 const DEFAULT_NFT_TREASURY_MINT = 'GNFTm5rz1Kzvq94G7DJkcrEUnCypeQYf7Ya8arPoHWvw';
@@ -62,60 +60,6 @@ function dedupeByPublicKey<T extends { publicKey: PublicKey }>(list: T[]) {
   return dedupedByPublicKey;
 }
 
-const getMintTokenInfo = dedupe(
-  (mintPublicKey: PublicKey) => {
-    const connection = new Connection(ENDPOINT);
-
-    return fetch(connection.rpcEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: mintPublicKey.toBase58(),
-        method: 'getAccountInfo',
-        params: [
-          mintPublicKey.toBase58(),
-          {
-            commitment: connection.commitment,
-            encoding: 'base64',
-          },
-        ],
-      }),
-    }).then<{
-      result: {
-        context: {
-          apiVersion: string;
-          slot: number;
-        };
-        value: {
-          data: any[];
-          executable: boolean;
-          lamports: number;
-          owner: string;
-          rentEpoch: number;
-        };
-      };
-    }>((resp) => {
-      return resp.json();
-    });
-  },
-  {
-    key: (publicKey) => publicKey.toBase58(),
-  },
-);
-
-const getAssets = dedupe(
-  (pks: PublicKey[]) => {
-    const connection = new Connection(ENDPOINT);
-    return getRawAssetAccounts(pks, connection.commitment);
-  },
-  {
-    key: (pks) => pks.map((pk) => pk.toBase58()).join(''),
-  },
-);
-
 type RawTokenAsset = Awaited<ReturnType<typeof getRawAssetAccounts>>[number]['result'][number];
 
 interface AssetOwner {
@@ -140,338 +84,348 @@ export class OnChainService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmSettingsService: RealmSettingsService,
+    private readonly staleCacheService: StaleCacheService,
   ) {}
 
   /**
    * Convert raw token assets
    */
-  convertRawTokenAssets(
+  async convertRawTokenAssets(
     assets: RawTokenAsset[],
     assetOwners: AssetOwner[],
     environment: Environment,
   ) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
-    return FN.pipe(
-      assets,
-      AR.map(({ account, pubkey }) => {
-        const publicKey = new PublicKey(pubkey);
-        const data = Buffer.from(account.data[0], 'base64');
-        const parsedAccount = parseTokenAccountData(publicKey, data);
+    const converted = assets.map(({ account, pubkey }) => {
+      const publicKey = new PublicKey(pubkey);
+      const data = Buffer.from(account.data[0], 'base64');
+      const parsedAccount = parseTokenAccountData(publicKey, data);
 
-        const assetOwner = assetOwners.find(
-          (assetOwner) =>
-            assetOwner.governance.equals(parsedAccount.owner) ||
-            assetOwner.wallet.equals(parsedAccount.owner),
-        );
+      const assetOwner = assetOwners.find(
+        (assetOwner) =>
+          assetOwner.governance.equals(parsedAccount.owner) ||
+          assetOwner.wallet.equals(parsedAccount.owner),
+      );
 
-        if (!assetOwner) {
-          return null;
-        }
+      if (!assetOwner) {
+        return null;
+      }
 
-        return {
-          publicKey,
-          account: parsedAccount,
-          governancePublicKey: assetOwner.governance,
-          walletPublicKey: assetOwner.wallet,
-        };
-      }),
-      AR.filter(exists),
-      dedupeByPublicKey,
-      (accounts) =>
-        TE.sequenceArray(
-          accounts.map((account) =>
-            FN.pipe(
-              this.getTokenMintInfo(account.account.mint, environment),
-              TE.map((mintInfo) => ({ ...account, mintInfo } as Account)),
-            ),
-          ),
-        ),
+      return {
+        publicKey,
+        account: parsedAccount,
+        governancePublicKey: assetOwner.governance,
+        walletPublicKey: assetOwner.wallet,
+      };
+    });
+
+    const filtered = converted.filter(exists);
+    const deduped = dedupeByPublicKey(filtered);
+    const withMints: Account[] = await Promise.all(
+      deduped.map((account) =>
+        this.getTokenMintInfo(account.account.mint, environment).then((mintInfo) => ({
+          ...account,
+          mintInfo,
+        })),
+      ),
     );
+
+    return withMints;
   }
 
   /**
    * Get a list of public keys that could potentially hold asset accounts
    */
-  getAssetOwnersInRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
+  getAssetOwnersInRealm = this.staleCacheService.dedupe(
+    async (realmPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
 
-    return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
-      TE.bindTo('settings'),
-      TE.bind('governances', () =>
-        this.realmGovernanceService.getGovernancesForRealm(realmPublicKey, environment),
-      ),
-      TE.chainW(({ governances, settings }) =>
-        FN.pipe(
-          TE.sequenceArray(
-            governances.map((governance) =>
-              TE.tryCatch(
-                () =>
-                  getNativeTreasuryAddress(
-                    new PublicKey(settings.programId),
-                    governance.address,
-                  ).then((wallet) => ({ wallet, governance: governance.address })),
-                (e) => new errors.Exception(e),
-              ),
-            ),
+      const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
+        realmPublicKey,
+        environment,
+      );
+
+      const governances = await this.realmGovernanceService.getGovernancesForRealm(
+        realmPublicKey,
+        environment,
+      );
+
+      const owners = await Promise.all(
+        governances.map((governance) =>
+          getNativeTreasuryAddress(new PublicKey(settings.programId), governance.address).then(
+            (wallet) => ({ wallet, governance: governance.address }),
           ),
         ),
-      ),
-    );
-  }
+      );
+      return owners;
+    },
+    {
+      dedupeKey: (pk, env) => pk.toBase58() + env,
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
 
   /**
    * Get token mint info
    */
-  getTokenMintInfo(mintPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
+  getTokenMintInfo = this.staleCacheService.dedupe(
+    async (mintPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
 
-    const cacheKey = mintPublicKey.toBase58();
-
-    return FN.pipe(
-      TE.tryCatch(
-        () =>
-          this.cacheManager.get<{
-            publicKey: PublicKey;
-            account: MintInfo;
-          }>(cacheKey),
-        (e) => new errors.Exception(e),
-      ),
-      TE.map(OP.fromNullable),
-      TE.chainW((cachedMint) =>
-        OP.isSome(cachedMint)
-          ? TE.right(cachedMint.value)
-          : FN.pipe(
-              TE.tryCatch(
-                () => getMintTokenInfo(mintPublicKey),
-                (e) => new errors.Exception(e),
-              ),
-              TE.map(({ result }) => {
-                return result;
-              }),
-              TE.map(({ value }) => {
-                const publicKey = mintPublicKey;
-                const data = Buffer.from(value.data[0], 'base64');
-                const account = parseMintAccountData(data);
-                return { publicKey, account };
-              }),
-              TE.chainW((mintInfo) =>
-                TE.tryCatch(
-                  () => this.cacheManager.set(cacheKey, mintInfo, { ttl: 60 * 60 * 24 }),
-                  (e) => new errors.Exception(e),
-                ),
-              ),
-            ),
-      ),
-    );
-  }
+      const {
+        result: { value },
+      } = await this.getOnChainTokenMintInfo(mintPublicKey);
+      const publicKey = mintPublicKey;
+      const data = Buffer.from(value.data[0], 'base64');
+      const account = parseMintAccountData(data);
+      return { publicKey, account };
+    },
+    {
+      dedupeKey: (pk, env) => pk.toBase58() + env,
+      maxStaleAgeMs: hoursToMilliseconds(2),
+    },
+  );
 
   /**
    * Get a list of all the assets in a realm
    */
-  getTokenAccountsInRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
+  getTokenAccountsInRealm = this.staleCacheService.dedupe(
+    async (realmPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
 
-    return FN.pipe(
-      this.getAssetOwnersInRealm(realmPublicKey, environment),
-      TE.bindTo('assetOwners'),
-      TE.bindW('solAccounts', ({ assetOwners }) =>
-        FN.pipe(
-          TE.tryCatch(
-            () => getSolAccounts(assetOwners.map((owner) => owner.wallet)),
-            (e) => new errors.Exception(e),
-          ),
-        ),
-      ),
-      TE.bindW('tokenAccounts', ({ assetOwners }) =>
-        FN.pipe(
-          TE.tryCatch(
-            () =>
-              getAssets(assetOwners.map(({ governance, wallet }) => [governance, wallet]).flat()),
-            (e) => new errors.Exception(e),
-          ),
-          TE.map((results) => results.map(({ result }) => result).flat()),
-          TE.chainW((rawAssets) =>
-            this.convertRawTokenAssets(rawAssets, [...assetOwners], environment),
-          ),
-        ),
-      ),
-      TE.map(({ assetOwners, solAccounts, tokenAccounts }) => {
-        const lamportMap = solAccounts.reduce((cur, acc) => {
-          cur[acc.owner.toBase58()] = acc.value?.lamports;
-          return cur;
-        }, {} as { [addr: string]: number | undefined });
+      const assetOwners = await this.getAssetOwnersInRealm(realmPublicKey, environment);
+      const solAccounts = await getSolAccounts(assetOwners.map((owner) => owner.wallet));
+      const tokenAccountsResp = await this.getAssets(
+        assetOwners.map(({ governance, wallet }) => [governance, wallet]).flat(),
+      );
+      const tokenAccountsRaw = tokenAccountsResp.map(({ result }) => result).flat();
+      const tokenAccounts = await this.convertRawTokenAssets(
+        tokenAccountsRaw,
+        assetOwners,
+        environment,
+      );
 
-        const unaccountedSolAccounts = new Set(Object.keys(lamportMap));
+      const lamportMap = solAccounts.reduce((cur, acc) => {
+        cur[acc.owner.toBase58()] = acc.value?.lamports;
+        return cur;
+      }, {} as { [addr: string]: number | undefined });
 
-        const accounts = tokenAccounts
-          .map((account) => {
-            let amount = account.account.amount;
+      const unaccountedSolAccounts = new Set(Object.keys(lamportMap));
 
-            if (account.account.isNative) {
-              const wallet = account.walletPublicKey.toBase58();
-              const solAmount = lamportMap[wallet];
+      const accounts = tokenAccounts
+        .map((account) => {
+          let amount = account.account.amount;
 
-              if (solAmount) {
-                amount = new u64(solAmount);
-                unaccountedSolAccounts.delete(wallet);
-              }
-            }
+          if (account.account.isNative) {
+            const wallet = account.walletPublicKey.toBase58();
+            const solAmount = lamportMap[wallet];
 
-            return {
-              ...account,
-              account: {
-                ...account.account,
-                amount,
-              },
-            };
-          })
-          .filter((account) => {
-            // ignore NFT accounts
-            if (account.mintInfo.account.mintAuthority?.toBase58() === DEFAULT_NFT_TREASURY_MINT) {
-              return false;
-            }
-
-            // ignore 1 supply tokens
-            if (account.mintInfo.account.supply.cmpn(1) === 0) {
-              return false;
-            }
-
-            return true;
-          });
-
-        const unaccounted: Account[] = [];
-
-        if (unaccountedSolAccounts.size > 0) {
-          for (const key of unaccountedSolAccounts.keys()) {
-            const lamports = lamportMap[key];
-            const owner = assetOwners.find(
-              (owner) => owner.governance.toBase58() === key || owner.wallet.toBase58() === key,
-            );
-
-            if (lamports && owner) {
-              unaccounted.push({
-                account: {
-                  address: owner.wallet,
-                  mint: SOL_MINT.publicKey,
-                  owner: SOL_MINT_PK,
-                  amount: new u64(lamports),
-                  delegate: null,
-                  delegatedAmount: new u64(0),
-                  isInitialized: true,
-                  isFrozen: false,
-                  isNative: true,
-                  rentExemptReserve: new u64('2039280'),
-                  closeAuthority: null,
-                },
-                governancePublicKey: owner.governance,
-                mintInfo: SOL_MINT,
-                publicKey: owner.wallet,
-                walletPublicKey: owner.wallet,
-              });
+            if (solAmount) {
+              amount = new u64(solAmount);
+              unaccountedSolAccounts.delete(wallet);
             }
           }
-        }
 
-        return accounts.concat(unaccounted);
-      }),
-    );
-  }
+          return {
+            ...account,
+            account: {
+              ...account.account,
+              amount,
+            },
+          };
+        })
+        .filter((account) => {
+          // ignore NFT accounts
+          if (account.mintInfo.account.mintAuthority?.toBase58() === DEFAULT_NFT_TREASURY_MINT) {
+            return false;
+          }
+
+          // ignore 1 supply tokens
+          if (account.mintInfo.account.supply.cmpn(1) === 0) {
+            return false;
+          }
+
+          return true;
+        });
+
+      const unaccounted: Account[] = [];
+
+      if (unaccountedSolAccounts.size > 0) {
+        for (const key of unaccountedSolAccounts.keys()) {
+          const lamports = lamportMap[key];
+          const owner = assetOwners.find(
+            (owner) => owner.governance.toBase58() === key || owner.wallet.toBase58() === key,
+          );
+
+          if (lamports && owner) {
+            unaccounted.push({
+              account: {
+                address: owner.wallet,
+                mint: SOL_MINT.publicKey,
+                owner: SOL_MINT_PK,
+                amount: new u64(lamports),
+                delegate: null,
+                delegatedAmount: new u64(0),
+                isInitialized: true,
+                isFrozen: false,
+                isNative: true,
+                rentExemptReserve: new u64('2039280'),
+                closeAuthority: null,
+              },
+              governancePublicKey: owner.governance,
+              mintInfo: SOL_MINT,
+              publicKey: owner.wallet,
+              walletPublicKey: owner.wallet,
+            });
+          }
+        }
+      }
+
+      return accounts.concat(unaccounted);
+    },
+    {
+      dedupeKey: (pk, env) => pk.toBase58() + env,
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
 
   /**
    * Get a list of auxilliary token accounts in a realm
    */
-  getAuxiliaryTokenAccountsInRealm(realmPublicKey: PublicKey, environment: Environment) {
+  async getAuxiliaryTokenAccountsInRealm(realmPublicKey: PublicKey, environment: Environment) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
     const auxilliaryAccounts = AUXILIARY_TOKEN_ASSETS[realmPublicKey.toBase58()] || [];
 
     if (!auxilliaryAccounts.length) {
-      return TE.right([]);
+      return [];
     }
 
     const governances = auxilliaryAccounts.map((list) => list.owner);
     const accounts = auxilliaryAccounts.map((list) => list.accounts).flat();
-
-    return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
-      TE.chainW(({ programId }) =>
-        TE.sequenceArray(
-          governances.map((governance) =>
-            FN.pipe(
-              TE.tryCatch(
-                () => getNativeTreasuryAddress(new PublicKey(programId), governance),
-                (e) => new errors.Exception(e),
-              ),
-              TE.map((wallet) => ({ governance, wallet })),
-            ),
-          ),
-        ),
-      ),
-      TE.bindTo('assetOwners'),
-      TE.bind('rawTokenAccounts', () =>
-        FN.pipe(
-          TE.tryCatch(
-            () => getAssets(governances),
-            (e) => new errors.Exception(e),
-          ),
-          TE.map((results) => results.map(({ result }) => result).flat()),
-          TE.map((rawAssets) => {
-            const valid: RawTokenAsset[] = [];
-
-            for (const asset of rawAssets) {
-              for (const account of accounts) {
-                if (asset.pubkey === account.toBase58()) {
-                  valid.push(asset);
-                }
-              }
-            }
-
-            return valid;
-          }),
-        ),
-      ),
-      TE.chainW(({ rawTokenAccounts, assetOwners }) =>
-        this.convertRawTokenAssets(rawTokenAccounts, [...assetOwners], environment),
+    const { programId } = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
+      realmPublicKey,
+      environment,
+    );
+    const assetOwners = await Promise.all(
+      governances.map((governance) =>
+        getNativeTreasuryAddress(new PublicKey(programId), governance).then((wallet) => ({
+          wallet,
+          governance,
+        })),
       ),
     );
+    const tokenAccountsResp = await this.getAssets(governances);
+    const tokenAccountsRaw = tokenAccountsResp.map(({ result }) => result).flat();
+    const valid: RawTokenAsset[] = [];
+
+    for (const asset of tokenAccountsRaw) {
+      for (const account of accounts) {
+        if (asset.pubkey === account.toBase58()) {
+          valid.push(asset);
+        }
+      }
+    }
+
+    const tokenAssets = await this.convertRawTokenAssets(valid, assetOwners, environment);
+    return tokenAssets;
   }
 
   /**
    * Get a list of governances for a realm
    */
-  getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
+  getGovernancesForRealm = this.staleCacheService.dedupe(
+    async (realmPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
 
-    return FN.pipe(
-      this.realmSettingsService.getCodeCommittedSettingsForRealm(realmPublicKey, environment),
-      TE.chainW(({ programId }) =>
-        TE.tryCatch(
-          () =>
-            getGovernanceAccounts(new Connection(ENDPOINT), new PublicKey(programId), Governance, [
-              pubkeyFilter(1, realmPublicKey) as MemcmpFilter,
-            ]),
-          (e) => new errors.Exception(e),
-        ),
-      ),
-      TE.map(
-        AR.map((governance) => ({
-          address: governance.pubkey,
-        })),
-      ),
-    );
-  }
+      const { programId } = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
+        realmPublicKey,
+        environment,
+      );
+
+      const governances = await getGovernanceAccounts(
+        new Connection(ENDPOINT),
+        new PublicKey(programId),
+        Governance,
+        [pubkeyFilter(1, realmPublicKey) as MemcmpFilter],
+      );
+
+      return governances.map((governance) => ({
+        address: governance.pubkey,
+      }));
+    },
+    {
+      dedupeKey: (pk, env) => pk.toBase58() + env,
+      maxStaleAgeMs: hoursToMilliseconds(2),
+    },
+  );
+
+  private getAssets = this.staleCacheService.dedupe(
+    (pks: PublicKey[]) => {
+      const connection = new Connection(ENDPOINT);
+      return getRawAssetAccounts(pks, connection.commitment);
+    },
+    {
+      dedupeKey: (pks) => pks.map((pk) => pk.toBase58()).join(''),
+      maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  private getOnChainTokenMintInfo = this.staleCacheService.dedupe(
+    (mintPublicKey: PublicKey) => {
+      const connection = new Connection(ENDPOINT);
+
+      return fetch(connection.rpcEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: mintPublicKey.toBase58(),
+          method: 'getAccountInfo',
+          params: [
+            mintPublicKey.toBase58(),
+            {
+              commitment: connection.commitment,
+              encoding: 'base64',
+            },
+          ],
+        }),
+      }).then<{
+        result: {
+          context: {
+            apiVersion: string;
+            slot: number;
+          };
+          value: {
+            data: any[];
+            executable: boolean;
+            lamports: number;
+            owner: string;
+            rentEpoch: number;
+          };
+        };
+      }>((resp) => {
+        return resp.json();
+      });
+    },
+    {
+      dedupeKey: (publicKey) => publicKey.toBase58(),
+      maxStaleAgeMs: hoursToMilliseconds(12),
+    },
+  );
 }

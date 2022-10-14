@@ -23,6 +23,8 @@ import {
   RealmFeedItemCommentService,
   RealmFeedItemCommentCursor,
 } from '@src/realm-feed-item-comment/realm-feed-item-comment.service';
+import { Realm } from '@src/realm/dto/Realm';
+import { RealmService } from '@src/realm/realm.service';
 
 import { RealmFeedItem, RealmFeedItemPost, RealmFeedItemProposal } from './dto/RealmFeedItem';
 import { RealmFeedItemVoteType } from './dto/RealmFeedItemVoteType';
@@ -30,7 +32,10 @@ import { RealmFeedItemService } from './realm-feed-item.service';
 
 @Resolver(() => RealmFeedItemPost)
 export class RealmFeedItemPostResolver {
-  constructor(private readonly realmFeedItemCommentService: RealmFeedItemCommentService) {}
+  constructor(
+    private readonly realmService: RealmService,
+    private readonly realmFeedItemCommentService: RealmFeedItemCommentService,
+  ) {}
 
   @ResolveField(() => ClippedRichTextDocument, {
     description: 'A clipped version of the post document',
@@ -117,11 +122,25 @@ export class RealmFeedItemPostResolver {
       feedItemId: post.id,
     });
   }
+
+  @ResolveField(() => Realm, {
+    description: 'The realm the post is in',
+  })
+  realm(
+    @Root() post: RealmFeedItemPost,
+    @CurrentEnvironment()
+    environment: Environment,
+  ) {
+    return this.realmService.getRealm(post.realmPublicKey, environment);
+  }
 }
 
 @Resolver(() => RealmFeedItemProposal)
 export class RealmFeedItemProposalResolver {
-  constructor(private readonly realmFeedItemCommentService: RealmFeedItemCommentService) {}
+  constructor(
+    private readonly realmService: RealmService,
+    private readonly realmFeedItemCommentService: RealmFeedItemCommentService,
+  ) {}
 
   @ResolveField(() => ClippedRichTextDocument, {
     description: 'A clipped version of the proposal document',
@@ -207,6 +226,17 @@ export class RealmFeedItemProposalResolver {
       environment,
       feedItemId: proposal.id,
     });
+  }
+
+  @ResolveField(() => Realm, {
+    description: 'The realm the proposal is in',
+  })
+  realm(
+    @Root() proposal: RealmFeedItemProposal,
+    @CurrentEnvironment()
+    environment: Environment,
+  ) {
+    return this.realmService.getRealm(proposal.realmPublicKey, environment);
   }
 }
 

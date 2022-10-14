@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
 import { ConfigModule } from '@src/config/config.module';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
@@ -16,11 +16,12 @@ import { RealmService } from './realm.service';
     ConfigModule,
     StaleCacheModule,
     HolaplexModule,
-    RealmFeedItemModule,
     RealmMemberModule,
     RealmProposalModule,
     RealmSettingsModule,
+    forwardRef(() => RealmFeedItemModule),
   ],
   providers: [RealmResolver, RealmService],
+  exports: [RealmService],
 })
 export class RealmModule {}

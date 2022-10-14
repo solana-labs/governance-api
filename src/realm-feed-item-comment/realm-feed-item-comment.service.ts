@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
 import { compareDesc, differenceInHours, format } from 'date-fns';
-import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as IT from 'io-ts';

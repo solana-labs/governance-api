@@ -654,6 +654,7 @@ export class RealmFeedItemService {
         entities.map(
           (post) =>
             ({
+              realmPublicKey,
               type: RealmFeedItemType.Post,
               author: postsMap[post.data.ref].author,
               created: post.created,
@@ -692,6 +693,7 @@ export class RealmFeedItemService {
           .map(
             (proposal) =>
               ({
+                realmPublicKey,
                 type: RealmFeedItemType.Proposal,
                 author: proposalMap[proposal.data.ref].author,
                 created: proposal.created,

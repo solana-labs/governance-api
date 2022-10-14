@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '@src/config/config.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
+import { RealmModule } from '@src/realm/realm.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 
@@ -27,6 +28,7 @@ import { RealmFeedItemService } from './realm-feed-item.service';
     RealmFeedItemCommentModule,
     ConfigModule,
     StaleCacheModule,
+    forwardRef(() => RealmModule),
   ],
   providers: [
     RealmFeedItemResolver,

@@ -1,5 +1,7 @@
 import { Field, ObjectType, createUnionType } from '@nestjs/graphql';
+import { PublicKey } from '@solana/web3.js';
 
+import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { RealmFeedItemIDScalar } from '@src/lib/scalars/RealmFeedItemID';
@@ -48,6 +50,11 @@ export class RealmFeedItemPost {
     description: 'The post',
   })
   post: RealmPost;
+
+  @Field(() => PublicKeyScalar, {
+    description: 'Public key of the realm the post is in',
+  })
+  realmPublicKey: PublicKey;
 
   @Field(() => Number, {
     description: 'The total raw score for the feed item',
@@ -103,6 +110,11 @@ export class RealmFeedItemProposal {
     description: 'The proposal',
   })
   proposal: RealmProposal;
+
+  @Field(() => PublicKeyScalar, {
+    description: 'Public key of the realm the proposal is in',
+  })
+  realmPublicKey: PublicKey;
 
   @Field(() => Number, {
     description: 'The total raw score for the feed item',

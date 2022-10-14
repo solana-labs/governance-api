@@ -17,23 +17,24 @@ import { AuthJwtInterceptor } from '@src/auth/auth.jwt.interceptor';
 import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
+import { DiscordModule } from '@src/discord/discord.module';
+import { EcosystemFeedModule } from '@src/ecosystem-feed/ecosystem-feed.module';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
 import { OnChainModule } from '@src/on-chain/on-chain.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
 import { RealmGovernanceModule } from '@src/realm-governance/realm-governance.module';
+import { RealmHubModule } from '@src/realm-hub/realm-hub.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
 import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { RealmModule } from '@src/realm/realm.module';
+import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 import { UserModule } from '@src/user/user.module';
-
-import { RealmHubModule } from './realm-hub/realm-hub.module';
-import { StaleCacheModule } from './stale-cache/stale-cache.module';
 
 @Module({
   imports: [
@@ -85,6 +86,8 @@ import { StaleCacheModule } from './stale-cache/stale-cache.module';
     RealmFeedItemCommentModule,
     RealmHubModule,
     StaleCacheModule,
+    DiscordModule,
+    EcosystemFeedModule,
   ],
   controllers: [AppController],
   providers: [

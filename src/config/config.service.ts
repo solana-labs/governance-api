@@ -17,6 +17,7 @@ export interface Config {
     useSsl: boolean;
   };
   external: {
+    discordBotKey: string | undefined;
     twitterBearerKey: string | undefined;
   };
   jwt: {

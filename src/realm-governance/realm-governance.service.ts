@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 import { BigNumber } from 'bignumber.js';
 import { hoursToMilliseconds } from 'date-fns';
-import * as AR from 'fp-ts/Array';
 import * as EI from 'fp-ts/Either';
-import * as FN from 'fp-ts/function';
-import * as TE from 'fp-ts/TaskEither';
 
 import * as errors from '@lib/errors/gql';
 import { HolaplexService } from '@src/holaplex/holaplex.service';

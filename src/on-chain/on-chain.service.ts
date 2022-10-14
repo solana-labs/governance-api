@@ -10,7 +10,6 @@ import { AccountInfo, MintInfo, u64 } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Cache } from 'cache-manager';
 import { hoursToMilliseconds } from 'date-fns';
-import * as EI from 'fp-ts/Either';
 
 import * as errors from '@lib/errors/gql';
 import { AUXILIARY_TOKEN_ASSETS } from '@lib/treasuryAssets/AUXILIARY_TOKEN_ASSETS';

@@ -7,6 +7,7 @@ import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
+import { exists } from '@src/lib/typeGuards/exists';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
@@ -74,6 +75,72 @@ export class RealmService {
       websiteUrl: settings.website,
     } as const;
   }
+
+  /**
+   * Get a list of realms for a dropdown
+   */
+  async getRealmDropdownList(environment: Environment) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const allSettings = await this.realmSettingsService.fetchAllCodeCommittedSettings(environment);
+    const pks = allSettings
+      .map((setting) => setting.realmId)
+      .filter(exists)
+      .map((pk) => new PublicKey(pk));
+
+    const details = (await this.getHolaplexRealms(pks)).realms;
+    const detailsMap = details.reduce((acc, detail) => {
+      acc[detail.address] = detail;
+      return acc;
+    }, {} as { [pk: string]: { address: string; name: string } });
+
+    return allSettings
+      .map((setting) => {
+        if (!setting.realmId) {
+          return null;
+        }
+
+        const details = detailsMap[setting.realmId];
+
+        if (!details) {
+          return null;
+        }
+
+        return {
+          iconUrl: setting.ogImage,
+          name: setting.displayName || details.name,
+          publicKey: new PublicKey(details.address),
+        };
+      })
+      .filter(exists)
+      .sort((a, b) => a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase()));
+  }
+
+  private readonly getHolaplexRealms = this.staleCacheService.dedupe(
+    async (publicKeys: PublicKey[]) => {
+      const resp = await this.holaplexService.requestV1(
+        {
+          query: queries.realms.query,
+          variables: {
+            addresses: publicKeys.map((pk) => pk.toBase58()),
+          },
+        },
+        queries.realm.resp,
+      )();
+
+      if (EI.isLeft(resp)) {
+        throw resp.left;
+      }
+
+      return resp.right;
+    },
+    {
+      dedupeKey: (pks) => pks.map((pk) => pk.toBase58()).join('-'),
+      maxStaleAgeMs: hoursToMilliseconds(12),
+    },
+  );
 
   private readonly getHolaplexRealm = this.staleCacheService.dedupe(
     async (publicKey: PublicKey) => {

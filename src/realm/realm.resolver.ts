@@ -24,6 +24,7 @@ import {
 import { RealmTreasury } from '@src/realm-treasury/dto/RealmTreasury';
 
 import { Realm } from './dto/Realm';
+import { RealmDropdownListItem } from './dto/RealmDropdownListItem';
 import { RealmService } from './realm.service';
 
 @Resolver(() => Realm)
@@ -167,5 +168,24 @@ export class RealmResolver {
   })
   treasury(@Root() realm: Realm) {
     return { belongsTo: realm.publicKey };
+  }
+}
+
+@Resolver(() => RealmDropdownListItem)
+export class RealmDropdownListItemResolver {
+  constructor(private readonly realmService: RealmService) {}
+
+  @ResolveField(() => Realm, {
+    description: 'The full realm this dropdown list item represents',
+  })
+  realm(@CurrentEnvironment() environment: Environment, @Root() listItem: RealmDropdownListItem) {
+    return this.realmService.getRealm(listItem.publicKey, environment);
+  }
+
+  @Query(() => [RealmDropdownListItem], {
+    description: 'A list of Realms to display in a dropdown',
+  })
+  realmDropdownList(@CurrentEnvironment() environment: Environment) {
+    return this.realmService.getRealmDropdownList(environment);
   }
 }

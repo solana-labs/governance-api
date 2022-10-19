@@ -205,6 +205,7 @@ export class RealmFeedItemService {
                 created: feedItemEntity.created,
                 document: post.document,
                 id: feedItemEntity.id,
+                realmPublicKey: args.realmPublicKey,
                 score: feedItemEntity.metadata.rawScore,
                 title: post.title,
                 updated: feedItemEntity.updated,

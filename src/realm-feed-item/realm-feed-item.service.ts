@@ -662,6 +662,7 @@ export class RealmFeedItemService {
             (post) =>
               ({
                 post,
+                realmPublicKey,
                 type: RealmFeedItemType.Post,
                 author: post.author,
                 created: entity.created,
@@ -685,6 +686,7 @@ export class RealmFeedItemService {
             (proposal) =>
               ({
                 proposal,
+                realmPublicKey,
                 type: RealmFeedItemType.Proposal,
                 author: proposal.author,
                 created: entity.created,

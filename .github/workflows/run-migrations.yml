@@ -23,7 +23,7 @@ jobs:
           node-version: 16
           
       - name: Install Dependencies
-        run: yarn install
+        run: yarn install --skip-integrity-check --network-concurrency 1
         
       - name: Google Auth
         id: auth

@@ -53,7 +53,12 @@ export class RealmFeedItemGQLService {
             this.realmFeedItemRepository
               .createQueryBuilder('feeditem')
               .where('feeditem.environment = :env', { env: environment })
-              .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+              .andWhere(
+                '((feeditem.realmPublicKeyStr = :pk) OR ((feedItem."crosspostedRealms" IS NOT NULL) AND (:pk = ANY(feedItem."crosspostedRealms"))))',
+                {
+                  pk: realmPublicKey.toBase58(),
+                },
+              )
               .orderBy(this.orderByClause('feeditem', sortOrder))
               .limit(n)
               .getMany(),
@@ -85,7 +90,10 @@ export class RealmFeedItemGQLService {
             this.realmFeedItemRepository
               .createQueryBuilder('feeditem')
               .where('feeditem.environment = :env', { env: environment })
-              .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+              .andWhere(
+                '((feeditem.realmPublicKeyStr = :pk) OR ((feedItem."crosspostedRealms" IS NOT NULL) AND (:pk = ANY(feedItem."crosspostedRealms"))))',
+                { pk: realmPublicKey.toBase58() },
+              )
               .orderBy(this.orderByClause('feeditem', sortOrder, false))
               .limit(n)
               .getMany(),
@@ -129,7 +137,10 @@ export class RealmFeedItemGQLService {
             this.realmFeedItemRepository
               .createQueryBuilder('feeditem')
               .where('feeditem.environment = :env', { env: environment })
-              .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+              .andWhere(
+                '((feeditem.realmPublicKeyStr = :pk) OR ((feedItem."crosspostedRealms" IS NOT NULL) AND (:pk = ANY(feedItem."crosspostedRealms"))))',
+                { pk: realmPublicKey.toBase58() },
+              )
               .andWhere(afterClause.clause, afterClause.params)
               .orderBy(this.orderByClause('feeditem', sortOrder))
               .limit(n)
@@ -171,7 +182,10 @@ export class RealmFeedItemGQLService {
             this.realmFeedItemRepository
               .createQueryBuilder('feeditem')
               .where('feeditem.environment = :env', { env: environment })
-              .andWhere('feeditem.realmPublicKeyStr = :pk', { pk: realmPublicKey.toBase58() })
+              .andWhere(
+                '((feeditem.realmPublicKeyStr = :pk) OR ((feedItem."crosspostedRealms" IS NOT NULL) AND (:pk = ANY(feedItem."crosspostedRealms"))))',
+                { pk: realmPublicKey.toBase58() },
+              )
               .andWhere(beforeClause.clause, beforeClause.params)
               .orderBy(this.orderByClause('feeditem', sortOrder, false))
               .limit(n)
@@ -203,11 +217,14 @@ export class RealmFeedItemGQLService {
         this.getFirstNFeedItems(realmPublicKey, requestingUser, first, sortOrder, environment),
         TE.bindTo('entities'),
         TE.bindW('feedItems', ({ entities }) =>
-          this.realmFeedItemService.convertEntitiesToFeedItems(
-            realmPublicKey,
-            entities,
-            requestingUser,
-            environment,
+          TE.tryCatch(
+            () =>
+              this.realmFeedItemService.convertMixedFeedEntitiesToFeedItem(
+                entities,
+                requestingUser,
+                environment,
+              ),
+            (e) => new errors.Exception(e),
           ),
         ),
         TE.map(({ entities, feedItems }) => {
@@ -233,11 +250,14 @@ export class RealmFeedItemGQLService {
         this.getLastNFeedItems(realmPublicKey, requestingUser, last, sortOrder, environment),
         TE.bindTo('entities'),
         TE.bindW('feedItems', ({ entities }) =>
-          this.realmFeedItemService.convertEntitiesToFeedItems(
-            realmPublicKey,
-            entities,
-            requestingUser,
-            environment,
+          TE.tryCatch(
+            () =>
+              this.realmFeedItemService.convertMixedFeedEntitiesToFeedItem(
+                entities,
+                requestingUser,
+                environment,
+              ),
+            (e) => new errors.Exception(e),
           ),
         ),
         TE.map(({ entities, feedItems }) => {
@@ -270,11 +290,14 @@ export class RealmFeedItemGQLService {
         ),
         TE.bindTo('entities'),
         TE.bindW('feedItems', ({ entities }) =>
-          this.realmFeedItemService.convertEntitiesToFeedItems(
-            realmPublicKey,
-            entities,
-            requestingUser,
-            environment,
+          TE.tryCatch(
+            () =>
+              this.realmFeedItemService.convertMixedFeedEntitiesToFeedItem(
+                entities,
+                requestingUser,
+                environment,
+              ),
+            (e) => new errors.Exception(e),
           ),
         ),
         TE.map(({ entities, feedItems }) => {
@@ -307,11 +330,14 @@ export class RealmFeedItemGQLService {
         ),
         TE.bindTo('entities'),
         TE.bindW('feedItems', ({ entities }) =>
-          this.realmFeedItemService.convertEntitiesToFeedItems(
-            realmPublicKey,
-            entities,
-            requestingUser,
-            environment,
+          TE.tryCatch(
+            () =>
+              this.realmFeedItemService.convertMixedFeedEntitiesToFeedItem(
+                entities,
+                requestingUser,
+                environment,
+              ),
+            (e) => new errors.Exception(e),
           ),
         ),
         TE.map(({ entities, feedItems }) => {

@@ -39,6 +39,9 @@ export class RealmFeedItem {
   @Column()
   realmPublicKeyStr: string;
 
+  @Column('varchar', { array: true, nullable: true })
+  crosspostedRealms?: null | string[];
+
   @OneToMany('RealmFeedItemComment', 'feedItem')
   comments: RealmFeedItemComment[];
 

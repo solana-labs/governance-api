@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
 import { compareDesc, differenceInHours, isEqual } from 'date-fns';
 import * as AR from 'fp-ts/Array';
+import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import { In, Repository } from 'typeorm';
@@ -45,6 +46,47 @@ export class RealmFeedItemService {
     private readonly staleCacheService: StaleCacheService,
     private readonly taskDedupeService: TaskDedupeService,
   ) {}
+
+  /**
+   * Convert entites belonging to multiple realms to feed items
+   */
+  async convertMixedFeedEntitiesToFeedItem(
+    entities: RealmFeedItemEntity[],
+    requestingUser: User | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const groups = this.groupEntitesByRealm(entities);
+    const realms = Object.keys(groups);
+    const feedItemsResp = await Promise.all(
+      realms.map((realmPublicKeyStr) => {
+        const groupEntities = groups[realmPublicKeyStr];
+
+        return this.convertEntitiesToFeedItems(
+          new PublicKey(realmPublicKeyStr),
+          groupEntities,
+          requestingUser,
+          environment,
+        )();
+      }),
+    );
+
+    const feedItems = feedItemsResp.reduce((acc, items) => {
+      if (EI.isLeft(items)) {
+        return acc;
+      }
+
+      return {
+        ...acc,
+        ...items.right,
+      };
+    }, {} as { [id: string]: RealmFeedItemPost | RealmFeedItemProposal });
+
+    return feedItems;
+  }
 
   /**
    * Convert raw entities into feed items
@@ -95,16 +137,19 @@ export class RealmFeedItemService {
   /**
    * Create a new post
    */
-  createPost(
-    realmPublicKey: PublicKey,
-    title: string,
-    document: RichTextDocument,
-    requestingUser: User | null,
-    environment: Environment,
-  ) {
-    if (environment === 'devnet') {
+  createPost(args: {
+    crosspostTo?: null | PublicKey[];
+    document: RichTextDocument;
+    environment: Environment;
+    realmPublicKey: PublicKey;
+    requestingUser: User | null;
+    title: string;
+  }) {
+    if (args.environment === 'devnet') {
       return TE.left(new errors.UnsupportedDevnet());
     }
+
+    const requestingUser = args.requestingUser;
 
     if (!requestingUser) {
       return TE.left(new errors.Unauthorized());
@@ -113,18 +158,18 @@ export class RealmFeedItemService {
     return FN.pipe(
       TE.tryCatch(
         () =>
-          enhanceRichTextDocument(document, {
+          enhanceRichTextDocument(args.document, {
             twitterBearerToken: this.configService.get('external.twitterBearerKey'),
           }),
         (e) => new errors.Exception(e),
       ),
       TE.chainW((document) =>
         this.realmPostService.createPost(
-          realmPublicKey,
-          title,
+          args.realmPublicKey,
+          args.title,
           document,
           requestingUser,
-          environment,
+          args.environment,
         ),
       ),
       TE.chainW((post) =>
@@ -134,13 +179,16 @@ export class RealmFeedItemService {
               type: RealmFeedItemType.Post,
               ref: post.id,
             },
-            environment,
+            crosspostedRealms: args.crosspostTo
+              ? args.crosspostTo.map((pk) => pk.toBase58())
+              : null,
+            environment: args.environment,
             metadata: {
               relevanceScore: 0,
               topAllTimeScore: 0,
               rawScore: 0,
             },
-            realmPublicKeyStr: realmPublicKey.toBase58(),
+            realmPublicKeyStr: args.realmPublicKey.toBase58(),
             updated: new Date(),
           }),
           (entity) =>
@@ -165,6 +213,25 @@ export class RealmFeedItemService {
         ),
       ),
     );
+  }
+
+  /**
+   * Group entities by the realm their in
+   */
+  groupEntitesByRealm(entities: RealmFeedItemEntity[]) {
+    const groups: {
+      [realm: string]: RealmFeedItemEntity[];
+    } = {};
+
+    for (const entity of entities) {
+      if (!groups[entity.realmPublicKeyStr]) {
+        groups[entity.realmPublicKeyStr] = [];
+      }
+
+      groups[entity.realmPublicKeyStr].push(entity);
+    }
+
+    return groups;
   }
 
   /**

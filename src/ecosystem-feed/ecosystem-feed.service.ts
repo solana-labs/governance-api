@@ -40,37 +40,11 @@ export class EcosystemFeedService {
     requestingUser: User | null,
     environment: Environment,
   ) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
-    const groups = this.groupEntitesByRealm(entities);
-    const realms = Object.keys(groups);
-    const feedItemsResp = await Promise.all(
-      realms.map((realmPublicKeyStr) => {
-        const groupEntities = groups[realmPublicKeyStr];
-
-        return this.realmFeedItemService.convertEntitiesToFeedItems(
-          new PublicKey(realmPublicKeyStr),
-          groupEntities,
-          requestingUser,
-          environment,
-        )();
-      }),
+    return this.realmFeedItemService.convertMixedFeedEntitiesToFeedItem(
+      entities,
+      requestingUser,
+      environment,
     );
-
-    const feedItems = feedItemsResp.reduce((acc, items) => {
-      if (EI.isLeft(items)) {
-        return acc;
-      }
-
-      return {
-        ...acc,
-        ...items.right,
-      };
-    }, {} as { [id: string]: RealmFeedItemPost | RealmFeedItemProposal });
-
-    return feedItems;
   }
 
   /**
@@ -290,25 +264,6 @@ export class EcosystemFeedService {
     }
 
     throw new errors.MalformedRequest();
-  }
-
-  /**
-   * Group entities by the realm their in
-   */
-  groupEntitesByRealm(entities: RealmFeedItemEntity[]) {
-    const groups: {
-      [realm: string]: RealmFeedItemEntity[];
-    } = {};
-
-    for (const entity of entities) {
-      if (!groups[entity.realmPublicKeyStr]) {
-        groups[entity.realmPublicKeyStr] = [];
-      }
-
-      groups[entity.realmPublicKeyStr].push(entity);
-    }
-
-    return groups;
   }
 
   /**

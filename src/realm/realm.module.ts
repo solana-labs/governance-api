@@ -8,7 +8,7 @@ import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 
-import { RealmResolver } from './realm.resolver';
+import { RealmResolver, RealmDropdownListItemResolver } from './realm.resolver';
 import { RealmService } from './realm.service';
 
 @Module({
@@ -21,7 +21,7 @@ import { RealmService } from './realm.service';
     RealmSettingsModule,
     forwardRef(() => RealmFeedItemModule),
   ],
-  providers: [RealmResolver, RealmService],
+  providers: [RealmResolver, RealmDropdownListItemResolver, RealmService],
   exports: [RealmService],
 })
 export class RealmModule {}

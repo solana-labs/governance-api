@@ -305,8 +305,21 @@ export class RealmFeedItemResolver {
     @CurrentEnvironment()
     environment: Environment,
     @CurrentUser() user: User | null,
+    @Args('crosspostTo', {
+      type: () => [PublicKeyScalar],
+      description: 'Optional realms to crosspost to',
+      nullable: true,
+    })
+    crosspostTo?: null | PublicKey[],
   ) {
-    return this.realmFeedItemService.createPost(realm, title, document, user, environment);
+    return this.realmFeedItemService.createPost({
+      crosspostTo,
+      document,
+      environment,
+      title,
+      requestingUser: user,
+      realmPublicKey: realm,
+    });
   }
 
   @Mutation(() => RealmFeedItem, {

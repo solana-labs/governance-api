@@ -31,7 +31,6 @@ export class RealmFeedItemCommentResolver {
     description: 'Create a new comment for a feed item',
   })
   @UseGuards(AuthJwtGuard)
-  @EitherResolver()
   createFeedItemComment(
     @Args('document', {
       type: () => RichTextDocumentScalar,

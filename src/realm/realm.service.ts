@@ -42,7 +42,7 @@ export class RealmService {
       throw new errors.UnsupportedDevnet();
     }
 
-    const { name } = await this.getHolaplexRealm(publicKey);
+    const { address, name } = await this.getHolaplexRealm(publicKey);
     const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
       publicKey,
       environment,
@@ -66,6 +66,7 @@ export class RealmService {
       publicKey: publicKey,
       shortDescription: settings.shortDescription,
       symbol: settings.symbol,
+      urlId: encodeURIComponent(settings.symbol || address),
       // external links
       discordUrl: settings.discord,
       githubUrl: settings.github,
@@ -112,6 +113,7 @@ export class RealmService {
           iconUrl: setting.ogImage,
           name: setting.displayName || details.name,
           publicKey: new PublicKey(details.address),
+          urlId: encodeURIComponent(setting.symbol || details.address),
         };
       })
       .filter(exists)

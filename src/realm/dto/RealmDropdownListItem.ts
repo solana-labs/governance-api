@@ -22,4 +22,9 @@ export class RealmDropdownListItem {
     description: 'Public Key address for the Realm',
   })
   publicKey: PublicKey;
+
+  @Field({
+    description: 'The url id representation of the realm',
+  })
+  urlId: string;
 }

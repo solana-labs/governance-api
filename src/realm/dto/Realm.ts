@@ -78,6 +78,11 @@ export class Realm {
   twitterHandle?: string;
 
   @Field({
+    description: 'The url id representation of the realm',
+  })
+  urlId: string;
+
+  @Field({
     description: 'Website url for the Realm',
     nullable: true,
   })

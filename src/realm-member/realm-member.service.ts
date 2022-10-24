@@ -16,6 +16,7 @@ import * as base64 from '@lib/base64';
 import { BrandedString } from '@lib/brands';
 import { Environment } from '@lib/decorators/CurrentEnvironment';
 import * as errors from '@lib/errors/gql';
+import { abbreviateAddress } from '@lib/textManipulation/abbreviateAddress';
 import { ConfigService } from '@src/config/config.service';
 import { HolaplexService } from '@src/holaplex/holaplex.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
@@ -152,6 +153,25 @@ export class RealmMemberService {
             ),
       ),
     );
+  }
+
+  /**
+   * Get a single handle name for a user's public key
+   */
+  async getHandleName(userPublicKey: PublicKey, environment: Environment) {
+    const civicDetails = await this.getCivicHandleForPublicKey(userPublicKey, environment)();
+
+    if (EI.isRight(civicDetails) && civicDetails.right?.handle) {
+      return civicDetails.right?.handle;
+    }
+
+    const twitterDetails = await this.getTwitterHandleForPublicKey(userPublicKey, environment)();
+
+    if (EI.isRight(twitterDetails) && twitterDetails.right.handle) {
+      return twitterDetails.right.handle;
+    }
+
+    return abbreviateAddress(userPublicKey);
   }
 
   /**

@@ -28,6 +28,7 @@ import { ConfigService } from './config.service';
               useSsl: process.env.DATABASE_USE_SSL === 'true',
             },
             external: {
+              dialectNotifKey: process.env.DIALECT_NOTIF_KEY,
               discordBotKey: process.env.DISCORD_BOT_KEY,
               twitterBearerKey: process.env.TWITTER_API_BEARER_KEY,
             },

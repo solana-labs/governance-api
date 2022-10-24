@@ -16,6 +16,10 @@ import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
 import { exists } from '@src/lib/typeGuards/exists';
 import { RichTextDocument } from '@src/lib/types/RichTextDocument';
+import { RealmFeedItemType } from '@src/realm-feed-item/dto/RealmFeedItemType';
+import { RealmFeedItem } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
+import { RealmMemberService } from '@src/realm-member/realm-member.service';
+import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
 
 import { RealmFeedItemCommentSort, RealmFeedItemCommentConnection } from './dto/pagination';
 import { RealmFeedItemComment } from './dto/RealmFeedItemComment';
@@ -47,17 +51,22 @@ interface CommentTreeData {
 @Injectable()
 export class RealmFeedItemCommentService {
   constructor(
+    @InjectRepository(RealmFeedItem)
+    private readonly realmFeedItemRepository: Repository<RealmFeedItem>,
     @InjectRepository(RealmFeedItemCommentEntity)
     private readonly realmFeedItemCommentRepository: Repository<RealmFeedItemCommentEntity>,
     @InjectRepository(RealmFeedItemCommentVoteEntity)
     private readonly realmFeedItemCommentVoteRepository: Repository<RealmFeedItemCommentVoteEntity>,
+    @InjectRepository(RealmPost)
+    private readonly realmPostRepository: Repository<RealmPost>,
+    private readonly realmMemberService: RealmMemberService,
     private readonly configService: ConfigService,
   ) {}
 
   /**
    * Add a comment to a feed item
    */
-  createComment(args: {
+  async createComment(args: {
     document: RichTextDocument;
     environment: Environment;
     feedItemId: number;
@@ -66,52 +75,42 @@ export class RealmFeedItemCommentService {
     requestingUser?: User | null;
   }) {
     if (args.environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
     const { requestingUser } = args;
 
     if (!requestingUser) {
-      return TE.left(new errors.Unauthorized());
+      throw new errors.Unauthorized();
     }
 
-    return FN.pipe(
-      TE.tryCatch(
-        () =>
-          enhanceRichTextDocument(args.document, {
-            twitterBearerToken: this.configService.get('external.twitterBearerKey'),
-          }),
-        (e) => new errors.Exception(e),
-      ),
-      TE.map((document) =>
-        this.realmFeedItemCommentRepository.create({
-          authorId: requestingUser.id,
-          data: {
-            authorPublicKeyStr: requestingUser.publicKey.toBase58(),
-            document: document,
-          },
-          environment: args.environment,
-          feedItemId: args.feedItemId,
-          metadata: { relevanceScore: 0, topAllTimeScore: 0, rawScore: 0 },
-          parentCommentId: args.parentCommentId || undefined,
-          realmPublicKeyStr: args.realmPublicKey.toBase58(),
-        }),
-      ),
-      TE.chainW((comment) =>
-        TE.tryCatch(
-          () => this.realmFeedItemCommentRepository.save(comment),
-          (e) => new errors.Exception(e),
-        ),
-      ),
-      TE.map((entity) =>
-        this.convertEntityToFeedItem({
-          entity,
-          environment: args.environment,
-          requestingUser: args.requestingUser,
-          votes: { [entity.id]: {} },
-        }),
-      ),
-    );
+    const enhancedDocument = await enhanceRichTextDocument(args.document, {
+      twitterBearerToken: this.configService.get('external.twitterBearerKey'),
+    });
+
+    const comment = this.realmFeedItemCommentRepository.create({
+      authorId: requestingUser.id,
+      data: {
+        authorPublicKeyStr: requestingUser.publicKey.toBase58(),
+        document: enhancedDocument,
+      },
+      environment: args.environment,
+      feedItemId: args.feedItemId,
+      metadata: { relevanceScore: 0, topAllTimeScore: 0, rawScore: 0 },
+      parentCommentId: args.parentCommentId || undefined,
+      realmPublicKeyStr: args.realmPublicKey.toBase58(),
+    });
+
+    const entity = await this.realmFeedItemCommentRepository.save(comment);
+
+    this.sendReplyNotification(entity, args.environment);
+
+    return this.convertEntityToComment({
+      entity,
+      environment: args.environment,
+      requestingUser: args.requestingUser,
+      votes: { [entity.id]: {} },
+    });
   }
 
   /**
@@ -350,6 +349,69 @@ export class RealmFeedItemCommentService {
   }
 
   /**
+   * Send a notification when a user receives a reply to their post or comment
+   */
+  async sendReplyNotification(comment: RealmFeedItemCommentEntity, environment: Environment) {
+    const notifKey = this.configService.get('external.dialectNotifKey');
+    let parentAuthorPublicKey: PublicKey | null = null;
+    let parentType: 'post' | 'comment' | null = null;
+
+    if (comment.parentCommentId) {
+      const parentComment = await this.realmFeedItemCommentRepository.findOne({
+        where: { id: comment.parentCommentId },
+        relations: ['author'],
+      });
+
+      if (parentComment?.author) {
+        parentAuthorPublicKey = new PublicKey(parentComment.author.publicKeyStr);
+        parentType = 'comment';
+      }
+    } else {
+      const parentFeedItem = await this.realmFeedItemRepository.findOne({
+        where: { id: comment.feedItemId },
+      });
+
+      if (parentFeedItem?.data.type === RealmFeedItemType.Post) {
+        const parentPost = await this.realmPostRepository.findOne({
+          where: { id: parentFeedItem.data.ref },
+          relations: ['author'],
+        });
+
+        if (parentPost) {
+          parentAuthorPublicKey = new PublicKey(parentPost.author.publicKeyStr);
+          parentType = 'post';
+        }
+      }
+    }
+
+    if (parentAuthorPublicKey && parentType && notifKey) {
+      const handle = await this.realmMemberService.getHandleName(
+        parentAuthorPublicKey,
+        environment,
+      );
+
+      // send notification
+    }
+  }
+
+  /**
+   * Send a notification when a user gets a certain number of upvotes
+   */
+  async sendVoteNotification(comment: RealmFeedItemComment, environment: Environment) {
+    const notifKey = this.configService.get('external.dialectNotifKey');
+
+    if (!(comment.author && notifKey)) {
+      return;
+    }
+
+    const authorPublicKey = new PublicKey(comment.author.publicKey);
+    const numVotes = comment.score;
+    const handle = await this.realmMemberService.getHandleName(authorPublicKey, environment);
+
+    // send notification
+  }
+
+  /**
    * Approve or disapprove a comment
    */
   submitVote(args: {
@@ -511,7 +573,7 @@ export class RealmFeedItemCommentService {
         }),
       ),
       TE.map(({ comment, replies, userVoteMap }) => ({
-        ...this.convertEntityToFeedItem({
+        ...this.convertEntityToComment({
           requestingUser,
           entity: comment,
           environment: args.environment,
@@ -519,6 +581,10 @@ export class RealmFeedItemCommentService {
         }),
         repliesCount: replies.replies[comment.id]?.length || 0,
       })),
+      TE.map((comment) => {
+        this.sendVoteNotification(comment, args.environment);
+        return comment;
+      }),
     );
   }
 
@@ -589,7 +655,7 @@ export class RealmFeedItemCommentService {
     tree: CommentTreeData;
     votes: UserVoteMapping;
   }) {
-    const comment = this.convertEntityToFeedItem({
+    const comment = this.convertEntityToComment({
       entity: args.entity,
       environment: args.environment,
       requestingUser: args.requestingUser,
@@ -624,7 +690,7 @@ export class RealmFeedItemCommentService {
     return comment;
   }
 
-  private convertEntityToFeedItem(args: {
+  private convertEntityToComment(args: {
     entity: RealmFeedItemCommentEntity;
     environment: Environment;
     requestingUser?: User | null;

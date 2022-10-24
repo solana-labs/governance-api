@@ -76,7 +76,6 @@ export class RealmResolver {
   @ResolveField(() => [RealmFeedItem], {
     description: 'A list of pinned feed items',
   })
-  @EitherResolver()
   pinnedFeedItems(
     @Root() realm: Realm,
     @CurrentEnvironment() environment: Environment,

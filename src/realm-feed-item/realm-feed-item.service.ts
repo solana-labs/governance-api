@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
 import { compareDesc, differenceInHours, isEqual } from 'date-fns';
-import * as AR from 'fp-ts/Array';
 import * as EI from 'fp-ts/Either';
 import * as FN from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
@@ -15,6 +14,7 @@ import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { ConfigService } from '@src/config/config.service';
+import { RealmMemberService } from '@src/realm-member/realm-member.service';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
@@ -35,6 +35,8 @@ interface UserVoteMapping {
 
 @Injectable()
 export class RealmFeedItemService {
+  private logger = new Logger(RealmFeedItemService.name);
+
   constructor(
     @InjectRepository(RealmFeedItemEntity)
     private readonly realmFeedItemRepository: Repository<RealmFeedItemEntity>,
@@ -43,6 +45,7 @@ export class RealmFeedItemService {
     private readonly configService: ConfigService,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
+    private readonly realmMemberService: RealmMemberService,
     private readonly staleCacheService: StaleCacheService,
     private readonly taskDedupeService: TaskDedupeService,
   ) {}
@@ -137,7 +140,7 @@ export class RealmFeedItemService {
   /**
    * Create a new post
    */
-  createPost(args: {
+  async createPost(args: {
     crosspostTo?: null | PublicKey[];
     document: RichTextDocument;
     environment: Environment;
@@ -146,74 +149,65 @@ export class RealmFeedItemService {
     title: string;
   }) {
     if (args.environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
     const requestingUser = args.requestingUser;
 
     if (!requestingUser) {
-      return TE.left(new errors.Unauthorized());
+      throw new errors.Unauthorized();
     }
 
-    return FN.pipe(
-      TE.tryCatch(
-        () =>
-          enhanceRichTextDocument(args.document, {
-            twitterBearerToken: this.configService.get('external.twitterBearerKey'),
-          }),
-        (e) => new errors.Exception(e),
-      ),
-      TE.chainW((document) =>
-        this.realmPostService.createPost(
-          args.realmPublicKey,
-          args.title,
-          document,
-          requestingUser,
-          args.environment,
-        ),
-      ),
-      TE.chainW((post) =>
-        FN.pipe(
-          this.realmFeedItemRepository.create({
-            data: {
-              type: RealmFeedItemType.Post,
-              ref: post.id,
-            },
-            crosspostedRealms: args.crosspostTo
-              ? args.crosspostTo.map((pk) => pk.toBase58())
-              : null,
-            environment: args.environment,
-            metadata: {
-              relevanceScore: 0,
-              topAllTimeScore: 0,
-              rawScore: 0,
-            },
-            realmPublicKeyStr: args.realmPublicKey.toBase58(),
-            updated: new Date(),
-          }),
-          (entity) =>
-            TE.tryCatch(
-              () => this.realmFeedItemRepository.save(entity),
-              (e) => new errors.Exception(e),
-            ),
-          TE.map(
-            (feedItemEntity) =>
-              ({
-                post,
-                type: RealmFeedItemType.Post,
-                author: post.author,
-                created: feedItemEntity.created,
-                document: post.document,
-                id: feedItemEntity.id,
-                realmPublicKey: args.realmPublicKey,
-                score: feedItemEntity.metadata.rawScore,
-                title: post.title,
-                updated: feedItemEntity.updated,
-              } as RealmFeedItemPost),
-          ),
-        ),
-      ),
-    );
+    const enhancedDocument = await enhanceRichTextDocument(args.document, {
+      twitterBearerToken: this.configService.get('external.twitterBearerKey'),
+    });
+
+    const postResp = await this.realmPostService.createPost(
+      args.realmPublicKey,
+      args.title,
+      enhancedDocument,
+      requestingUser,
+      args.environment,
+    )();
+
+    if (EI.isLeft(postResp)) {
+      throw postResp.left;
+    }
+
+    const post = postResp.right;
+
+    const feedItem = this.realmFeedItemRepository.create({
+      data: {
+        type: RealmFeedItemType.Post,
+        ref: post.id,
+      },
+      crosspostedRealms: args.crosspostTo ? args.crosspostTo.map((pk) => pk.toBase58()) : null,
+      environment: args.environment,
+      metadata: {
+        relevanceScore: 0,
+        topAllTimeScore: 0,
+        rawScore: 0,
+      },
+      realmPublicKeyStr: args.realmPublicKey.toBase58(),
+      updated: new Date(),
+    });
+
+    await this.realmFeedItemRepository.save(feedItem);
+
+    const feedItemPost: RealmFeedItemPost = {
+      post: post,
+      type: RealmFeedItemType.Post,
+      author: post.author,
+      created: feedItem.created,
+      document: post.document,
+      id: feedItem.id,
+      realmPublicKey: args.realmPublicKey,
+      score: feedItem.metadata.rawScore,
+      title: post.title,
+      updated: feedItem.updated,
+    };
+
+    return feedItemPost;
   }
 
   /**
@@ -292,77 +286,86 @@ export class RealmFeedItemService {
   /**
    * Returns a list of pinned feed items
    */
-  getPinnedFeedItems(
+  async getPinnedFeedItems(
     realmPublicKey: PublicKey,
     requestingUser: User | null,
     environment: Environment,
   ) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
-    return FN.pipe(
-      this.syncProposalsToFeedItems(realmPublicKey, environment),
-      TE.chainW(() => this.realmProposalService.getProposalsForRealm(realmPublicKey, environment)),
-      TE.map((proposals) => proposals.slice()),
-      TE.map(
-        AR.filter(
-          (proposal) =>
-            proposal.state === RealmProposalState.Voting ||
-            proposal.state === RealmProposalState.Executable,
-        ),
-      ),
-      TE.map((proposals) =>
-        proposals.sort((a, b) => {
-          const aScore = a.state === RealmProposalState.Voting ? 20 : 10;
-          const bScore = b.state === RealmProposalState.Voting ? 20 : 10;
+    await this.syncProposalsToFeedItems(realmPublicKey, environment)();
 
-          if (aScore === bScore) {
-            return compareDesc(a.updated, b.updated);
-          } else {
-            return bScore - aScore;
-          }
-        }),
-      ),
-      TE.chainW((proposals) =>
-        TE.sequenceArray(
-          proposals.map((proposal) =>
-            TE.tryCatch(
-              () =>
-                this.realmFeedItemRepository
-                  .createQueryBuilder('feedItem')
-                  .where(`"feedItem"."data"->'type' = :type`, {
-                    type: JSON.stringify(RealmFeedItemType.Proposal),
-                  })
-                  .andWhere(`"feedItem"."data"->'ref' = :ref`, {
-                    ref: JSON.stringify(proposal.publicKey.toBase58()),
-                  })
-                  .getOne(),
-              (e) => new errors.Exception(e),
-            ),
-          ),
+    const proposalsResp = await this.realmProposalService.getProposalsForRealm(
+      realmPublicKey,
+      environment,
+    )();
+
+    if (EI.isLeft(proposalsResp)) {
+      throw proposalsResp.left;
+    }
+
+    const openProposals = proposalsResp.right
+      .filter(
+        (proposal) =>
+          proposal.state === RealmProposalState.Voting ||
+          proposal.state === RealmProposalState.Executable,
+      )
+      .sort((a, b) => {
+        const aScore = a.state === RealmProposalState.Voting ? 20 : 10;
+        const bScore = b.state === RealmProposalState.Voting ? 20 : 10;
+
+        if (aScore === bScore) {
+          return compareDesc(a.updated, b.updated);
+        } else {
+          return bScore - aScore;
+        }
+      });
+
+    const entities = (
+      await Promise.all(
+        openProposals.map((proposal) =>
+          this.realmFeedItemRepository
+            .createQueryBuilder('feedItem')
+            .where(`"feedItem"."data"->'type' = :type`, {
+              type: JSON.stringify(RealmFeedItemType.Proposal),
+            })
+            .andWhere(`"feedItem"."data"->'ref' = :ref`, {
+              ref: JSON.stringify(proposal.publicKey.toBase58()),
+            })
+            .getOne()
+            .catch(() => null),
         ),
-      ),
-      TE.map((entities) => entities.filter(exists)),
-      TE.bindTo('entities'),
-      TE.bindW('votes', ({ entities }) =>
-        this.getFeedItemVotes(
-          realmPublicKey,
-          entities.map((entity) => entity.id),
-          requestingUser ? [requestingUser.id] : [],
-          environment,
-        ),
-      ),
-      TE.chainW(({ entities, votes }) =>
-        this.convertProposalEntitiesToFeedItems(
-          realmPublicKey,
-          entities,
-          requestingUser,
-          votes,
-          environment,
-        ),
-      ),
-    );
+      )
+    ).filter(exists);
+
+    const votesResp = await this.getFeedItemVotes(
+      realmPublicKey,
+      entities.map((e) => e.id),
+      requestingUser ? [requestingUser.id] : [],
+      environment,
+    )();
+
+    if (EI.isLeft(votesResp)) {
+      throw votesResp.left;
+    }
+
+    const votes = votesResp.right;
+
+    const feedItemsResp = await this.convertProposalEntitiesToFeedItems(
+      realmPublicKey,
+      entities,
+      requestingUser,
+      votes,
+      environment,
+    )();
+
+    if (EI.isLeft(feedItemsResp)) {
+      throw feedItemsResp.left;
+    }
+
+    return feedItemsResp.right;
   }
 
   /**
@@ -404,6 +407,26 @@ export class RealmFeedItemService {
         return mapping;
       }),
     );
+  }
+
+  /**
+   * Send a notification when a user gets a certain number of upvotes
+   */
+  async sendVoteNotification(
+    feedItem: RealmFeedItemPost | RealmFeedItemProposal,
+    environment: Environment,
+  ) {
+    const notifKey = this.configService.get('external.dialectNotifKey');
+
+    if (!(feedItem.author && notifKey)) {
+      return;
+    }
+
+    const authorPublicKey = new PublicKey(feedItem.author.publicKey);
+    const numVotes = feedItem.score;
+    const handle = await this.realmMemberService.getHandleName(authorPublicKey, environment);
+
+    // send notification
   }
 
   /**
@@ -489,6 +512,14 @@ export class RealmFeedItemService {
             (e) => new errors.Exception(e),
           );
         }),
+        TE.match(
+          (e) => {
+            this.logger.error(e);
+            return [];
+          },
+          (feedItems) => feedItems,
+        ),
+        TE.fromTask,
       ),
     });
   }
@@ -635,6 +666,10 @@ export class RealmFeedItemService {
       TE.chainW(({ entity, votes }) =>
         this.convertEntityToFeedItem(realmPublicKey, entity, requestingUser, votes, environment),
       ),
+      TE.map((feedItem) => {
+        this.sendVoteNotification(feedItem, environment);
+        return feedItem;
+      }),
     );
   }
 

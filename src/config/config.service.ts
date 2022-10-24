@@ -17,6 +17,7 @@ export interface Config {
     useSsl: boolean;
   };
   external: {
+    dialectNotifKey: string | undefined;
     discordBotKey: string | undefined;
     twitterBearerKey: string | undefined;
   };

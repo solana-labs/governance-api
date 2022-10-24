@@ -50,7 +50,7 @@ export class RealmFeedItemComment {
   @Column()
   realmPublicKeyStr: string;
 
-  @ManyToOne('User', 'posts')
+  @ManyToOne('User', 'comments')
   author: User;
 
   @ManyToOne('RealmFeedItem', 'comments')

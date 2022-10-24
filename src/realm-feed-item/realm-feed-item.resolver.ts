@@ -268,7 +268,6 @@ export class RealmFeedItemResolver {
   @Query(() => [RealmFeedItem], {
     description: 'A list of feed items that have been pinned',
   })
-  @EitherResolver()
   pinnedFeedItems(
     @Args('realm', {
       type: () => PublicKeyScalar,
@@ -285,7 +284,6 @@ export class RealmFeedItemResolver {
     description: 'Create a new Post',
   })
   @UseGuards(AuthJwtGuard)
-  @EitherResolver()
   createPost(
     @Args('document', {
       type: () => RichTextDocumentScalar,

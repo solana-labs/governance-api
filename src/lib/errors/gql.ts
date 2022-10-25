@@ -4,6 +4,7 @@ export class Exception extends mercurius.ErrorWithProps {
   constructor(error?: unknown) {
     super("Internal server error", {
       message: error instanceof Error ? error.message : String(error),
+      extensions: error,
     }, 500)
   }
 }

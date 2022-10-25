@@ -128,7 +128,6 @@ export class RealmResolver {
   @ResolveField(() => Int, {
     description: 'Count of the number of members in this Realm',
   })
-  @EitherResolver()
   membersCount(@Root() realm: Realm, @CurrentEnvironment() environment: Environment) {
     return this.realmMemberService.getMembersCountForRealm(realm.publicKey, environment);
   }

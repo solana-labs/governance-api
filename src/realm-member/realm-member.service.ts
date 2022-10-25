@@ -1,6 +1,6 @@
 import { getNamespaceByName, nameForDisplay } from '@cardinal/namespaces';
 import { CivicProfile } from '@civic/profile';
-import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER, Injectable, Inject, Logger } from '@nestjs/common';
 import { Connection, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
 import { Cache } from 'cache-manager';
@@ -34,6 +34,8 @@ const PAGE_SIZE = 25;
 
 @Injectable()
 export class RealmMemberService {
+  private logger = new Logger(RealmMemberService.name);
+
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
@@ -103,18 +105,18 @@ export class RealmMemberService {
   /**
    * Get a count of the total members in the realm
    */
-  getMembersCountForRealm(realmPublicKey: PublicKey, environment: Environment) {
+  async getMembersCountForRealm(realmPublicKey: PublicKey, environment: Environment) {
     if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
+      throw new errors.UnsupportedDevnet();
     }
 
-    return FN.pipe(
-      TE.tryCatch(
-        () => this.holaplexGetTokenOwnerRecords(realmPublicKey),
-        (e) => new errors.Exception(e),
-      ),
-      TE.map((tokenOwnerRecords) => tokenOwnerRecords.length),
-    );
+    try {
+      const tors = await this.holaplexGetTokenOwnerRecords(realmPublicKey);
+      return tors.length;
+    } catch (e) {
+      this.logger.error(e);
+      return 0;
+    }
   }
 
   /**

@@ -62,6 +62,7 @@ export class StaleCacheService {
                 this.logger.error(e);
               }
 
+              this.inFlight.delete(cacheKey);
               if (cachedValue) {
                 res(cachedValue.value);
               } else {

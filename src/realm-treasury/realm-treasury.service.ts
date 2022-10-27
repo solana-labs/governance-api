@@ -13,7 +13,7 @@ import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
 import { OnChainService } from '@src/on-chain/on-chain.service';
 
-const PRICE_ENDPOINT = 'https://api.coingecko.com/api/v3/simple/price';
+const PRICE_ENDPOINT = 'https://price.jup.ag/v1/price';
 
 interface TokenOverrides {
   [mintAddress: string]: Partial<TokenInfo>;
@@ -91,20 +91,21 @@ export class RealmTreasuryService {
               this.fetchTokenListDict(environment),
               TE.map((tokenDict) => tokenDict[tokenMint.toBase58()]),
               TE.map(OP.fromNullable),
-              TE.map((tokenInfo) =>
-                OP.isNone(tokenInfo) ? undefined : tokenInfo.value.extensions?.coingeckoId,
-              ),
-              TE.chainW((coingeckoId) =>
-                coingeckoId
+              TE.map((tokenInfo) => (OP.isNone(tokenInfo) ? undefined : tokenInfo.value.symbol)),
+              TE.chainW((symbol) =>
+                symbol
                   ? FN.pipe(
                       TE.tryCatch(
                         () =>
-                          fetch(`${PRICE_ENDPOINT}?ids=${coingeckoId}&vs_currencies=usd`).then<{
-                            [id: string]: { usd: number };
+                          fetch(`${PRICE_ENDPOINT}?id=${symbol}`).then<{
+                            data: {
+                              id: string;
+                              price: number;
+                            };
                           }>((resp) => resp.json()),
                         (e) => new errors.Exception(e),
                       ),
-                      TE.map((resp) => resp?.[coingeckoId]?.usd || 0),
+                      TE.map((resp) => resp?.data?.price || 0),
                       TE.chain((price) =>
                         TE.tryCatch(
                           () => this.cacheManager.set(cacheKey, price, { ttl: 60 * 10 }),

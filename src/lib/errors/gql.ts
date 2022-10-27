@@ -27,6 +27,12 @@ export class NotFound extends mercurius.ErrorWithProps {
   }
 }
 
+export class RateLimit extends mercurius.ErrorWithProps {
+  constructor(action?: string) {
+    super("You've hit the rate limit", { action }, 409);
+  }
+}
+
 export class Unauthorized extends mercurius.ErrorWithProps {
   constructor() {
     super("You are not authorized to perform that action", {}, 403)

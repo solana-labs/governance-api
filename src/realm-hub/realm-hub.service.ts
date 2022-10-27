@@ -168,7 +168,24 @@ export class RealmHubService {
    * Get a count of twitter followers for a twitter handle
    */
   async getTwitterFollowerCountForHandle(handle: string) {
-    return this.getFollowerCount(handle, this.configService.get('external.twitterBearerKey'));
+    const cacheKey = `hub-twitter-handle-${handle}`;
+    const cached = await this.cacheManager.get<number>(cacheKey);
+
+    if (typeof cached === 'number') {
+      return cached;
+    }
+
+    try {
+      const count = await this.getFollowerCount(
+        handle,
+        this.configService.get('external.twitterBearerKey'),
+      );
+
+      await this.cacheManager.set(cacheKey, count, { ttl: 60 * 5 });
+      return count;
+    } catch (e) {
+      return 0;
+    }
   }
 
   /**
@@ -286,6 +303,10 @@ export class RealmHubService {
           data: { public_metrics: { followers_count: number } };
         }>((resp) => resp.json())
         .then((result) => {
+          if (!result?.data?.public_metrics) {
+            throw new errors.RateLimit('get twitter follower count');
+          }
+
           return result?.data?.public_metrics?.followers_count || 0;
         });
     },

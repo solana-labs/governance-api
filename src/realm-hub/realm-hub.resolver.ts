@@ -49,6 +49,35 @@ export class RealmHubResolver {
   }
 }
 
+@Resolver(() => RealmHubInfo)
+export class RealmHubInfoResolver {
+  @ResolveField(() => ClippedRichTextDocument, {
+    description: 'A clipped heading',
+    nullable: true,
+  })
+  clippedHeading(
+    @Root() hub: RealmHubInfo,
+    @Args('charLimit', {
+      type: () => Int,
+      description: 'The character count to clip the document at',
+      nullable: true,
+      defaultValue: 400,
+    })
+    charLimit = 400,
+    @Args('attachmentLimit', {
+      type: () => Int,
+      description: 'The maximum number of attachments to include',
+      nullable: true,
+      defaultValue: 0,
+    })
+    attachmentLimit = 0,
+  ) {
+    return hub.heading
+      ? clipRichTextDocument(hub.heading, charLimit, attachmentLimit)
+      : hub.heading;
+  }
+}
+
 @Resolver(() => RealmHubInfoFaqItem)
 export class RealmHubInfoFaqItemResolver {
   @ResolveField(() => ClippedRichTextDocument, {

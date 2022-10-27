@@ -6,10 +6,11 @@ import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 
 import {
-  RealmHubResolver,
   RealmHubInfoFaqItemResolver,
-  RealmHubInfoTokenDetailsResolver,
+  RealmHubInfoResolver,
   RealmHubInfoTeamMemberResolver,
+  RealmHubInfoTokenDetailsResolver,
+  RealmHubResolver,
 } from './realm-hub.resolver';
 import { RealmHubService } from './realm-hub.service';
 
@@ -22,11 +23,12 @@ import { RealmHubService } from './realm-hub.service';
     StaleCacheModule,
   ],
   providers: [
-    RealmHubService,
-    RealmHubResolver,
     RealmHubInfoFaqItemResolver,
-    RealmHubInfoTokenDetailsResolver,
+    RealmHubInfoResolver,
     RealmHubInfoTeamMemberResolver,
+    RealmHubInfoTokenDetailsResolver,
+    RealmHubResolver,
+    RealmHubService,
   ],
   exports: [RealmHubService],
 })

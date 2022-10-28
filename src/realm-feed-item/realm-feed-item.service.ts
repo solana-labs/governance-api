@@ -484,9 +484,7 @@ export class RealmFeedItemService {
     feedItem: RealmFeedItemPost | RealmFeedItemProposal,
     environment: Environment,
   ) {
-    const notifKey = this.configService.get('external.dialectNotifKey');
-
-    if (!(feedItem.author && notifKey)) {
+    if (!feedItem.author) {
       return;
     }
 

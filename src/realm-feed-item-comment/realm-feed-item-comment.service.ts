@@ -354,7 +354,6 @@ export class RealmFeedItemCommentService {
    * Send a notification when a user receives a reply to their post or comment
    */
   async sendReplyNotification(comment: RealmFeedItemCommentEntity, environment: Environment) {
-    const notifKey = this.configService.get('external.dialectNotifKey');
     let parentAuthorPublicKey: PublicKey | null = null;
     let parentType: 'post' | 'comment' | null = null;
 
@@ -386,7 +385,7 @@ export class RealmFeedItemCommentService {
       }
     }
 
-    if (parentAuthorPublicKey && parentType && notifKey) {
+    if (parentAuthorPublicKey && parentType) {
       const handle = await this.realmMemberService.getHandleName(
         parentAuthorPublicKey,
         environment,
@@ -396,7 +395,7 @@ export class RealmFeedItemCommentService {
       const title = `New Reply!`;
       const message = `${handle}, someone replied to your ${parentType}!`;
       const recipient = parentAuthorPublicKey.toBase58();
-  
+
       // send notification
       this.dialectService.sendMessage(title, message, [recipient]);
     }
@@ -406,9 +405,7 @@ export class RealmFeedItemCommentService {
    * Send a notification when a user gets a certain number of upvotes
    */
   async sendVoteNotification(comment: RealmFeedItemComment, environment: Environment) {
-    const notifKey = this.configService.get('external.dialectNotifKey');
-
-    if (!(comment.author && notifKey)) {
+    if (!comment.author) {
       return;
     }
 

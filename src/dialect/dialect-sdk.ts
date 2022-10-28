@@ -1,3 +1,4 @@
+import { Solana } from '@dialectlabs/blockchain-sdk-solana';
 import {
   Dapps,
   DialectSdk as IDialectSdk,
@@ -9,10 +10,6 @@ import {
   TokenProvider,
   EncryptionKeysProvider,
 } from '@dialectlabs/sdk';
-
-import {
-  Solana,
-} from '@dialectlabs/blockchain-sdk-solana';
 
 export abstract class DialectSdk implements IDialectSdk<Solana> {
   readonly info: DialectSdkInfo;

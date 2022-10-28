@@ -284,6 +284,72 @@ export class RealmFeedItemService {
   }
 
   /**
+   * Return a list of feed items
+   */
+  async getFeedItems(
+    ids: RealmFeedItemEntity['id'][],
+    requestingUser: User | null,
+    environment: Environment,
+  ) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const items = await this.realmFeedItemRepository.find({ where: { id: In(ids) } });
+
+    const votesResp = await Promise.all(
+      items.map((item) =>
+        this.getFeedItemVotes(
+          new PublicKey(item.realmPublicKeyStr),
+          [item.id],
+          requestingUser ? [requestingUser.id] : [],
+          environment,
+        )(),
+      ),
+    );
+
+    const votes = votesResp.reduce((acc, item) => {
+      if (EI.isRight(item)) {
+        for (const feedItemId of Object.keys(item.right)) {
+          if (!acc[feedItemId]) {
+            acc[feedItemId] = {};
+          }
+
+          const userVotes = item.right[feedItemId];
+
+          for (const userId of Object.keys(userVotes)) {
+            acc[feedItemId][userId] = userVotes[userId];
+          }
+        }
+      }
+
+      return acc;
+    }, {} as UserVoteMapping);
+
+    const entitiesResp = await Promise.all(
+      items.map((item) =>
+        this.convertEntityToFeedItem(
+          new PublicKey(item.realmPublicKeyStr),
+          item,
+          requestingUser,
+          votes,
+          environment,
+        )(),
+      ),
+    );
+
+    return entitiesResp
+      .map((resp) => {
+        if (EI.isRight(resp)) {
+          return resp.right;
+        }
+
+        return null;
+      })
+      .filter(exists);
+  }
+
+  /**
    * Returns a list of pinned feed items
    */
   async getPinnedFeedItems(

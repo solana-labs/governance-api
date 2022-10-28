@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '@src/config/config.module';
+import { DialectModule } from '@src/dialect/dialect.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { RealmPostModule } from '@src/realm-post/realm-post.module';
@@ -30,6 +31,7 @@ import { RealmFeedItemService } from './realm-feed-item.service';
     ConfigModule,
     StaleCacheModule,
     RealmMemberModule,
+    DialectModule,
     forwardRef(() => RealmModule),
   ],
   providers: [

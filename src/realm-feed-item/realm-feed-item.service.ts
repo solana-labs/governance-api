@@ -14,6 +14,7 @@ import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { ConfigService } from '@src/config/config.service';
+import { DialectService } from '@src/dialect/dialect.service';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
@@ -48,6 +49,7 @@ export class RealmFeedItemService {
     private readonly realmMemberService: RealmMemberService,
     private readonly staleCacheService: StaleCacheService,
     private readonly taskDedupeService: TaskDedupeService,
+    private readonly dialectService: DialectService,
   ) {}
 
   /**
@@ -426,7 +428,13 @@ export class RealmFeedItemService {
     const numVotes = feedItem.score;
     const handle = await this.realmMemberService.getHandleName(authorPublicKey, environment);
 
+    // TODO verify title / message copy. Possible to add URL to post?
+    const title = `👍 New Upvotes!`;
+    const message = `${handle}, your ${feedItem.type} now has ${numVotes} upvotes!`;
+    const recipient = authorPublicKey.toBase58();
+
     // send notification
+    this.dialectService.sendMessage(title, message, [recipient]);
   }
 
   /**

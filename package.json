@@ -28,6 +28,8 @@
   "dependencies": {
     "@cardinal/namespaces": "^4.1.56",
     "@civic/profile": "^0.1.2",
+    "@dialectlabs/blockchain-sdk-solana": "^1.0.0",
+    "@dialectlabs/sdk": "^1.2.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.0.0",

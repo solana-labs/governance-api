@@ -3,6 +3,8 @@ import { PublicKey } from '@solana/web3.js';
 
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
 
+import { RealmCategory } from './RealmCategory';
+
 @ObjectType({
   description: 'A Realm',
 })
@@ -12,6 +14,11 @@ export class Realm {
     nullable: true,
   })
   bannerImageUrl?: string;
+
+  @Field(() => RealmCategory, {
+    description: 'Indicates what type of Realm this is',
+  })
+  category: RealmCategory;
 
   @Field({
     description: 'Discord link',

@@ -11,6 +11,7 @@ import { exists } from '@src/lib/typeGuards/exists';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
+import { RealmCategory } from './dto/RealmCategory';
 import * as queries from './holaplexQueries';
 
 /**
@@ -23,6 +24,26 @@ function normalizeCodeCommittedUrl(url: string, baseUrl: string) {
   }
 
   return url;
+}
+
+/**
+ * Convert a plain string into a Category
+ */
+function normalizeCategory(plain?: string): RealmCategory {
+  switch (plain?.toLowerCase()) {
+    case 'daotools':
+      return RealmCategory.DAOTools;
+    case 'defi':
+      return RealmCategory.Defi;
+    case 'gaming':
+      return RealmCategory.Gaming;
+    case 'nft':
+      return RealmCategory.Nft;
+    case 'web3':
+      return RealmCategory.Web3;
+    default:
+      return RealmCategory.Other;
+  }
 }
 
 @Injectable()
@@ -55,6 +76,7 @@ export class RealmService {
             this.configService.get('app.codeCommitedInfoUrl'),
           )
         : undefined,
+      category: normalizeCategory(settings.category),
       iconUrl: settings.ogImage
         ? normalizeCodeCommittedUrl(
             settings.ogImage,

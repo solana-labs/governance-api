@@ -258,11 +258,26 @@ export class RealmFeedItemResolver {
       type: () => RealmFeedItemIDScalar,
       description: 'ID of the feed item',
     })
-    id: string,
+    id: number,
     @CurrentEnvironment() environment: Environment,
     @CurrentUser() user: User | null,
   ) {
-    return this.realmFeedItemService.getFeedItem(realm, parseInt(id, 10), user, environment);
+    return this.realmFeedItemService.getFeedItem(realm, id, user, environment);
+  }
+
+  @Query(() => [RealmFeedItem], {
+    description: 'A list of feed items',
+  })
+  feedItems(
+    @Args('ids', {
+      type: () => [RealmFeedItemIDScalar],
+      description: 'ID of the feed item',
+    })
+    ids: number[],
+    @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    return this.realmFeedItemService.getFeedItems(ids, user, environment);
   }
 
   @Query(() => [RealmFeedItem], {

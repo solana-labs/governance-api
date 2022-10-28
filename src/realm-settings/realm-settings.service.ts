@@ -12,6 +12,7 @@ const DEFAULT_GOVERNANCE_PROGRAM = 'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw
  */
 export interface CodeCommittedSettings {
   bannerImage?: string;
+  category?: string;
   displayName?: string;
   keywords?: string;
   ogImage?: string;

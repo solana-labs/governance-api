@@ -14,7 +14,7 @@ import * as errors from '@lib/errors/gql';
 import { enhanceRichTextDocument } from '@lib/textManipulation/enhanceRichTextDocument';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
-import { DialectService } from '@src/dialect/dialect.service';
+import { DialectService, DIALECT_NOTIF_TYPE_ID_REPLY, DIALECT_NOTIF_TYPE_ID_UPVOTE } from '@src/dialect/dialect.service';
 import { exists } from '@src/lib/typeGuards/exists';
 import { RichTextDocument } from '@src/lib/types/RichTextDocument';
 import { RealmFeedItemType } from '@src/realm-feed-item/dto/RealmFeedItemType';
@@ -398,7 +398,7 @@ export class RealmFeedItemCommentService {
       const recipient = parentAuthorPublicKey.toBase58();
   
       // send notification
-      this.dialectService.sendMessage(title, message, [recipient]);
+      this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_REPLY, [recipient]);
     }
   }
 
@@ -422,7 +422,7 @@ export class RealmFeedItemCommentService {
     const recipient = authorPublicKey.toBase58();
 
     // send notification
-    this.dialectService.sendMessage(title, message, [recipient]);
+    this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_UPVOTE, [recipient]);
   }
 
   /**

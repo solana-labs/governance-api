@@ -14,7 +14,7 @@ import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { ConfigService } from '@src/config/config.service';
-import { DialectService } from '@src/dialect/dialect.service';
+import { DialectService, DIALECT_NOTIF_TYPE_ID_UPVOTE } from '@src/dialect/dialect.service';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
@@ -500,7 +500,7 @@ export class RealmFeedItemService {
     const recipient = authorPublicKey.toBase58();
 
     // send notification
-    this.dialectService.sendMessage(title, message, [recipient]);
+    this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_UPVOTE, [recipient]);
   }
 
   /**

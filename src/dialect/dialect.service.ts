@@ -2,6 +2,10 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DialectSdk } from './dialect-sdk';
 import { Dapp } from '@dialectlabs/sdk';
 
+// TODO add notificationTypeId's after running script
+export const DIALECT_NOTIF_TYPE_ID_UPVOTE = 'TODO';
+export const DIALECT_NOTIF_TYPE_ID_REPLY = 'TODO';
+
 @Injectable()
 export class DialectService implements OnModuleInit {
   private realmsDapp: Dapp | null;
@@ -23,6 +27,7 @@ export class DialectService implements OnModuleInit {
   async sendMessage(
     title: string,
     message: string,
+    notificationTypeId: string,
     recipients?: string[],
   ) {
     try {
@@ -30,17 +35,19 @@ export class DialectService implements OnModuleInit {
         throw new Error('realmsDapp was not loaded from Dialect sdk');
       }
       if (!recipients) {
-        // broadcast
-        this.realmsDapp?.messages.send({
-          title,
-          message,
-        });
+        // TODO add broadcast when needed (no recipient param = broadcast)
+        // this.realmsDapp?.messages.send({
+        //   title,
+        //   message,
+        //   notificationTypeId,
+        // });
       } else if (recipients.length === 1) {
         // unicast
         this.realmsDapp?.messages.send({
           title,
           message,
           recipient: recipients[0],
+          notificationTypeId,
         });
       } else {
         // multicast
@@ -48,6 +55,7 @@ export class DialectService implements OnModuleInit {
           title,
           message,
           recipients,
+          notificationTypeId,
         });
       }
     } catch (e) {

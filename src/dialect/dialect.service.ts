@@ -2,9 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DialectSdk } from './dialect-sdk';
 import { Dapp } from '@dialectlabs/sdk';
 
-// TODO add notificationTypeId's after running script
-export const DIALECT_NOTIF_TYPE_ID_UPVOTE = 'TODO';
-export const DIALECT_NOTIF_TYPE_ID_REPLY = 'TODO';
+export const DIALECT_NOTIF_TYPE_ID_UPVOTE = '7df99a10-ec99-463b-ad5f-a82a7de37a3d';
+export const DIALECT_NOTIF_TYPE_ID_REPLY = 'c3379351-58c5-4eb4-9a2d-75c9abe97a33';
 
 @Injectable()
 export class DialectService implements OnModuleInit {

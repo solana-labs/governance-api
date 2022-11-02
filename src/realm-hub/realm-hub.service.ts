@@ -181,7 +181,7 @@ export class RealmHubService {
         this.configService.get('external.twitterBearerKey'),
       );
 
-      await this.cacheManager.set(cacheKey, count, { ttl: 60 * 15 });
+      await this.cacheManager.set(cacheKey, count, { ttl: 60 * 60 * 2 });
       return count;
     } catch (e) {
       return 0;

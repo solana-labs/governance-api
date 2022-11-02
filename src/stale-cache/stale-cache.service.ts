@@ -44,7 +44,7 @@ export class StaleCacheService {
                   value: result,
                   time: Date.now(),
                 },
-                { ttl: 0 },
+                0,
               );
             })
             .then((result) => {

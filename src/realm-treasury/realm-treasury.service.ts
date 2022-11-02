@@ -108,7 +108,7 @@ export class RealmTreasuryService {
                       TE.map((resp) => resp?.data?.price || 0),
                       TE.chain((price) =>
                         TE.tryCatch(
-                          () => this.cacheManager.set(cacheKey, price, { ttl: 60 * 10 }),
+                          () => this.cacheManager.set(cacheKey, price, 1000 * 60 * 5),
                           (e) => new errors.Exception(e),
                         ),
                       ),
@@ -160,7 +160,7 @@ export class RealmTreasuryService {
               ),
               TE.chainW((tokenList) =>
                 TE.tryCatch(
-                  () => this.cacheManager.set(cacheKey, tokenList, { ttl: 60 }),
+                  () => this.cacheManager.set(cacheKey, tokenList, 1000 * 60 * 10),
                   (e) => new errors.Exception(e),
                 ),
               ),
@@ -211,7 +211,7 @@ export class RealmTreasuryService {
               ),
               TE.chain((overrides) =>
                 TE.tryCatch(
-                  () => this.cacheManager.set(cacheKey, overrides, { ttl: 60 }),
+                  () => this.cacheManager.set(cacheKey, overrides, 1000 * 60 * 10),
                   (e) => new errors.Exception(e),
                 ),
               ),

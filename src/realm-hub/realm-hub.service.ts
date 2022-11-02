@@ -141,7 +141,7 @@ export class RealmHubService {
     const resp = await fetch(url);
     const allInfo: { [address: string]: CodeCommittedHubInfo } = await resp.json();
 
-    this.cacheManager.set(cacheKey, allInfo, { ttl: 5 * 60 });
+    this.cacheManager.set(cacheKey, allInfo, 1000 * 60 * 5);
     return allInfo;
   }
 
@@ -172,6 +172,7 @@ export class RealmHubService {
     const cached = await this.cacheManager.get<number>(cacheKey);
 
     if (typeof cached === 'number') {
+      console.log('cached');
       return cached;
     }
 
@@ -181,7 +182,7 @@ export class RealmHubService {
         this.configService.get('external.twitterBearerKey'),
       );
 
-      await this.cacheManager.set(cacheKey, count, { ttl: 60 * 60 * 2 });
+      await this.cacheManager.set(cacheKey, count, 1000 * 60 * 60 * 2);
       return count;
     } catch (e) {
       return 0;

@@ -71,7 +71,7 @@ export class RealmMemberService {
               ),
               TE.chainW((result) =>
                 TE.tryCatch(
-                  () => this.cacheManager.set(cacheKey, result, 1000 * 60 * 2),
+                  () => this.cacheManager.set(cacheKey, result, 60 * 2),
                   (e) => new errors.Exception(e),
                 ),
               ),
@@ -148,7 +148,7 @@ export class RealmMemberService {
               ),
               TE.chainW((result) =>
                 TE.tryCatch(
-                  () => this.cacheManager.set(cacheKey, result, 1000 * 60 * 2),
+                  () => this.cacheManager.set(cacheKey, result, 60 * 2),
                   (e) => new errors.Exception(e),
                 ),
               ),

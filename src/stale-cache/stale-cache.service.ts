@@ -29,7 +29,7 @@ export class StaleCacheService {
           : args.map((arg) => String(arg)).join('-'));
 
       const cacheKey = `stale-cache-${cacheKeyBase}`;
-      const maxStaleAgeMs = options?.maxStaleAgeMs || 1000 * 10;
+      const maxStaleAgeMs = options?.maxStaleAgeMs || 10;
 
       const cachedValue = await this.cacheManager.get<CachedValue<R>>(cacheKey);
       let inFlightResponse = this.inFlight.get(cacheKey) as Promise<R> | undefined;

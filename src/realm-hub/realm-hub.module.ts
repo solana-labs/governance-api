@@ -17,8 +17,8 @@ import { RealmHubService } from './realm-hub.service';
 @Module({
   imports: [
     CacheModule.register({
-      ttl: 1000 * 60 * 2,
-      max: 1000,
+      ttl: 60 * 2,
+      max: 2000,
     }),
     ConfigModule,
     RealmSettingsModule,

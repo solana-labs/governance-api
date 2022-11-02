@@ -51,7 +51,7 @@ export class RealmSettingsService {
     },
     {
       dedupeKey: (environment) => environment,
-      maxStaleAgeMs: 1000 * 60 * 5,
+      maxStaleAgeMs: 60 * 5,
     },
   );
 

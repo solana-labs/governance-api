@@ -157,7 +157,7 @@ export class TaskDedupeService {
             TE.chainW((result) => {
               if (args.ttl) {
                 return TE.tryCatch(
-                  () => this.cacheManager.set(args.key, result, ttl),
+                  () => this.cacheManager.set(args.key, result, ttl / 1000),
                   (e) => new errors.Exception(e),
                 );
               }

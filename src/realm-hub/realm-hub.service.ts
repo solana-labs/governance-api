@@ -172,7 +172,6 @@ export class RealmHubService {
     const cached = await this.cacheManager.get<number>(cacheKey);
 
     if (typeof cached === 'number') {
-      console.log('cached');
       return cached;
     }
 

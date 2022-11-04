@@ -12,11 +12,7 @@ import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
 import { exists } from '@src/lib/typeGuards/exists';
 import { RealmFeedItemSort } from '@src/realm-feed-item/dto/pagination';
-import {
-  RealmFeedItem,
-  RealmFeedItemPost,
-  RealmFeedItemProposal,
-} from '@src/realm-feed-item/dto/RealmFeedItem';
+import { RealmFeedItem } from '@src/realm-feed-item/dto/RealmFeedItem';
 import { RealmFeedItem as RealmFeedItemEntity } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
 import { RealmFeedItemCursor } from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
@@ -279,7 +275,9 @@ export class EcosystemFeedService {
       }
       case RealmFeedItemSort.Relevance: {
         const updatedAsNumber = parseInt(format(feedItem.updated, 'yyyyMMddHHmm'), 10);
-        const score = feedItem.metadata.relevanceScore + updatedAsNumber / 10;
+        const score =
+          feedItem.metadata.relevanceScore +
+          updatedAsNumber / this.configService.get('constants.timeValue');
         id = score.toString();
         break;
       }
@@ -380,9 +378,9 @@ export class EcosystemFeedService {
       };
     } else if (sortOrder === RealmFeedItemSort.Relevance) {
       return {
-        clause: `((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / 10)) ${
-          forwards ? '<' : '>'
-        } :score`,
+        clause: `((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / ${this.configService.get(
+          'constants.timeValue',
+        )})) ${forwards ? '<' : '>'} :score`,
         params: { score: feedItem },
       };
     } else {
@@ -406,8 +404,9 @@ export class EcosystemFeedService {
         };
       case RealmFeedItemSort.Relevance:
         return {
-          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / 10))`]:
-            desc,
+          [`((${name}.metadata->'relevanceScore')::decimal + ((to_char(${name}.updated, 'YYYYMMDDHH24MI')::decimal) / ${this.configService.get(
+            'constants.timeValue',
+          )}))`]: desc,
         };
       case RealmFeedItemSort.TopAllTime:
         return {

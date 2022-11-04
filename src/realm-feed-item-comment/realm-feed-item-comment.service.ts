@@ -525,7 +525,8 @@ export class RealmFeedItemCommentService {
         // submit a new vote
         else {
           const hours = differenceInHours(Date.now(), comment.created);
-          const relevanceWeight = 1 - Math.min(1, Math.ceil(hours / 4));
+          const relevanceWeight =
+            1 - Math.min(1, Math.ceil(hours / this.configService.get('constants.voteDecay')));
 
           if (args.type === RealmFeedItemCommentVoteType.Approve) {
             comment.metadata.relevanceScore += relevanceWeight;

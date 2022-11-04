@@ -8,6 +8,10 @@ export interface Config {
     host?: string;
     codeCommitedInfoUrl: string;
   };
+  constants: {
+    voteDecay: number;
+    timeValue: number;
+  };
   database: {
     host: string;
     name: string;
@@ -19,6 +23,7 @@ export interface Config {
   external: {
     dialectNotifKey: string | undefined;
     discordBotKey: string | undefined;
+    rpcEndpoint: string | undefined;
     twitterBearerKey: string | undefined;
   };
   jwt: {

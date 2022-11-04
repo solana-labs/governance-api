@@ -19,6 +19,7 @@ import { parseMintAccountData } from '@lib/treasuryAssets/parseMintAccountData';
 import { parseTokenAccountData } from '@lib/treasuryAssets/parseTokenAccountData';
 import { exists } from '@lib/typeGuards/exists';
 import { Environment } from '@lib/types/Environment';
+import { ConfigService } from '@src/config/config.service';
 import { RealmGovernanceService } from '@src/realm-governance/realm-governance.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
@@ -39,9 +40,6 @@ const SOL_MINT = {
     freezeAuthority: null,
   },
 };
-
-const ENDPOINT =
-  'http://realms-realms-c335.mainnet.rpcpool.com/258d3727-bb96-409d-abea-0b1b4c48af29/';
 
 function dedupeByPublicKey<T extends { publicKey: PublicKey }>(list: T[]) {
   const existing = new Set<string>();
@@ -81,6 +79,7 @@ interface Account {
 export class OnChainService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly configService: ConfigService,
     private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmSettingsService: RealmSettingsService,
     private readonly staleCacheService: StaleCacheService,
@@ -350,13 +349,19 @@ export class OnChainService {
         throw new errors.UnsupportedDevnet();
       }
 
+      const endpoint = this.configService.get('external.rpcEndpoint');
+
+      if (!endpoint) {
+        throw new Error('Please specify an RPC endpoint');
+      }
+
       const { programId } = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
         realmPublicKey,
         environment,
       );
 
       const governances = await getGovernanceAccounts(
-        new Connection(ENDPOINT),
+        new Connection(endpoint),
         new PublicKey(programId),
         Governance,
         [pubkeyFilter(1, realmPublicKey) as MemcmpFilter],
@@ -374,7 +379,13 @@ export class OnChainService {
 
   private getAssets = this.staleCacheService.dedupe(
     (pks: PublicKey[]) => {
-      const connection = new Connection(ENDPOINT);
+      const endpoint = this.configService.get('external.rpcEndpoint');
+
+      if (!endpoint) {
+        throw new Error('Please specify an RPC endpoint');
+      }
+
+      const connection = new Connection(endpoint);
       return getRawAssetAccounts(pks, connection.commitment);
     },
     {
@@ -385,7 +396,13 @@ export class OnChainService {
 
   private getOnChainTokenMintInfo = this.staleCacheService.dedupe(
     (mintPublicKey: PublicKey) => {
-      const connection = new Connection(ENDPOINT);
+      const endpoint = this.configService.get('external.rpcEndpoint');
+
+      if (!endpoint) {
+        throw new Error('Please specify an RPC endpoint');
+      }
+
+      const connection = new Connection(endpoint);
 
       return fetch(connection.rpcEndpoint, {
         method: 'POST',

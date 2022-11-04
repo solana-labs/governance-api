@@ -19,6 +19,14 @@ import { ConfigService } from './config.service';
               host: process.env.HOST,
               codeCommitedInfoUrl: process.env.CODE_COMMITED_INFO_URL || 'https://app.realms.today',
             },
+            constants: {
+              voteDecay: process.env.CONSTANTS_VOTE_DECAY
+                ? parseInt(process.env.CONSTANTS_VOTE_DECAY, 10)
+                : 6,
+              timeValue: process.env.CONSTANTS_TIME_VALUE
+                ? parseInt(process.env.CONSTANTS_TIME_VALUE)
+                : 180,
+            },
             database: {
               host: process.env.DATABASE_HOST || '',
               name: process.env.DATABASE_NAME || '',
@@ -30,6 +38,7 @@ import { ConfigService } from './config.service';
             external: {
               dialectNotifKey: process.env.DIALECT_NOTIF_KEY,
               discordBotKey: process.env.DISCORD_BOT_KEY,
+              rpcEndpoint: process.env.RPC_ENDPOINT,
               twitterBearerKey: process.env.TWITTER_API_BEARER_KEY,
             },
             jwt: {

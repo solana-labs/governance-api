@@ -497,8 +497,10 @@ export class RealmFeedItemService {
     const message = `${handle}, your ${feedItem.type} now has ${numVotes} upvotes!`;
     const recipient = authorPublicKey.toBase58();
 
-    // send notification
-    this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_UPVOTE, [recipient]);
+    if (feedItem.score === 1 || feedItem.score === 5 || feedItem.score === 10) {
+      // send notification
+      this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_UPVOTE, [recipient]);
+    }
   }
 
   /**

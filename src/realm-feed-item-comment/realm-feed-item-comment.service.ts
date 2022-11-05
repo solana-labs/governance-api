@@ -14,6 +14,7 @@ import * as errors from '@lib/errors/gql';
 import { enhanceRichTextDocument } from '@lib/textManipulation/enhanceRichTextDocument';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
+import { DialectService, DIALECT_NOTIF_TYPE_ID_REPLY, DIALECT_NOTIF_TYPE_ID_UPVOTE } from '@src/dialect/dialect.service';
 import { exists } from '@src/lib/typeGuards/exists';
 import { RichTextDocument } from '@src/lib/types/RichTextDocument';
 import { RealmFeedItemType } from '@src/realm-feed-item/dto/RealmFeedItemType';
@@ -61,6 +62,7 @@ export class RealmFeedItemCommentService {
     private readonly realmPostRepository: Repository<RealmPost>,
     private readonly realmMemberService: RealmMemberService,
     private readonly configService: ConfigService,
+    private readonly dialectService: DialectService,
   ) {}
 
   /**
@@ -352,7 +354,6 @@ export class RealmFeedItemCommentService {
    * Send a notification when a user receives a reply to their post or comment
    */
   async sendReplyNotification(comment: RealmFeedItemCommentEntity, environment: Environment) {
-    const notifKey = this.configService.get('external.dialectNotifKey');
     let parentAuthorPublicKey: PublicKey | null = null;
     let parentType: 'post' | 'comment' | null = null;
 
@@ -384,13 +385,19 @@ export class RealmFeedItemCommentService {
       }
     }
 
-    if (parentAuthorPublicKey && parentType && notifKey) {
+    if (parentAuthorPublicKey && parentType) {
       const handle = await this.realmMemberService.getHandleName(
         parentAuthorPublicKey,
         environment,
       );
 
+      // TODO verify title / message copy. Possible to add URL to post/comment?
+      const title = `New Reply!`;
+      const message = `${handle}, someone replied to your ${parentType}!`;
+      const recipient = parentAuthorPublicKey.toBase58();
+
       // send notification
+      this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_REPLY, [recipient]);
     }
   }
 
@@ -398,9 +405,7 @@ export class RealmFeedItemCommentService {
    * Send a notification when a user gets a certain number of upvotes
    */
   async sendVoteNotification(comment: RealmFeedItemComment, environment: Environment) {
-    const notifKey = this.configService.get('external.dialectNotifKey');
-
-    if (!(comment.author && notifKey)) {
+    if (!comment.author) {
       return;
     }
 
@@ -408,7 +413,13 @@ export class RealmFeedItemCommentService {
     const numVotes = comment.score;
     const handle = await this.realmMemberService.getHandleName(authorPublicKey, environment);
 
+    // TODO verify title / message copy. Possible to add URL to comment?
+    const title = `👍 New Upvotes!`;
+    const message = `${handle}, your comment now has ${numVotes} upvotes!`;
+    const recipient = authorPublicKey.toBase58();
+
     // send notification
+    this.dialectService.sendMessage(title, message, DIALECT_NOTIF_TYPE_ID_UPVOTE, [recipient]);
   }
 
   /**

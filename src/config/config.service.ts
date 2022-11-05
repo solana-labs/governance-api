@@ -21,7 +21,8 @@ export interface Config {
     useSsl: boolean;
   };
   external: {
-    dialectNotifKey: string | undefined;
+    dialectSdkCredentials: string | undefined;
+    dialectSdkEnvironment: string | undefined;
     discordBotKey: string | undefined;
     rpcEndpoint: string | undefined;
     twitterBearerKey: string | undefined;

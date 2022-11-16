@@ -1,8 +1,9 @@
-import { Resolver, Query, Args, ResolveField, Root, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ResolveField, Root, Int } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
 import { CurrentUser, User } from '@lib/decorators/CurrentUser';
+import * as errors from '@lib/errors/gql';
 import { ConnectionArgs } from '@lib/gqlTypes/Connection';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
@@ -25,6 +26,7 @@ import { RealmTreasury } from '@src/realm-treasury/dto/RealmTreasury';
 
 import { Realm } from './dto/Realm';
 import { RealmDropdownListItem } from './dto/RealmDropdownListItem';
+import { RealmInput } from './inputDto/RealmInput';
 import { RealmService } from './realm.service';
 
 @Resolver(() => Realm)
@@ -36,6 +38,21 @@ export class RealmResolver {
     private readonly realmProposalGqlService: RealmProposalGQLService,
     private readonly realmService: RealmService,
   ) {}
+
+  @ResolveField(() => Boolean, {
+    description: 'If the requesting user is an admin of the Realm',
+  })
+  amAdmin(
+    @Root() realm: Realm,
+    @CurrentEnvironment() environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      return false;
+    }
+
+    return this.realmService.userIsCouncilMember(realm.publicKey, user.publicKey, environment);
+  }
 
   @ResolveField(() => RealmFeedItemConnection, {
     description: 'Realm feed',
@@ -82,20 +99,6 @@ export class RealmResolver {
     @CurrentUser() user: User | null,
   ) {
     return this.realmFeedItemService.getPinnedFeedItems(realm.publicKey, user, environment);
-  }
-
-  @Query(() => Realm, {
-    description: 'A Realm',
-  })
-  realm(
-    @Args('publicKey', {
-      description: 'The public key of the Realm',
-      type: () => PublicKeyScalar,
-    })
-    publicKey: PublicKey,
-    @CurrentEnvironment() environment: Environment,
-  ) {
-    return this.realmService.getRealm(publicKey, environment);
   }
 
   @ResolveField(() => RealmMemberConnection, {
@@ -166,6 +169,45 @@ export class RealmResolver {
   })
   treasury(@Root() realm: Realm) {
     return { belongsTo: realm.publicKey };
+  }
+
+  @Query(() => Realm, {
+    description: 'A Realm',
+  })
+  realm(
+    @Args('publicKey', {
+      description: 'The public key of the Realm',
+      type: () => PublicKeyScalar,
+    })
+    publicKey: PublicKey,
+    @CurrentEnvironment() environment: Environment,
+  ) {
+    return this.realmService.getRealm(publicKey, environment);
+  }
+
+  @Mutation(() => Realm, {
+    description: 'Update realm metadata',
+  })
+  updateRealmMetadata(
+    @Args('publicKey', {
+      description: 'The public key of the Realm',
+      type: () => PublicKeyScalar,
+    })
+    publicKey: PublicKey,
+    @Args('realm', {
+      description: 'The new Realm metadata',
+      type: () => RealmInput,
+    })
+    realm: RealmInput,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmService.updateRealm(user, publicKey, environment, realm);
   }
 }
 

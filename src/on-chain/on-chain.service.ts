@@ -169,6 +169,55 @@ export class OnChainService {
   );
 
   /**
+   * Get a token account for a user
+   */
+  getTokenAccountForUser = this.staleCacheService.dedupe(
+    async (user: PublicKey, mintPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
+
+      const resp = await fetch(this.configService.get('external.rpcEndpoint'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getTokenAccountsByOwner',
+          params: [
+            user.toBase58(),
+            {
+              mint: mintPublicKey.toBase58(),
+            },
+            {
+              encoding: 'jsonParsed',
+            },
+          ],
+        }),
+      });
+
+      const result = await resp.json();
+      const value = result?.result?.value?.[0]?.account?.data?.parsed?.info?.tokenAmount;
+
+      if (value) {
+        return value as {
+          amount: string;
+          decimals: string;
+          uiAmount: number;
+          uiAmountString: string;
+        };
+      }
+
+      return null;
+    },
+    {
+      dedupeKey: (user, mint, env) => user.toBase58() + mint.toBase58() + env,
+    },
+  );
+
+  /**
    * Get token mint info
    */
   getTokenMintInfo = this.staleCacheService.dedupe(

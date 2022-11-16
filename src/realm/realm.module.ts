@@ -9,10 +9,17 @@ import { RealmHubModule } from '@src/realm-hub/realm-hub.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
+import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 
 import { Realm } from './entities/Realm.entity';
-import { RealmResolver, RealmDropdownListItemResolver } from './realm.resolver';
+import {
+  RealmDropdownListItemResolver,
+  RealmFaqItemResolver,
+  RealmResolver,
+  RealmTeamMemberResolver,
+  RealmTokenDetailsResolver,
+} from './realm.resolver';
 import { RealmService } from './realm.service';
 
 @Module({
@@ -25,10 +32,18 @@ import { RealmService } from './realm.service';
     RealmMemberModule,
     RealmProposalModule,
     RealmSettingsModule,
+    RealmTreasuryModule,
     TypeOrmModule.forFeature([Realm]),
     forwardRef(() => RealmFeedItemModule),
   ],
-  providers: [RealmResolver, RealmDropdownListItemResolver, RealmService],
+  providers: [
+    RealmDropdownListItemResolver,
+    RealmFaqItemResolver,
+    RealmResolver,
+    RealmService,
+    RealmTeamMemberResolver,
+    RealmTokenDetailsResolver,
+  ],
   exports: [RealmService],
 })
 export class RealmModule {}

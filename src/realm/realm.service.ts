@@ -135,6 +135,36 @@ export class RealmService {
   }
 
   /**
+   * Fetch a realm by its url id
+   */
+  async getRealmByUrlId(id: string, environment: Environment) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    // assumed the url id is a symbol and try to fetch by that first
+    const symbol = decodeURIComponent(id).toLocaleLowerCase();
+
+    let realm = await this.realmRepository.findOne({
+      where: { symbol },
+    });
+
+    // assume it's a publick key next and try that
+    if (!realm) {
+      realm = await this.realmRepository.findOne({
+        where: { publicKeyStr: id },
+      });
+    }
+
+    // if it's still not found, it's not a realm realm
+    if (!realm) {
+      throw new errors.NotFound();
+    }
+
+    return this.convertEntityDto(realm);
+  }
+
+  /**
    * Get multiple realms at once
    */
   async getRealms(publicKeys: PublicKey[], environment: Environment) {

@@ -9,6 +9,7 @@ import { SignatureScalar } from '@src/lib/scalars/Signature';
 
 import { AuthService } from './auth.service';
 import { AuthClaim } from './dto/AuthClaim';
+import { VerifyWallet } from '@src/discord-user/dto/VerifyWallet';
 
 @Resolver()
 export class AuthResolver {
@@ -19,7 +20,7 @@ export class AuthResolver {
       'Generate an authentication claim that a wallet can sign and trade for an auth token',
   })
   @EitherResolver()
-  createAuthenticationClaim(
+  createAuthenticationClaim2(
     @Args('publicKey', {
       description: 'The public key of the wallet',
       type: () => PublicKeyScalar,

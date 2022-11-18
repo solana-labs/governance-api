@@ -1,22 +1,25 @@
 import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
-import { PublicKey } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 import { CurrentUser, User } from '@src/lib/decorators/CurrentUser';
 
 import { DiscordUserService } from './discordUser.service';
 
-import { DiscordUser, RefreshToken } from './dto/DiscordUser';
+import { RefreshToken } from './dto/DiscordUser';
 import { VerifyWallet } from './dto/VerifyWallet';
 
-const MAX_TXS_TO_SCAN: number = 10000;
-
+const MINIMUM_SOL = 0.1;
+const MAX_TXS_TO_SCAN = 10000;
 const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
 const port = 3000;
 const redirectUri = `http://localhost:${port}/verify-wallet`;
 
-const apiURL = 'https://api.helius.xyz/v0/addresses';
+const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
+const HELIUS_ADDRESSES_URL = `${HELIUS_BASE_URL}/addresses`;
 const options = '?api-key=8ff76c55-268e-4c41-9916-cb55b8132089';
+const HELIUS_BALANCES_URL = (address) =>
+  `${HELIUS_BASE_URL}/addresses/${address}/balances${options}`;
 
 type WalletAge = {
   txId: string;
@@ -36,7 +39,7 @@ async function getLargeAmountOfTransactions(
   let numTxs = 0;
 
   while (numTxs < maxCount) {
-    const url = `${apiURL}/${address}/${resource}${options}&before=${
+    const url = `${HELIUS_ADDRESSES_URL}/${address}/${resource}${options}&before=${
       oldestTransaction?.txId ?? ''
     }`;
     const body = await fetch(url);
@@ -67,6 +70,45 @@ async function getLargeAmountOfTransactions(
   return oldestTransaction;
 }
 
+const getSolBalance = async (publicKey: string) => {
+  const response = await fetch(HELIUS_BALANCES_URL(publicKey));
+  const { nativeBalance }: { nativeBalance: number } = await response.json();
+
+  return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
+};
+
+const getMetadataForUser = async (publicKey: PublicKey) => {
+  const walletAge = await getLargeAmountOfTransactions(publicKey.toBase58(), MAX_TXS_TO_SCAN);
+  const hasMinimumSol = await getSolBalance(publicKey.toBase58());
+
+  return {
+    first_wallet_transaction_date: walletAge?.date ?? new Date().toISOString(),
+    has_minimum_sol: hasMinimumSol,
+  };
+};
+
+const updateMetadataForUser = async (publicKey: PublicKey, accessToken: string) => {
+  const metadata = await getMetadataForUser(publicKey);
+  console.info({ metadata });
+
+  const putResult = await fetch(
+    `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
+    {
+      method: 'PUT',
+      headers: {
+        'authorization': `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        platform_name: 'Solana',
+        metadata,
+      }),
+    },
+  );
+
+  console.info({ putResult });
+};
+
 @Resolver()
 export class DiscordUserResolver {
   constructor(private readonly discordUserService: DiscordUserService) {}
@@ -83,7 +125,6 @@ export class DiscordUserResolver {
     @CurrentUser()
     user,
   ) {
-    console.info({ user });
     const tokenResponseData = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       body: new URLSearchParams({
@@ -103,65 +144,65 @@ export class DiscordUserResolver {
 
     const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
 
-    const txScanResult = await getLargeAmountOfTransactions(
-      user.publicKey.toBase58(),
-      MAX_TXS_TO_SCAN,
+    const discordUser = await this.discordUserService.createDiscordUser(
+      user.id,
+      user.publicKey,
+      refreshToken,
     );
+    await updateMetadataForUser(user.publicKey, accessToken);
 
-    if (!txScanResult) {
-      return { status: 'we failed while scanning txs for pubkey' };
-    }
+    return discordUser;
+  }
 
-    const walletAge: WalletAge = txScanResult;
-    console.log('Found wallet age:', walletAge);
+  @Mutation(() => VerifyWallet, {
+    description:
+      'Generate an authentication claim that a wallet can sign and trade for an auth token',
+  })
+  async refreshDiscordUserMetadata(
+    @Args('publicKey', {
+      description: 'Public key of user',
+    })
+    publicKey: string,
+  ) {
+    const discordUser = await this.discordUserService.getDiscordUserByPublicKey(
+      new PublicKey(publicKey),
+    );
+    if (discordUser) {
+      const { refreshToken } = discordUser;
 
-    const putResult = await fetch(
-      `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
-      {
-        headers: {
-          'authorization': `Bearer ${accessToken}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          platform_name: 'Solana',
-          metadata: {
-            first_wallet_transaction_date: walletAge.date,
+      try {
+        const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-        }),
-        method: 'PUT',
-      },
-    );
-    console.log('setting metadata', putResult.status);
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+          }),
+        });
 
-    return { status: 'we also good here' };
-
-    // const foo = await this.discordUserService.createDiscordUser(
-    //   user.id,
-    //   user.publicKey,
-    //   'gibberish',
-    // );
-    // const userId = user.id
-    // const userKey = user.publicKey
-    const userId = 'e9574a66-337d-4c5f-9ebe-54004568e6eb';
-    const userKey = new PublicKey('9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv');
-
-    return await this.discordUserService.createDiscordUser(userId, userKey, 'gibberish');
+        const { access_token: accessToken } = await response.json();
+        await updateMetadataForUser(new PublicKey(publicKey), accessToken);
+        return { status: 'SUCCESS' };
+      } catch (e) {
+        return { status: 'FAILED' };
+      }
+    }
   }
 
   @Query(() => RefreshToken, {
     description: 'Retrieve the refresh token for the current user',
   })
   async getRefreshTokenForPublicKey(@CurrentUser() user: User | null) {
-    const discordUser = await this.discordUserService.getDiscordUserByPublicKey(
-      new PublicKey('9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv'),
-    );
-    // const discordUser = await this.discordUserService.getDiscordUserByPublicKey(
-    //   user?.publicKey
-    // );
-    if (discordUser) {
-      return { token: discordUser.refreshToken };
-    } else {
-      return { token: '' };
+    if (user?.publicKey) {
+      const discordUser = await this.discordUserService.getDiscordUserByPublicKey(user?.publicKey);
+      if (discordUser) {
+        return { token: discordUser.refreshToken };
+      }
     }
+    return { token: '' };
   }
 }

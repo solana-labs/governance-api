@@ -22,13 +22,16 @@ export class DiscordUserService {
    */
   createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
     try {
-      const discordUser = this.discordUserRepository.create({
-        authId,
-        publicKeyStr: publicKey.toBase58(),
-        refreshToken,
-      });
+      return this.discordUserRepository.upsert(
+        {
+          authId,
+          publicKeyStr: publicKey.toBase58(),
+          refreshToken,
+        },
+        { conflictPaths: ['authId'] },
+      );
 
-      return this.discordUserRepository.save(discordUser);
+      // return this.discordUserRepository.save(discordUser);
     } catch (e) {
       throw new errors.Exception(e);
     }

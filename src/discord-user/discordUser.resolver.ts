@@ -10,7 +10,7 @@ const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
 const port = 3000;
 // const redirectUri = `http://localhost:${port}/verify-wallet`;
-const redirectUri = "https://solana-verify-wallet-testing-ngundotra.vercel.app/verify-wallet";
+const redirectUri = 'https://solana-verify-wallet-testing-ngundotra.vercel.app/verify-wallet';
 
 @Resolver()
 export class DiscordUserResolver {
@@ -45,10 +45,10 @@ export class DiscordUserResolver {
     const oauthData = await tokenResponseData.json();
     console.log('oauth data:', oauthData);
 
-    const { refresh_token: refreshToken } = oauthData;
+    const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
 
     await this.discordUserService.createDiscordUser(user.id, user.publicKey, refreshToken);
-    await this.discordUserService.refreshDiscordMetadataForPublicKey(user.publicKey);
+    await this.discordUserService.updateMetadataForUser(user.publicKey, accessToken);
 
     return user;
   }

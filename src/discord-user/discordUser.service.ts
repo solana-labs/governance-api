@@ -39,7 +39,7 @@ async function getLargeAmountOfTransactions(
   let oldestTransaction: ConfirmedSignatureInfo | undefined;
 
   // Find oldest tx
-  let options: SignaturesForAddressOptions = {};
+  const options: SignaturesForAddressOptions = {};
   while (numTxs < maxCount) {
     const data = await connection.getSignaturesForAddress(new PublicKey(address), options);
     if (data.length === 0) {
@@ -49,8 +49,8 @@ async function getLargeAmountOfTransactions(
     numTxs += data.length;
 
     // API data is already sorted in descending order
-    const oldestTxInfo = data[data.length - 1];
-    options.before = oldestTxInfo.signature;
+    oldestTransaction = data[data.length - 1];
+    options.before = oldestTransaction.signature;
   }
 
   if (oldestTransaction) {
@@ -65,6 +65,7 @@ async function getLargeAmountOfTransactions(
       const response = await (await fetch(url)).json();
       blockTime = response.timestamp;
     }
+
     const date = new Date(0);
     date.setUTCSeconds(blockTime);
     return {

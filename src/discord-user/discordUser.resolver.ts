@@ -1,5 +1,5 @@
 import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 import { CurrentUser, User } from '@src/lib/decorators/CurrentUser';
 
@@ -70,19 +70,41 @@ async function getLargeAmountOfTransactions(
   return oldestTransaction;
 }
 
-const getSolBalance = async (publicKey: string) => {
-  const response = await fetch(HELIUS_BALANCES_URL(publicKey));
-  const { nativeBalance }: { nativeBalance: number } = await response.json();
+const activeWithin30Days = async (publicKey: string) => {
+  const req = await fetch(`${HELIUS_ADDRESSES_URL}/${publicKey}/transactions${options}`);
+  const recentTxes = await req.json();
 
-  return (nativeBalance / LAMPORTS_PER_SOL) >= MINIMUM_SOL;
+  if (recentTxes.length) {
+    const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+    const timestampThirtyDaysAgo = new Date().getTime() - thirtyDaysInMs;
+    const mostRecentTxTimestamp = recentTxes[0].timestamp * 1000;
+
+    console.info({ mostRecentTxTimestamp, timestampThirtyDaysAgo });
+    return mostRecentTxTimestamp >= timestampThirtyDaysAgo;
+  }
+  return null;
+};
+
+const getSolBalance = async (publicKey: string) => {
+  console.info({ url: HELIUS_BALANCES_URL(publicKey) });
+  const response = await fetch(HELIUS_BALANCES_URL(publicKey));
+  const responseJson = await response.json();
+  console.info({ responseJson });
+  const { nativeBalance }: { nativeBalance: number } = responseJson;
+
+  console.info({ nativeBalance });
+
+  return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
 };
 
 const getMetadataForUser = async (publicKey: PublicKey) => {
   const walletAge = await getLargeAmountOfTransactions(publicKey.toBase58(), MAX_TXS_TO_SCAN);
   const hasMinimumSol = await getSolBalance(publicKey.toBase58());
+  const isRecentlyActive = await activeWithin30Days(publicKey.toBase58());
 
   return {
-    first_wallet_transaction_date: walletAge?.date ?? new Date().toISOString(),
+    first_wallet_transaction: walletAge?.date ?? null,
+    most_recent_wallet_transaction: isRecentlyActive ? 1 : 0,
     has_minimum_sol: hasMinimumSol ? 1 : 0,
   };
 };
@@ -144,16 +166,10 @@ export class DiscordUserResolver {
 
     const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
 
-    const discordUser = await this.discordUserService.createDiscordUser(
-      user.id,
-      user.publicKey,
-      refreshToken,
-    );
+    await this.discordUserService.createDiscordUser(user.id, user.publicKey, refreshToken);
     await updateMetadataForUser(user.publicKey, accessToken);
 
-    console.info({ discordUser, user });
-
-    return discordUser;
+    return user;
   }
 
   @Mutation(() => VerifyWallet, {
@@ -188,9 +204,9 @@ export class DiscordUserResolver {
 
         const { access_token: accessToken } = await response.json();
         await updateMetadataForUser(new PublicKey(publicKey), accessToken);
-        return { status: 'SUCCESS' };
+        return { publicKey };
       } catch (e) {
-        return { status: 'FAILED' };
+        return null;
       }
     }
   }

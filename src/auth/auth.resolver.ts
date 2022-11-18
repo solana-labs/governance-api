@@ -20,7 +20,7 @@ export class AuthResolver {
       'Generate an authentication claim that a wallet can sign and trade for an auth token',
   })
   @EitherResolver()
-  createAuthenticationClaim2(
+  createAuthenticationClaim(
     @Args('publicKey', {
       description: 'The public key of the wallet',
       type: () => PublicKeyScalar,

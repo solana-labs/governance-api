@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class migrations1668717005862 implements MigrationInterface {
-    name = 'migrations1668717005862'
+  name = 'migrations1668717005862';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "discord_user" (
                 "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
                 "authId" character varying NOT NULL,
@@ -17,12 +17,11 @@ export class migrations1668717005862 implements MigrationInterface {
                 CONSTRAINT "PK_2c465db058d41ca3a50f819b0a1" PRIMARY KEY ("id")
             )
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP TABLE "discord_user"
         `);
-    }
-
+  }
 }

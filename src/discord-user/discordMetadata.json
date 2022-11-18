@@ -1,0 +1,26 @@
+[
+  {
+    "type": 6,
+    "key": "first_wallet_transaction",
+    "name": "First Wallet Transaction",
+    "description": "Date of the first transaction this address was a part of",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 5,
+    "key": "most_recent_wallet_transaction",
+    "name": "Most Recent Wallet Transaction",
+    "description": "Date of the most recent transaction this address was a part of",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 7,
+    "key": "has_minimum_sol",
+    "name": "Has at least ◎0.1",
+    "description": "Whether this address has at least ◎0.1",
+    "name_localizations": null,
+    "description_localizations": null
+  }
+]

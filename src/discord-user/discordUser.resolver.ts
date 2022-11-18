@@ -151,6 +151,8 @@ export class DiscordUserResolver {
     );
     await updateMetadataForUser(user.publicKey, accessToken);
 
+    console.info({ discordUser, user });
+
     return discordUser;
   }
 
@@ -191,18 +193,5 @@ export class DiscordUserResolver {
         return { status: 'FAILED' };
       }
     }
-  }
-
-  @Query(() => RefreshToken, {
-    description: 'Retrieve the refresh token for the current user',
-  })
-  async getRefreshTokenForPublicKey(@CurrentUser() user: User | null) {
-    if (user?.publicKey) {
-      const discordUser = await this.discordUserService.getDiscordUserByPublicKey(user?.publicKey);
-      if (discordUser) {
-        return { token: discordUser.refreshToken };
-      }
-    }
-    return { token: '' };
   }
 }

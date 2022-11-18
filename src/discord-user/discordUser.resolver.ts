@@ -74,7 +74,7 @@ const getSolBalance = async (publicKey: string) => {
   const response = await fetch(HELIUS_BALANCES_URL(publicKey));
   const { nativeBalance }: { nativeBalance: number } = await response.json();
 
-  return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
+  return (nativeBalance / LAMPORTS_PER_SOL) >= MINIMUM_SOL;
 };
 
 const getMetadataForUser = async (publicKey: PublicKey) => {
@@ -83,7 +83,7 @@ const getMetadataForUser = async (publicKey: PublicKey) => {
 
   return {
     first_wallet_transaction_date: walletAge?.date ?? new Date().toISOString(),
-    has_minimum_sol: hasMinimumSol,
+    has_minimum_sol: hasMinimumSol ? 1 : 0,
   };
 };
 

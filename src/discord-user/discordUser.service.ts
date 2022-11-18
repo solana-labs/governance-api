@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import * as errors from '@lib/errors/gql';
 
 import { DiscordUser } from './entities/DiscordUser.entity';
+import { access } from 'fs';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
@@ -196,33 +197,34 @@ export class DiscordUserService {
   }
 
   async updateMetadataForUser(publicKey: PublicKey, _accessToken) {
-    const discordUser = await this.getDiscordUserByPublicKey(publicKey);
-
     let accessToken = _accessToken;
-    if (discordUser) {
-      if (!accessToken) {
+    if (!accessToken) {
+      const discordUser = await this.getDiscordUserByPublicKey(publicKey);
+      if (discordUser) {
         accessToken = await getAccessTokenWithRefreshToken(discordUser.refreshToken);
+      } else {
+        throw new Error('No access / refresh token found!');
       }
-
-      const metadata = await getMetadataForUser(publicKey);
-      console.info({ metadata });
-
-      const putResult = await fetch(
-        `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
-        {
-          method: 'PUT',
-          headers: {
-            'authorization': `Bearer ${accessToken}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            platform_name: 'Solana',
-            metadata,
-          }),
-        },
-      );
-
-      console.info({ putResult });
     }
+
+    const metadata = await getMetadataForUser(publicKey);
+    console.info({ metadata });
+
+    const putResult = await fetch(
+      `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
+      {
+        method: 'PUT',
+        headers: {
+          'authorization': `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform_name: 'Solana',
+          metadata,
+        }),
+      },
+    );
+
+    console.info({ putResult });
   }
 }

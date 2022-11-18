@@ -1,8 +1,11 @@
-import { Resolver, Mutation, Args, Context } from '@nestjs/graphql';
-import { CurrentUser } from '@src/lib/decorators/CurrentUser';
+import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
+import { PublicKey } from '@solana/web3.js';
+
+import { CurrentUser, User } from '@src/lib/decorators/CurrentUser';
 
 import { DiscordUserService } from './discordUser.service';
 
+import { DiscordUser, RefreshToken } from './dto/DiscordUser';
 import { VerifyWallet } from './dto/VerifyWallet';
 
 const MAX_TXS_TO_SCAN: number = 10000;
@@ -130,7 +133,35 @@ export class DiscordUserResolver {
     );
     console.log('setting metadata', putResult.status);
 
-    // response.sendStatus(200);
     return { status: 'we also good here' };
+
+    // const foo = await this.discordUserService.createDiscordUser(
+    //   user.id,
+    //   user.publicKey,
+    //   'gibberish',
+    // );
+    // const userId = user.id
+    // const userKey = user.publicKey
+    const userId = 'e9574a66-337d-4c5f-9ebe-54004568e6eb';
+    const userKey = new PublicKey('9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv');
+
+    return await this.discordUserService.createDiscordUser(userId, userKey, 'gibberish');
+  }
+
+  @Query(() => RefreshToken, {
+    description: 'Retrieve the refresh token for the current user',
+  })
+  async getRefreshTokenForPublicKey(@CurrentUser() user: User | null) {
+    const discordUser = await this.discordUserService.getDiscordUserByPublicKey(
+      new PublicKey('9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv'),
+    );
+    // const discordUser = await this.discordUserService.getDiscordUserByPublicKey(
+    //   user?.publicKey
+    // );
+    if (discordUser) {
+      return { token: discordUser.refreshToken };
+    } else {
+      return { token: '' };
+    }
   }
 }

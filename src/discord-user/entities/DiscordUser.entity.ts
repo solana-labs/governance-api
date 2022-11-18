@@ -7,6 +7,13 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { EncryptionTransformer } from 'typeorm-encrypted';
+
+export const ENCRYPTION_CONFIG = {
+  key: process.env.REFRESH_TOKEN_SECRET!,
+  algorithm: 'aes-256-gcm',
+  ivLength: 16,
+};
 
 export interface Data {}
 
@@ -16,16 +23,17 @@ export class DiscordUser {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('jsonb')
-  data: Data;
-
   @Column()
   authId: string;
 
   @Column()
   publicKeyStr: string;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    transformer: new EncryptionTransformer(ENCRYPTION_CONFIG),
+  })
   refreshToken: string;
 
   @CreateDateColumn()

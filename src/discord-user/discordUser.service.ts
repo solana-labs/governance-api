@@ -8,52 +8,42 @@ import { Repository } from 'typeorm';
 
 import * as errors from '@lib/errors/gql';
 
-import { Data, DiscordUser } from './entities/DiscordUser.entity';
+import { DiscordUser } from './entities/DiscordUser.entity';
 
 @Injectable()
 export class DiscordUserService {
   constructor(
     @InjectRepository(DiscordUser)
-    private readonly userRepository: Repository<DiscordUser>,
+    private readonly discordUserRepository: Repository<DiscordUser>,
   ) {}
 
   /**
-   * Creates a new user
+   * Creates a new Discord user
    */
-  createUser(authId: string, publicKey: PublicKey, data: Data) {
-    return FN.pipe(
-      TE.of(this.userRepository.create({ authId, data, publicKeyStr: publicKey.toBase58() })),
-      TE.chain((user) =>
-        TE.tryCatch(
-          () => this.userRepository.save(user),
-          (error) => new errors.Exception(error),
-        ),
-      ),
-    );
-  }
+  createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
+    try {
+      const discordUser = this.discordUserRepository.create({
+        authId,
+        publicKeyStr: publicKey.toBase58(),
+        refreshToken,
+      });
 
-  /**
-   * Creates a new user or returns one that already exists
-   */
-  // getOrCreateUser(authId: string, publicKey: PublicKey) {
-  // return FN.pipe(
-  //   this.getUserByAuthId(authId),
-  //   TE.chainW((user) =>
-  //     OP.isSome(user) ? TE.right(user.value) : this.createUser(authId, publicKey, {}),
-  //   ),
-  // );
-  // }
+      return this.discordUserRepository.save(discordUser);
+    } catch (e) {
+      throw new errors.Exception(e);
+    }
+  }
 
   /**
    * Returns a user by their ID
    */
-  getUserById(id: string) {
-    return FN.pipe(
-      TE.tryCatch(
-        () => this.userRepository.findOne({ where: { id } }),
-        (error) => new errors.Exception(error),
-      ),
-      TE.map((user) => (user ? OP.some(user) : OP.none)),
-    );
+  async getDiscordUserByPublicKey(publicKey: PublicKey) {
+    try {
+      return await this.discordUserRepository.findOne({
+        where: { publicKeyStr: publicKey.toBase58() },
+      });
+    } catch (e) {
+      throw new errors.Exception(e);
+    }
   }
 }

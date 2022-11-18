@@ -13,7 +13,8 @@ const MAX_TXS_TO_SCAN = 10000;
 const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
 const port = 3000;
-const redirectUri = `http://localhost:${port}/verify-wallet`;
+// const redirectUri = `http://localhost:${port}/verify-wallet`;
+const redirectUri = "https://solana-verify-wallet-testing-ngundotra.vercel.app/verify-wallet";
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 const HELIUS_ADDRESSES_URL = `${HELIUS_BASE_URL}/addresses`;

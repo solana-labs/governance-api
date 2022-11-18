@@ -1,0 +1,29 @@
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { PublicKey } from '@solana/web3.js';
+
+import { DiscordUserService } from './discordUser.service';
+import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
+
+@Controller()
+export class DiscordUserController {
+  constructor(private readonly discordUserService: DiscordUserService) {}
+
+  @Post('/webhook')
+  async getHello(@Body() body: HeliusWebhookPayload[]): Promise<{ publicKeys: string[] }> {
+    const { nativeTransfers } = body[0];
+    const affectedAddresses = new Set<string>();
+    nativeTransfers.forEach((transfer) => {
+      affectedAddresses.add(transfer.fromUserAccount);
+      affectedAddresses.add(transfer.toUserAccount);
+    });
+    console.info({ affectedAddresses });
+
+    for await (const affectedAddress of affectedAddresses) {
+      await this.discordUserService.refreshDiscordMetadataForPublicKey(
+        new PublicKey(affectedAddress),
+      );
+    }
+
+    return { publicKeys: Array.from(affectedAddresses) };
+  }
+}

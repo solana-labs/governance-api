@@ -18,10 +18,11 @@ export class AuthJwtInterceptor implements NestInterceptor {
 
   async intercept(context: ExecutionContext, next: CallHandler<any>) {
     const ctx = GqlExecutionContext.create(context);
-    const request = ctx.getContext().req;
-    const rawAuthToken = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
 
     try {
+      const request = ctx.getContext().req;
+      const rawAuthToken = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+
       if (rawAuthToken) {
         const token = jsonwebtoken.verify(rawAuthToken, this.configService.get('jwt.userSecret'));
         const userId = token.sub;

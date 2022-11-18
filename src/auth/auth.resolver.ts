@@ -9,7 +9,6 @@ import { SignatureScalar } from '@src/lib/scalars/Signature';
 
 import { AuthService } from './auth.service';
 import { AuthClaim } from './dto/AuthClaim';
-import { VerifyWallet } from '@src/discord-user/dto/VerifyWallet';
 
 @Resolver()
 export class AuthResolver {

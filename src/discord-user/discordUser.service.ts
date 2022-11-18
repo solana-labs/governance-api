@@ -1,23 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { ConfirmedSignatureInfo, Connection, LAMPORTS_PER_SOL, PublicKey, SignaturesForAddressOptions } from '@solana/web3.js';
 import { Repository } from 'typeorm';
 
 import * as errors from '@lib/errors/gql';
 
 import { DiscordUser } from './entities/DiscordUser.entity';
 import { access } from 'fs';
+import { Wallet } from '@dialectlabs/sdk';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
 const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
-const port = 3000;
-const redirectUri = `http://localhost:${port}/verify-wallet`;
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
-const HELIUS_ADDRESSES_URL = `${HELIUS_BASE_URL}/addresses`;
 const options = '?api-key=8ff76c55-268e-4c41-9916-cb55b8132089';
+const HELIUS_ADDRESSES_URL = `${HELIUS_BASE_URL}/addresses`;
+const HELIUS_TX_URL = (address: string) =>
+  `${HELIUS_BASE_URL}/addresses/${address}/transactions${options}`;
 const HELIUS_BALANCES_URL = (address) =>
   `${HELIUS_BASE_URL}/addresses/${address}/balances${options}`;
 
@@ -33,41 +34,49 @@ async function getLargeAmountOfTransactions(
   address: string,
   maxCount: number,
 ): Promise<WalletAge | undefined> {
-  const resource = 'transactions';
-  let page = 1;
-  let oldestTransaction: WalletAge | undefined;
   let numTxs = 0;
+  const connection = new Connection(process.env.RPC_ENDPOINT as string);
+  let oldestTransaction: ConfirmedSignatureInfo | undefined;
 
+  // Find oldest tx
+  let options: SignaturesForAddressOptions = {};
   while (numTxs < maxCount) {
-    const url = `${HELIUS_ADDRESSES_URL}/${address}/${resource}${options}&before=${
-      oldestTransaction?.txId ?? ''
-    }`;
-    const body = await fetch(url);
-    const text = await body.text();
-    const data = JSON.parse(text);
-    // const { data } = await (await fetch(url)).json();
+    const data = await connection.getSignaturesForAddress(new PublicKey(address), options);
     if (data.length === 0) {
-      // Exhausted all transactions for the given address
-      return oldestTransaction;
+      break;
     }
-    console.log(`Got ${data.length} transactions from page ${page}!`);
+    console.log(`Got ${data.length} transactions`);
     numTxs += data.length;
 
     // API data is already sorted in descending order
     const oldestTxInfo = data[data.length - 1];
+    options.before = oldestTxInfo.signature;
+  }
+
+  if (oldestTransaction) {
+    let blockTime: number;
+    if (oldestTransaction.blockTime) {
+      blockTime = oldestTransaction.blockTime;
+    } else {
+      console.log(oldestTransaction.signature);
+      const url =
+        HELIUS_TX_URL(address) +
+        `&before=${oldestTransaction.signature}&until=${oldestTransaction.signature}`;
+      const response = await (await fetch(url)).json();
+      blockTime = response.timestamp;
+    }
     const date = new Date(0);
-    date.setUTCSeconds(oldestTxInfo.timestamp);
-    oldestTransaction = {
-      txId: oldestTxInfo.signature,
-      slot: oldestTxInfo.slot,
-      timestamp: oldestTxInfo.timestamp,
+    date.setUTCSeconds(blockTime);
+    return {
+      txId: oldestTransaction.signature,
+      slot: oldestTransaction.slot,
+      timestamp: blockTime,
       date: date.toISOString().split('T')[0],
       numTransactions: numTxs,
     };
-    page += 1;
+  } else {
+    return undefined;
   }
-
-  return oldestTransaction;
 }
 
 const activeWithin30Days = async (publicKey: string) => {

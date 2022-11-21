@@ -295,6 +295,33 @@ export class RealmService {
   }
 
   /**
+   * Determines, for a realm, if a new symbol is valid
+   */
+  async newSymbolIsValid(realmPublicKey: PublicKey, newSymbol: string) {
+    const realm = await this.realmRepository.findOne({
+      where: { publicKeyStr: realmPublicKey.toBase58() },
+    });
+
+    if (!realm) {
+      throw new errors.NotFound();
+    }
+
+    if (realm.symbol === newSymbol.toLocaleLowerCase()) {
+      return true;
+    }
+
+    const existing = await this.realmRepository.findOne({
+      where: { symbol: newSymbol.toLocaleLowerCase() },
+    });
+
+    if (existing && existing.publicKeyStr !== realmPublicKey.toBase58()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Update the details on a Realm
    */
   async updateRealm(

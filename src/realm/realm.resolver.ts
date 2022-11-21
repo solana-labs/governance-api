@@ -215,6 +215,24 @@ export class RealmResolver {
     return this.realmHubService.getTwitterFollowerCount(realm.publicKey, environment);
   }
 
+  @Query(() => Boolean, {
+    description: 'Determines if a Realm can be assigned a given symbol',
+  })
+  canAssignSymbolToRealm(
+    @Args('realm', {
+      description: 'The public key of the Realm',
+      type: () => PublicKeyScalar,
+    })
+    realm: PublicKey,
+    @Args('symbol', {
+      description: 'The symbol to check',
+      type: () => String,
+    })
+    symbol: string,
+  ) {
+    return this.realmService.newSymbolIsValid(realm, symbol);
+  }
+
   @Query(() => Realm, {
     description: 'A Realm',
   })

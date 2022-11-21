@@ -5,12 +5,11 @@ import { CurrentUser } from '@src/lib/decorators/CurrentUser';
 import { DiscordUserService } from './discordUser.service';
 
 import { VerifyWallet } from './dto/VerifyWallet';
+import { PublicKey } from '@solana/web3.js';
 
-const clientId = '1042836142560645130';
-const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
-const port = 3000;
-// const redirectUri = `http://localhost:${port}/verify-wallet`;
-const redirectUri = 'https://solana-verify-wallet-testing-ngundotra.vercel.app/verify-wallet';
+const clientId = process.env.DISCORD_CONNECTION_CLIENT_ID as string;
+const clientSecret = process.env.DISCORD_CONNECTION_CLIENT_SECRET as string;
+const redirectUri = process.env.DISCORD_OAUTH_REDIRECT_URI as string;
 
 @Resolver()
 export class DiscordUserResolver {

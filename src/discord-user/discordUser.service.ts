@@ -11,8 +11,8 @@ import { Wallet } from '@dialectlabs/sdk';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
-const clientId = '1042836142560645130';
-const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
+const clientId = process.env.DISCORD_CONNECTION_CLIENT_ID as string;
+const clientSecret = process.env.DISCORD_CONNECTION_CLIENT_SECRET as string;
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 const options = `?api-key=${process.env.HELIUS_API_KEY}`;

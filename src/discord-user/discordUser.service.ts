@@ -137,6 +137,25 @@ const getAccessTokenWithRefreshToken = async (refreshToken: string) => {
   return accessToken;
 };
 
+async function updateWebhookAddressList(addresses: string[]) {
+  console.log('Hello world!');
+
+  for (const address of addresses) {
+    console.log(address);
+  }
+
+  const putResult = await fetch('', {
+    body: JSON.stringify({
+      webhookURL: 'https://acae-35-203-90-57.ngrok.io/webhook',
+      accountAddresses: [
+        '9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv',
+        'knh9dgzbj6cm5SW6YBdVDmtF2F2EoNg35HDXMNAciKD',
+      ],
+      transactionTypes: ['DEPOSIT', 'TRANSFER', 'WITHDRAW'],
+    }),
+  });
+  console.log('Put result:', putResult.status);
+}
 @Injectable()
 export class DiscordUserService {
   constructor(
@@ -149,14 +168,23 @@ export class DiscordUserService {
    */
   createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
     try {
-      return this.discordUserRepository.upsert(
-        {
-          authId,
-          publicKeyStr: publicKey.toBase58(),
-          refreshToken,
-        },
-        { conflictPaths: ['authId'] },
-      );
+      return this.discordUserRepository
+        .upsert(
+          {
+            authId,
+            publicKeyStr: publicKey.toBase58(),
+            refreshToken,
+          },
+          { conflictPaths: ['authId'] },
+        )
+        .then(() => {
+          return this.discordUserRepository.query(
+            'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
+          );
+        })
+        .then((publicKeyStrs) => {
+          return updateWebhookAddressList(publicKeyStrs);
+        });
 
       // return this.discordUserRepository.save(discordUser);
     } catch (e) {

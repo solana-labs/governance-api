@@ -5,7 +5,6 @@ import { CurrentUser } from '@src/lib/decorators/CurrentUser';
 import { DiscordUserService } from './discordUser.service';
 
 import { VerifyWallet } from './dto/VerifyWallet';
-import { PublicKey } from '@solana/web3.js';
 
 const clientId = process.env.DISCORD_CONNECTION_CLIENT_ID as string;
 const clientSecret = process.env.DISCORD_CONNECTION_CLIENT_SECRET as string;

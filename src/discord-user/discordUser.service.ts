@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ConfirmedSignatureInfo, Connection, LAMPORTS_PER_SOL, PublicKey, SignaturesForAddressOptions } from '@solana/web3.js';
+import {
+  ConfirmedSignatureInfo,
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SignaturesForAddressOptions,
+} from '@solana/web3.js';
 import { Repository } from 'typeorm';
 
 import * as errors from '@lib/errors/gql';
 
 import { DiscordUser } from './entities/DiscordUser.entity';
-import { access } from 'fs';
-import { Wallet } from '@dialectlabs/sdk';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
@@ -21,7 +25,7 @@ const HELIUS_TX_URL = (address: string) =>
   `${HELIUS_BASE_URL}/addresses/${address}/transactions${options}`;
 const HELIUS_BALANCES_URL = (address) =>
   `${HELIUS_BASE_URL}/addresses/${address}/balances${options}`;
-const HELIUS_WEBHOOK_URL = (webhookId: string) => 
+const HELIUS_WEBHOOK_URL = (webhookId: string) =>
   `${HELIUS_BASE_URL}/webhooks/${webhookId}/${options}`;
 
 type WalletAge = {
@@ -144,17 +148,18 @@ type PublicKeyStrObj = { publicKeyStr: string };
 // Updates the Helius Webhook account addresses field
 async function updateWebhookAddressList(addresses: PublicKeyStrObj[]) {
   const publicKeyStrs: string[] = addresses.map((obj) => obj.publicKeyStr);
-  console.log("PUT-ing the publicKeyStrs:", publicKeyStrs.length);
+  console.log('PUT-ing the publicKeyStrs:', publicKeyStrs.length);
 
   const url = HELIUS_WEBHOOK_URL(process.env.HELIUS_WEBHOOK_ID as string);
-  const putResult = await fetch(url,
-    {
+  const putResult = await fetch(url, {
     body: JSON.stringify({
       webhookURL: process.env.HELIUS_WEBHOOK_URL,
       accountAddresses: publicKeyStrs,
-      transactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string).split(",").map((txType) => txType.toUpperCase()),
+      transactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
+        .split(',')
+        .map((txType) => txType.toUpperCase()),
     }),
-    method: "PUT"
+    method: 'PUT',
   });
   console.log('Webhook put result:', putResult.status);
 }

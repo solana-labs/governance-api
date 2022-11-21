@@ -3,7 +3,7 @@ import * as IT from 'io-ts';
 
 export const query = gql`
   query ($addresses: [PublicKey!]!) {
-    realms(addresses: $addresses) {
+    realms(addresses: $addresses, limit: 1000) {
       address
       name
     }

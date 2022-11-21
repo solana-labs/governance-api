@@ -11,6 +11,7 @@ import { Wallet } from '@dialectlabs/sdk';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
+const WEBHOOK_ID = "30f0be24-68db-4d90-b122-40f35f511bd4";
 const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
 
@@ -21,6 +22,8 @@ const HELIUS_TX_URL = (address: string) =>
   `${HELIUS_BASE_URL}/addresses/${address}/transactions${options}`;
 const HELIUS_BALANCES_URL = (address) =>
   `${HELIUS_BASE_URL}/addresses/${address}/balances${options}`;
+const HELIUS_WEBHOOK_URL = (webhookId: string) => 
+  `${HELIUS_BASE_URL}/webhooks/${webhookId}/${options}`;
 
 type WalletAge = {
   txId: string;
@@ -137,25 +140,27 @@ const getAccessTokenWithRefreshToken = async (refreshToken: string) => {
   return accessToken;
 };
 
-async function updateWebhookAddressList(addresses: string[]) {
-  console.log('Hello world!');
+type PublicKeyStrObj = { publicKeyStr: string };
 
-  for (const address of addresses) {
-    console.log(address);
-  }
+// Updates the Helius Webhook account addresses field
+async function updateWebhookAddressList(addresses: PublicKeyStrObj[]) {
+  const publicKeyStrs: string[] = addresses.map((obj) => obj.publicKeyStr);
+  console.log("PUT-ing the publicKeyStrs:", publicKeyStrs.length);
 
-  const putResult = await fetch('', {
+  const url = HELIUS_WEBHOOK_URL(WEBHOOK_ID);
+  const putResult = await fetch(url,
+    // TODO: everything other than addresses should be env var
+    {
     body: JSON.stringify({
       webhookURL: 'https://acae-35-203-90-57.ngrok.io/webhook',
-      accountAddresses: [
-        '9FWqLJr98B47TiccfMUdSARpvyut6swaWantzMiKEDpv',
-        'knh9dgzbj6cm5SW6YBdVDmtF2F2EoNg35HDXMNAciKD',
-      ],
+      accountAddresses: publicKeyStrs,
       transactionTypes: ['DEPOSIT', 'TRANSFER', 'WITHDRAW'],
     }),
+    method: "PUT"
   });
-  console.log('Put result:', putResult.status);
+  console.log('Webhook put result:', putResult.status);
 }
+
 @Injectable()
 export class DiscordUserService {
   constructor(
@@ -182,11 +187,9 @@ export class DiscordUserService {
             'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
           );
         })
-        .then((publicKeyStrs) => {
+        .then((publicKeyStrs: PublicKeyStrObj[]) => {
           return updateWebhookAddressList(publicKeyStrs);
         });
-
-      // return this.discordUserRepository.save(discordUser);
     } catch (e) {
       throw new errors.Exception(e);
     }

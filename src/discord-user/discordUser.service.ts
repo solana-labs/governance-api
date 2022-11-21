@@ -11,12 +11,11 @@ import { Wallet } from '@dialectlabs/sdk';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
-const WEBHOOK_ID = "30f0be24-68db-4d90-b122-40f35f511bd4";
 const clientId = '1042836142560645130';
 const clientSecret = 'xFRUiukWAXwJmn0nkK2xK5EfEFKtgzuH';
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
-const options = '?api-key=8ff76c55-268e-4c41-9916-cb55b8132089';
+const options = `?api-key=${process.env.HELIUS_API_KEY}`;
 const HELIUS_ADDRESSES_URL = `${HELIUS_BASE_URL}/addresses`;
 const HELIUS_TX_URL = (address: string) =>
   `${HELIUS_BASE_URL}/addresses/${address}/transactions${options}`;
@@ -147,14 +146,13 @@ async function updateWebhookAddressList(addresses: PublicKeyStrObj[]) {
   const publicKeyStrs: string[] = addresses.map((obj) => obj.publicKeyStr);
   console.log("PUT-ing the publicKeyStrs:", publicKeyStrs.length);
 
-  const url = HELIUS_WEBHOOK_URL(WEBHOOK_ID);
+  const url = HELIUS_WEBHOOK_URL(process.env.HELIUS_WEBHOOK_ID as string);
   const putResult = await fetch(url,
-    // TODO: everything other than addresses should be env var
     {
     body: JSON.stringify({
-      webhookURL: 'https://acae-35-203-90-57.ngrok.io/webhook',
+      webhookURL: process.env.HELIUS_WEBHOOK_URL,
       accountAddresses: publicKeyStrs,
-      transactionTypes: ['DEPOSIT', 'TRANSFER', 'WITHDRAW'],
+      transactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string).split(",").map((txType) => txType.toUpperCase()),
     }),
     method: "PUT"
   });

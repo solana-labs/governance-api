@@ -144,18 +144,14 @@ export class DiscordUserService {
    * Creates a new Discord user
    */
   createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
-    try {
-      return this.discordUserRepository.upsert(
-        {
-          authId,
-          publicKeyStr: publicKey.toBase58(),
-          refreshToken,
-        },
-        { conflictPaths: ['authId'] },
-      );
-    } catch (e) {
-      throw new errors.Exception(e);
-    }
+    return this.discordUserRepository.upsert(
+      {
+        authId,
+        publicKeyStr: publicKey.toBase58(),
+        refreshToken,
+      },
+      { conflictPaths: ['authId'] },
+    );
   }
 
   async getLargeAmountOfTransactions(
@@ -211,14 +207,9 @@ export class DiscordUserService {
    * Returns a user by their ID
    */
   async getDiscordUserByPublicKey(publicKey: PublicKey) {
-    try {
-      return await this.discordUserRepository.findOne({
-        where: { publicKeyStr: publicKey.toBase58() },
-      });
-    } catch (e) {
-      console.error(e);
-      throw new errors.Exception(e);
-    }
+    return await this.discordUserRepository.findOne({
+      where: { publicKeyStr: publicKey.toBase58() },
+    });
   }
 
   async refreshDiscordMetadataForPublicKey(publicKey: PublicKey) {

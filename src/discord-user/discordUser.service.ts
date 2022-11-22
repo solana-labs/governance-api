@@ -11,12 +11,12 @@ import { Repository } from 'typeorm';
 
 import * as errors from '@lib/errors/gql';
 
+import { ConfigService } from '@src/config/config.service';
+
 import { DiscordUser } from './entities/DiscordUser.entity';
 
 const MINIMUM_SOL = 0.1;
 const MAX_TXS_TO_SCAN = 10000;
-const clientId = process.env.DISCORD_CONNECTION_CLIENT_ID as string;
-const clientSecret = process.env.DISCORD_CONNECTION_CLIENT_SECRET as string;
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 const options = `?api-key=${process.env.HELIUS_API_KEY}`;
@@ -125,7 +125,7 @@ const getMetadataForUser = async (publicKey: PublicKey) => {
   };
 };
 
-const getAccessTokenWithRefreshToken = async (refreshToken: string) => {
+const getAccessTokenWithRefreshToken = async (clientId: string, clientSecret: string, refreshToken: string) => {
   const response = await fetch('https://discord.com/api/v10/oauth2/token', {
     method: 'POST',
     headers: {
@@ -145,38 +145,35 @@ const getAccessTokenWithRefreshToken = async (refreshToken: string) => {
 
 type PublicKeyStrObj = { publicKeyStr: string };
 
-// Updates the Helius Webhook account addresses field
-async function updateWebhookAddressList(addresses: PublicKeyStrObj[]) {
-  const publicKeyStrs: string[] = addresses.map((obj) => obj.publicKeyStr);
-  console.log('PUT-ing the publicKeyStrs:', publicKeyStrs.length);
-
-  const url = HELIUS_WEBHOOK_URL(process.env.HELIUS_WEBHOOK_ID as string);
-  const putResult = await fetch(url, {
-    body: JSON.stringify({
-      webhookURL: process.env.HELIUS_WEBHOOK_URL,
-      accountAddresses: publicKeyStrs,
-      transactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
-        .split(',')
-        .map((txType) => txType.toUpperCase()),
-    }),
-    method: 'PUT',
-  });
-  console.log('Webhook put result:', putResult.status);
-}
 
 @Injectable()
 export class DiscordUserService {
   constructor(
     @InjectRepository(DiscordUser)
     private readonly discordUserRepository: Repository<DiscordUser>,
+    private readonly configService: ConfigService,
   ) {}
 
-  updateWebhookAccountAddressList() {
-    return this.discordUserRepository.query(
-        'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
-    ).then((publicKeyStrs: PublicKeyStrObj[]) => {
-      return updateWebhookAddressList(publicKeyStrs);
-    });
+  // Updates the Helius Webhook account addresses field
+  async updateWebhookAddressList() {
+      return this.discordUserRepository.query(
+          'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
+      ).then((publicKeyStrs: PublicKeyStrObj[]) => {
+        const publicKeys: string[] = publicKeyStrs.map((obj) => obj.publicKeyStr);
+        console.log('PUT-ing the publicKeyStrs:', publicKeys.length);
+      
+        const url = HELIUS_WEBHOOK_URL(this.configService.get('discord.clientId'));
+        return fetch(url, {
+          body: JSON.stringify({
+            webhookURL: this.configService.get('helius.webhookUrl'),
+            accountAddresses: publicKeys,
+            transactionTypes: this.configService.get('helius.webhookTransactionTypes'),
+          }),
+          method: 'PUT',
+        });
+      }).then((resp) => {
+        console.log("Webhook put result:", resp.status);
+      });
   }
 
   /**
@@ -224,8 +221,8 @@ export class DiscordUserService {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: JSON.stringify({
-            client_id: clientId,
-            client_secret: clientSecret,
+            client_id: this.configService.get('discord.clientId'),
+            client_secret: this.configService.get('discord.clientSecret'),
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
           }),
@@ -245,7 +242,7 @@ export class DiscordUserService {
     if (!accessToken) {
       const discordUser = await this.getDiscordUserByPublicKey(publicKey);
       if (discordUser) {
-        accessToken = await getAccessTokenWithRefreshToken(discordUser.refreshToken);
+        accessToken = await getAccessTokenWithRefreshToken(this.configService.get('discord.clientId'), this.configService.get('discord.clientSecret'), discordUser.refreshToken);
       } else {
         throw new Error('No access / refresh token found!');
       }
@@ -255,7 +252,7 @@ export class DiscordUserService {
     console.info({ metadata });
 
     const putResult = await fetch(
-      `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
+      `https://discord.com/api/users/@me/applications/${this.configService.get('discord.clientId')}/role-connection`,
       {
         method: 'PUT',
         headers: {

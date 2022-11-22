@@ -73,10 +73,10 @@ export class DiscordUserService {
   }
 
   async getSolBalance(publicKey: string) {
-    console.info({ url: this.heliusBalancesUrl(publicKey) });
+    this.logger.verbose({ url: this.heliusBalancesUrl(publicKey) });
     const response = await fetch(this.heliusBalancesUrl(publicKey));
     const responseJson = await response.json();
-    console.info({ responseJson });
+    this.logger.verbose({ responseJson });
     const { nativeBalance }: { nativeBalance: number } = responseJson;
 
     return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
@@ -252,7 +252,7 @@ export class DiscordUserService {
     }
 
     const metadata = await this.getMetadataForUser(publicKey);
-    console.info({ metadata });
+    this.logger.verbose({ metadata });
 
     const putResult = await fetch(
       `https://discord.com/api/users/@me/applications/${this.configService.get(
@@ -271,6 +271,6 @@ export class DiscordUserService {
       },
     );
 
-    console.info({ putResult });
+    this.logger.verbose({ putResult });
   }
 }

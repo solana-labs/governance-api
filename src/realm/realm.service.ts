@@ -91,7 +91,13 @@ export class RealmService {
         ? new PublicKey(realm.data.programPublicKeyStr)
         : undefined,
       publicKey: new PublicKey(realm.publicKeyStr),
-      roadmap: realm.data.roadmap,
+      roadmap: {
+        ...realm.data.roadmap,
+        items: realm.data.roadmap.items.map((item) => ({
+          ...item,
+          date: item.date ? new Date(item.date).getTime() : undefined,
+        })),
+      },
       resources: realm.data.resources,
       shortDescription: realm.data.shortDescription,
       symbol: realm.symbol,

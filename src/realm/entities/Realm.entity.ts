@@ -46,7 +46,7 @@ export interface Data {
   roadmap: {
     description?: RichTextDocument;
     items: {
-      date: Date;
+      date?: number;
       resource?: {
         content?: RichTextDocument;
         title: string;

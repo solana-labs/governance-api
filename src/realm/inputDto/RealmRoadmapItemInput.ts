@@ -12,7 +12,7 @@ export class RealmRoadmapItemInput {
     description: 'When the roadmap item is expected to be completed',
     nullable: true,
   })
-  date: Date;
+  date?: number;
 
   @Field(() => RealmResourceInput, {
     description: 'An associated external resource for the item',

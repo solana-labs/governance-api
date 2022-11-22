@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   ConfirmedSignatureInfo,
@@ -32,6 +32,8 @@ const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 
 @Injectable()
 export class DiscordUserService {
+  private logger = new Logger(DiscordUserService.name);
+
   constructor(
     @InjectRepository(DiscordUser)
     private readonly discordUserRepository: Repository<DiscordUser>,
@@ -39,11 +41,11 @@ export class DiscordUserService {
   ) {}
 
   heliusUrlOptions() {
-    return `?api-key=${this.configService.get('helius.apiKey')}`
+    return `?api-key=${this.configService.get('helius.apiKey')}`;
   }
 
   heliusTxUrl(address: string) {
-    return `${HELIUS_BASE_URL}/addresses/${address}/transactions${this.heliusUrlOptions()}`
+    return `${HELIUS_BASE_URL}/addresses/${address}/transactions${this.heliusUrlOptions()}`;
   }
 
   heliusBalancesUrl(address: string) {
@@ -61,35 +63,33 @@ export class DiscordUserService {
   async activeWithin30Days(publicKey: string) {
     const req = await fetch(this.heliusAddressesUrl(publicKey));
     const recentTxes = await req.json();
-  
     if (recentTxes.length) {
       const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
       const timestampThirtyDaysAgo = new Date().getTime() - thirtyDaysInMs;
       const mostRecentTxTimestamp = recentTxes[0].timestamp * 1000;
-  
-      console.info({ mostRecentTxTimestamp, timestampThirtyDaysAgo });
       return mostRecentTxTimestamp >= timestampThirtyDaysAgo;
     }
     return null;
   }
-  
+
   async getSolBalance(publicKey: string) {
     console.info({ url: this.heliusBalancesUrl(publicKey) });
     const response = await fetch(this.heliusBalancesUrl(publicKey));
     const responseJson = await response.json();
     console.info({ responseJson });
     const { nativeBalance }: { nativeBalance: number } = responseJson;
-  
-    console.info({ nativeBalance });
-  
+
     return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
   }
-  
+
   async getMetadataForUser(publicKey: PublicKey) {
-    const walletAge = await this.getLargeAmountOfTransactions(publicKey.toBase58(), MAX_TXS_TO_SCAN);
+    const walletAge = await this.getLargeAmountOfTransactions(
+      publicKey.toBase58(),
+      MAX_TXS_TO_SCAN,
+    );
     const hasMinimumSol = await this.getSolBalance(publicKey.toBase58());
     const isRecentlyActive = await this.activeWithin30Days(publicKey.toBase58());
-  
+
     return {
       first_wallet_transaction: walletAge?.date ?? null,
       most_recent_wallet_transaction: isRecentlyActive ? 1 : 0,
@@ -110,18 +110,19 @@ export class DiscordUserService {
         refresh_token: refreshToken,
       }),
     });
-  
+
     const { access_token: accessToken } = await response.json();
     return accessToken;
   }
 
   // Updates the Helius Webhook account addresses field
   async updateWebhookAddressList() {
-      return this.discordUserRepository.query(
-          'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
-      ).then((publicKeyStrs: PublicKeyStrObj[]) => {
+    return this.discordUserRepository
+      .query('select "publicKeyStr" from discord_user ORDER BY "created" DESC')
+      .then((publicKeyStrs: PublicKeyStrObj[]) => {
         const publicKeys: string[] = publicKeyStrs.map((obj) => obj.publicKeyStr);
-      
+        this.logger.verbose('Updating webhook with publicKeys:', publicKeys.length);
+
         const url = this.heliusWebhookUrl(this.configService.get('helius.webhookId'));
         return fetch(url, {
           body: JSON.stringify({
@@ -131,8 +132,11 @@ export class DiscordUserService {
           }),
           method: 'PUT',
         });
-      }).then((resp) => {
-        console.log("Webhook put result:", resp.status);
+      })
+      .then((resp) => {
+        if (resp.status !== 200) {
+          this.logger.warn('Webhook put failed:', resp.status, resp.statusText);
+        }
       });
   }
 
@@ -141,15 +145,14 @@ export class DiscordUserService {
    */
   createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
     try {
-      return this.discordUserRepository
-        .upsert(
-          {
-            authId,
-            publicKeyStr: publicKey.toBase58(),
-            refreshToken,
-          },
-          { conflictPaths: ['authId'] },
-        );
+      return this.discordUserRepository.upsert(
+        {
+          authId,
+          publicKeyStr: publicKey.toBase58(),
+          refreshToken,
+        },
+        { conflictPaths: ['authId'] },
+      );
     } catch (e) {
       throw new errors.Exception(e);
     }
@@ -162,7 +165,7 @@ export class DiscordUserService {
     let numTxs = 0;
     const connection = new Connection(process.env.RPC_ENDPOINT as string);
     let oldestTransaction: ConfirmedSignatureInfo | undefined;
-  
+
     // Find oldest tx
     const options: SignaturesForAddressOptions = {};
     while (numTxs < maxCount) {
@@ -170,13 +173,14 @@ export class DiscordUserService {
       if (data.length === 0) {
         break;
       }
+      this.logger.verbose(`Got ${data.length} transactions for ${address}`);
       numTxs += data.length;
-  
+
       // API data is already sorted in descending order
       oldestTransaction = data[data.length - 1];
       options.before = oldestTransaction.signature;
     }
-  
+
     if (oldestTransaction) {
       let blockTime: number;
       if (oldestTransaction.blockTime) {
@@ -188,7 +192,7 @@ export class DiscordUserService {
         const response = await (await fetch(url)).json();
         blockTime = response.timestamp;
       }
-  
+
       const date = new Date(0);
       date.setUTCSeconds(blockTime);
       return {
@@ -260,7 +264,9 @@ export class DiscordUserService {
     console.info({ metadata });
 
     const putResult = await fetch(
-      `https://discord.com/api/users/@me/applications/${this.configService.get('discord.clientId')}/role-connection`,
+      `https://discord.com/api/users/@me/applications/${this.configService.get(
+        'discord.clientId',
+      )}/role-connection`,
       {
         method: 'PUT',
         headers: {

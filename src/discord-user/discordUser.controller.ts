@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put } from '@nestjs/common';
+import { Body, Controller, Logger, Post, Put } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 
 import { DiscordUserService } from './discordUser.service';
@@ -6,6 +6,7 @@ import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
 
 @Controller()
 export class DiscordUserController {
+  private logger = new Logger(DiscordUserService.name);
   constructor(private readonly discordUserService: DiscordUserService) {}
 
   @Post('/webhook')
@@ -16,7 +17,7 @@ export class DiscordUserController {
       affectedAddresses.add(transfer.fromUserAccount);
       affectedAddresses.add(transfer.toUserAccount);
     });
-    console.info({ affectedAddresses });
+    this.logger.verbose({ affectedAddresses });
 
     for await (const affectedAddress of affectedAddresses) {
       await this.discordUserService.refreshDiscordMetadataForPublicKey(

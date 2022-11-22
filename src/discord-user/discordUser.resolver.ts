@@ -1,18 +1,20 @@
 import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { ConfigService } from '@src/config/config.service';
 
-import { CurrentUser } from '@src/lib/decorators/CurrentUser';
+import { CurrentUser, User } from '@src/lib/decorators/CurrentUser';
 
 import { DiscordUserService } from './discordUser.service';
 
 import { VerifyWallet } from './dto/VerifyWallet';
 
-const clientId = process.env.DISCORD_CONNECTION_CLIENT_ID as string;
-const clientSecret = process.env.DISCORD_CONNECTION_CLIENT_SECRET as string;
-const redirectUri = process.env.DISCORD_OAUTH_REDIRECT_URI as string;
+import * as errors from '@lib/errors/gql';
 
 @Resolver()
 export class DiscordUserResolver {
-  constructor(private readonly discordUserService: DiscordUserService) {}
+  constructor(
+    private readonly discordUserService: DiscordUserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Mutation(() => VerifyWallet, {
     description:
@@ -24,16 +26,18 @@ export class DiscordUserResolver {
     })
     code: string,
     @CurrentUser()
-    user,
+    user: User | null,
   ) {
+    if (!user) { throw new errors.Unauthorized() }
+
     const tokenResponseData = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: this.configService.get('discord.clientId'),
+        client_secret: this.configService.get('discord.clientSecret'),
         code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
+        redirect_uri: this.configService.get('discord.oauthRedirectUri'),
         scope: 'identify',
       }).toString(),
       headers: {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
 
 import { DiscordUserService } from './discordUser.service';
@@ -25,5 +25,13 @@ export class DiscordUserController {
     }
 
     return { publicKeys: Array.from(affectedAddresses) };
+  }
+
+  @Put('/webhook-update')
+  async updateHeliusWebhookAddresses(): Promise<{}> {
+    console.log("Updating web hook...");
+    await this.discordUserService.updateWebhookAddressList();
+    console.log("Updated!");
+    return {};
   }
 }

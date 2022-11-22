@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
 import { hoursToMilliseconds } from 'date-fns';
 import * as EI from 'fp-ts/Either';
 import { In, Repository } from 'typeorm';
@@ -422,8 +423,30 @@ export class RealmService {
       environment,
     );
 
-    if (tokenAccount) {
+    if (tokenAccount && tokenAccount.uiAmount > 0) {
       return true;
+    }
+
+    // see if they have some tokens deposited
+    const holaplexResp = await this.holaplexService.requestV1(
+      {
+        query: queries.councilMintAmount.query,
+        variables: { mint: councilMintPublicKeyStr, realm: realmPublicKey.toBase58() },
+      },
+      queries.councilMintAmount.resp,
+    )();
+
+    if (EI.isRight(holaplexResp)) {
+      const amountStr =
+        holaplexResp.right.tokenOwnerRecords.find(
+          ({ governingTokenOwner }) => userPublicKey.toBase58() === governingTokenOwner,
+        )?.governingTokenDepositAmount || '0';
+
+      const amount = new BigNumber(amountStr);
+
+      if (amount.isGreaterThan(0)) {
+        return true;
+      }
     }
 
     return false;

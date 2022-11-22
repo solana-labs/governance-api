@@ -29,9 +29,7 @@ export class DiscordUserController {
 
   @Put('/webhook-update')
   async updateHeliusWebhookAddresses(): Promise<{}> {
-    console.log("Updating web hook...");
     await this.discordUserService.updateWebhookAddressList();
-    console.log("Updated!");
     return {};
   }
 }

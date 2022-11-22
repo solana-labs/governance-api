@@ -121,7 +121,6 @@ export class DiscordUserService {
           'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
       ).then((publicKeyStrs: PublicKeyStrObj[]) => {
         const publicKeys: string[] = publicKeyStrs.map((obj) => obj.publicKeyStr);
-        console.log('PUT-ing the publicKeyStrs:', publicKeys.length);
       
         const url = this.heliusWebhookUrl(this.configService.get('helius.webhookId'));
         return fetch(url, {
@@ -171,7 +170,6 @@ export class DiscordUserService {
       if (data.length === 0) {
         break;
       }
-      console.log(`Got ${data.length} transactions`);
       numTxs += data.length;
   
       // API data is already sorted in descending order
@@ -184,7 +182,6 @@ export class DiscordUserService {
       if (oldestTransaction.blockTime) {
         blockTime = oldestTransaction.blockTime;
       } else {
-        console.log(oldestTransaction.signature);
         const url =
           this.heliusTxUrl(address) +
           `&before=${oldestTransaction.signature}&until=${oldestTransaction.signature}`;

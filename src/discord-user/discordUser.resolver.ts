@@ -45,7 +45,6 @@ export class DiscordUserResolver {
       },
     });
     const oauthData = await tokenResponseData.json();
-    console.log('oauth data:', oauthData);
 
     const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
 

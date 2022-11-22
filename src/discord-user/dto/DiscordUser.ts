@@ -15,6 +15,6 @@ export class DiscordUser {
   description: "A Discord user's refresh token",
 })
 export class RefreshToken {
-  @Field({ description: 'Public key' })
+  @Field({ description: 'Discord user refresh token' })
   token: string;
 }

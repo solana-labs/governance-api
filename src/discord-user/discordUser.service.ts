@@ -171,6 +171,14 @@ export class DiscordUserService {
     private readonly discordUserRepository: Repository<DiscordUser>,
   ) {}
 
+  updateWebhookAccountAddressList() {
+    return this.discordUserRepository.query(
+        'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
+    ).then((publicKeyStrs: PublicKeyStrObj[]) => {
+      return updateWebhookAddressList(publicKeyStrs);
+    });
+  }
+
   /**
    * Creates a new Discord user
    */
@@ -184,15 +192,7 @@ export class DiscordUserService {
             refreshToken,
           },
           { conflictPaths: ['authId'] },
-        )
-        .then(() => {
-          return this.discordUserRepository.query(
-            'select "publicKeyStr" from discord_user ORDER BY "created" DESC',
-          );
-        })
-        .then((publicKeyStrs: PublicKeyStrObj[]) => {
-          return updateWebhookAddressList(publicKeyStrs);
-        });
+        );
     } catch (e) {
       throw new errors.Exception(e);
     }

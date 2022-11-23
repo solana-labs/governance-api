@@ -27,6 +27,11 @@ export interface Config {
     clientSecret: string;
     oauthRedirectUri: string;
   };
+  matchdayDiscord: {
+    clientId: string;
+    clientSecret: string;
+    oauthRedirectUri: string;
+  };
   external: {
     dialectSdkCredentials: string | undefined;
     dialectSdkEnvironment: string | undefined;

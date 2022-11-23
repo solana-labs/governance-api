@@ -5,7 +5,8 @@ import * as errors from '@lib/errors/gql';
 import { ConfigService } from '@src/config/config.service';
 
 import { DiscordUserService } from './discordUser.service';
-import { VerifyWallet } from './dto/VerifyWallet';
+
+import { DiscordApplication, VerifyWallet } from './dto/VerifyWallet';
 
 @Resolver()
 export class DiscordUserResolver {
@@ -23,12 +24,21 @@ export class DiscordUserResolver {
       description: 'Authorization code for Discord',
     })
     code: string,
+    @Args('application', {
+      description: 'Which Discord application is this for?',
+    })
+    application: DiscordApplication,
     @CurrentUser()
     user: User | null,
   ) {
     if (!user) {
       throw new errors.Unauthorized();
     }
+
+    const redirectURI =
+      application === DiscordApplication.MATCHDAY
+        ? this.configService.get('matchdayDiscord.oauthRedirectUri')
+        : this.configService.get('discord.oauthRedirectUri');
 
     const tokenResponseData = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
@@ -37,7 +47,7 @@ export class DiscordUserResolver {
         client_secret: this.configService.get('discord.clientSecret'),
         code,
         grant_type: 'authorization_code',
-        redirect_uri: this.configService.get('discord.oauthRedirectUri'),
+        redirect_uri: redirectURI,
         scope: 'identify',
       }).toString(),
       headers: {
@@ -48,8 +58,13 @@ export class DiscordUserResolver {
 
     const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
 
-    await this.discordUserService.createDiscordUser(user.id, user.publicKey, refreshToken);
-    await this.discordUserService.updateMetadataForUser(user.publicKey, accessToken);
+    await this.discordUserService.createDiscordUser(
+      user.id,
+      user.publicKey,
+      refreshToken,
+      application,
+    );
+    await this.discordUserService.updateMetadataForUser(user.publicKey, accessToken, application);
 
     return user;
   }

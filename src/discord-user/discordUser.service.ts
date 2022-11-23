@@ -11,10 +11,9 @@ import { Repository } from 'typeorm';
 
 import { ConfigService } from '@src/config/config.service';
 
+import { DiscordApplication } from './dto/VerifyWallet';
 import { DiscordUser } from './entities/DiscordUser.entity';
-
-const MINIMUM_SOL = 0.1;
-const MAX_TXS_TO_SCAN = 10000;
+import { MatchdayDiscordUser } from './entities/MatchdayDiscordUser.entity';
 
 type WalletAge = {
   txId: string;
@@ -27,6 +26,8 @@ type WalletAge = {
 type PublicKeyStrObj = { publicKeyStr: string };
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
+const MINIMUM_SOL = 0.1;
+const MAX_TXS_TO_SCAN = 10000;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,6 +40,8 @@ export class DiscordUserService {
   constructor(
     @InjectRepository(DiscordUser)
     private readonly discordUserRepository: Repository<DiscordUser>,
+    @InjectRepository(MatchdayDiscordUser)
+    private readonly matchdayDiscordUserRepository: Repository<MatchdayDiscordUser>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -125,7 +128,15 @@ export class DiscordUserService {
     return { accessToken, refreshToken: refresh_token };
   }
 
+  getDiscordApplicationCredentials() {
+    return {
+      client_id: this.configService.get('discord.clientId'),
+      client_secret: this.configService.get('discord.clientSecret'),
+    };
+  }
+
   // Updates the Helius Webhook account addresses field
+  // Only used for the Solana bot
   async updateWebhookAddressList() {
     return this.discordUserRepository
       .query('select "publicKeyStr" from discord_user ORDER BY "created" DESC')
@@ -219,8 +230,13 @@ export class DiscordUserService {
   /**
    * Returns a user by their ID
    */
-  async getDiscordUserByPublicKey(publicKey: PublicKey) {
-    return await this.discordUserRepository.findOne({
+  async getDiscordUserByPublicKey(publicKey: PublicKey, application?: DiscordApplication) {
+    const repository =
+      application === DiscordApplication.MATCHDAY
+        ? this.matchdayDiscordUserRepository
+        : this.discordUserRepository;
+
+    return await repository.findOne({
       where: { publicKeyStr: publicKey.toBase58() },
     });
   }
@@ -247,10 +263,10 @@ export class DiscordUserService {
     const metadata = await this.getMetadataForUser(publicKey, withDelay);
     this.logger.verbose({ metadata });
 
+    const { client_id: clientId } = this.getDiscordApplicationCredentials();
+
     const putResult = await fetch(
-      `https://discord.com/api/users/@me/applications/${this.configService.get(
-        'discord.clientId',
-      )}/role-connection`,
+      `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
       {
         method: 'PUT',
         headers: {

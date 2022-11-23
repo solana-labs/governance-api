@@ -44,6 +44,11 @@ import { ConfigService } from './config.service';
               clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET || '',
               oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI || '',
             },
+            matchdayDiscord: {
+              clientId: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_ID!,
+              clientSecret: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_SECRET!,
+              oauthRedirectUri: process.env.DISCORD_MATCHDAY_OAUTH_REDIRECT_URI!,
+            },
             external: {
               dialectSdkCredentials: process.env.DIALECT_SDK_CREDENTIALS,
               dialectSdkEnvironment: process.env.DIALECT_SDK_ENVIRONMENT,

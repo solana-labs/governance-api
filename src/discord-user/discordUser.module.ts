@@ -7,11 +7,13 @@ import { DiscordUserController } from './discordUser.controller';
 import { DiscordUserResolver } from './discordUser.resolver';
 import { DiscordUserService } from './discordUser.service';
 import { DiscordUser } from './entities/DiscordUser.entity';
+import { MatchdayDiscordUser } from './entities/MatchdayDiscordUser.entity';
+import { MatchdayDiscordUserService } from './matchdayDiscordUser.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DiscordUser]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([DiscordUser, MatchdayDiscordUser]), ConfigModule],
   controllers: [DiscordUserController],
-  providers: [DiscordUserResolver, DiscordUserService],
+  providers: [DiscordUserResolver, DiscordUserService, MatchdayDiscordUserService],
   exports: [DiscordUserService],
 })
 export class DiscordUserModule {}

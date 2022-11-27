@@ -45,6 +45,9 @@ export interface Config {
     webhookUrl: string;
     webhookTransactionTypes: string[];
   };
+  simplehash: {
+    apiKey: string;
+  };
   jwt: {
     userSecret: string;
   };

@@ -40,14 +40,14 @@ import { ConfigService } from './config.service';
               useSsl: process.env.DATABASE_USE_SSL === 'true',
             },
             discord: {
-              clientId: process.env.DISCORD_CONNECTION_CLIENT_ID || '',
-              clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET || '',
-              oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI || '',
+              clientId: process.env.DISCORD_CONNECTION_CLIENT_ID as string,
+              clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET as string,
+              oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI as string,
             },
             matchdayDiscord: {
-              clientId: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_ID!,
-              clientSecret: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_SECRET!,
-              oauthRedirectUri: process.env.DISCORD_MATCHDAY_OAUTH_REDIRECT_URI!,
+              clientId: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_ID as string,
+              clientSecret: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_SECRET as string,
+              oauthRedirectUri: process.env.DISCORD_MATCHDAY_OAUTH_REDIRECT_URI as string,
             },
             external: {
               dialectSdkCredentials: process.env.DIALECT_SDK_CREDENTIALS,
@@ -60,9 +60,13 @@ import { ConfigService } from './config.service';
               apiKey: process.env.HELIUS_API_KEY as string,
               webhookId: process.env.HELIUS_WEBHOOK_ID as string,
               webhookUrl: process.env.HELIUS_WEBHOOK_URL as string,
-              webhookTransactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
-                .split(',')
-                .map((txType) => txType.toUpperCase()),
+              webhookTransactionTypes: [],
+              // webhookTransactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
+              //   .split(',')
+              //   .map((txType) => txType.toUpperCase()),
+            },
+            simplehash: {
+              apiKey: process.env.SIMPLEHASH_API_KEY as string,
             },
             jwt: {
               userSecret: process.env.JWT_USER_SECRET || '',

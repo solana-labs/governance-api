@@ -136,7 +136,6 @@ export class DiscordUserService {
   }
 
   // Updates the Helius Webhook account addresses field
-  // Only used for the Solana bot
   async updateWebhookAddressList() {
     return this.discordUserRepository
       .query('select "publicKeyStr" from discord_user ORDER BY "created" DESC')

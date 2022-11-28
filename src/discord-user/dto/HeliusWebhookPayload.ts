@@ -9,13 +9,6 @@ class NativeTransfer {
   toUserAccount: string;
 }
 
-class AccountData {
-  @Field()
-  account: string;
-  @Field()
-  nativeBalanceChange: number;
-}
-
 @ObjectType({
   description: 'A Helius webhook payload',
 })
@@ -24,5 +17,4 @@ export class HeliusWebhookPayload {
     description: 'Native transfers',
   })
   nativeTransfers: NativeTransfer[];
-  accountData: AccountData[];
 }

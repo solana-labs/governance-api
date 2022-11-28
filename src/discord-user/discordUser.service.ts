@@ -129,6 +129,7 @@ export class DiscordUserService {
             webhookURL: this.configService.get('helius.webhookUrl'),
             accountAddresses: publicKeys,
             transactionTypes: this.configService.get('helius.webhookTransactionTypes'),
+	    webhookType: 'enhanced',
           }),
           method: 'PUT',
         });

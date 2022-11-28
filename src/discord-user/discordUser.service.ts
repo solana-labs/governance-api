@@ -76,8 +76,12 @@ export class DiscordUserService {
     this.logger.verbose({ url: this.heliusBalancesUrl(publicKey) });
     const response = await fetch(this.heliusBalancesUrl(publicKey));
     const responseJson = await response.json();
-    this.logger.verbose({ responseJson });
     const { nativeBalance }: { nativeBalance: number } = responseJson;
+    this.logger.verbose({
+      publicKey,
+      nativeBalance,
+      nativeBalanceSol: nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL,
+    });
 
     return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
   }
@@ -129,7 +133,7 @@ export class DiscordUserService {
             webhookURL: this.configService.get('helius.webhookUrl'),
             accountAddresses: publicKeys,
             transactionTypes: this.configService.get('helius.webhookTransactionTypes'),
-	    webhookType: 'enhanced',
+            webhookType: 'enhanced',
           }),
           method: 'PUT',
         });

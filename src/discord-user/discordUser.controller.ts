@@ -11,13 +11,13 @@ export class DiscordUserController {
 
   @Post('/webhook')
   async getHello(@Body() body: HeliusWebhookPayload[]): Promise<{ publicKeys: string[] }> {
-    const { nativeTransfers } = body[0];
+    const { nativeTransfers, accountData } = body[0];
     const affectedAddresses = new Set<string>();
     nativeTransfers.forEach((transfer) => {
       affectedAddresses.add(transfer.fromUserAccount);
       affectedAddresses.add(transfer.toUserAccount);
     });
-    this.logger.verbose({ affectedAddresses });
+    this.logger.verbose({ affectedAddresses, accountData });
 
     for await (const affectedAddress of affectedAddresses) {
       await this.discordUserService.refreshDiscordMetadataForPublicKey(

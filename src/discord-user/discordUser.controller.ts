@@ -22,6 +22,8 @@ export class DiscordUserController {
     for await (const affectedAddress of affectedAddresses) {
       await this.discordUserService.refreshDiscordMetadataForPublicKey(
         new PublicKey(affectedAddress),
+        // Delay update of Discord data by 10s to allow balance changes to update in Helius RPC
+        10 * 1000,
       );
     }
 

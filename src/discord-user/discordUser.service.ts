@@ -30,6 +30,10 @@ type PublicKeyStrObj = { publicKeyStr: string };
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
 export class DiscordUserService {
   private logger = new Logger(DiscordUserService.name);
@@ -86,12 +90,14 @@ export class DiscordUserService {
     return nativeBalance / LAMPORTS_PER_SOL >= MINIMUM_SOL;
   }
 
-  async getMetadataForUser(publicKey: PublicKey) {
+  async getMetadataForUser(publicKey: PublicKey, withDelay = 0) {
     const walletAge = await this.getLargeAmountOfTransactions(
       publicKey.toBase58(),
       MAX_TXS_TO_SCAN,
     );
-    const hasMinimumSol = await this.getSolBalance(publicKey.toBase58());
+    const hasMinimumSol = await delay(withDelay).then(() =>
+      this.getSolBalance(publicKey.toBase58()),
+    );
     const isRecentlyActive = await this.activeWithin30Days(publicKey.toBase58());
 
     return {
@@ -217,7 +223,7 @@ export class DiscordUserService {
     });
   }
 
-  async refreshDiscordMetadataForPublicKey(publicKey: PublicKey) {
+  async refreshDiscordMetadataForPublicKey(publicKey: PublicKey, withDelay = 0) {
     const discordUser = await this.getDiscordUserByPublicKey(publicKey);
     if (discordUser) {
       const { refreshToken } = discordUser;
@@ -237,7 +243,7 @@ export class DiscordUserService {
         });
 
         const { access_token: accessToken } = await response.json();
-        await this.updateMetadataForUser(new PublicKey(publicKey), accessToken);
+        await this.updateMetadataForUser(new PublicKey(publicKey), accessToken, withDelay);
         return { publicKey };
       } catch (e) {
         return null;
@@ -245,7 +251,7 @@ export class DiscordUserService {
     }
   }
 
-  async updateMetadataForUser(publicKey: PublicKey, _accessToken) {
+  async updateMetadataForUser(publicKey: PublicKey, _accessToken, withDelay = 0) {
     let accessToken = _accessToken;
     if (!accessToken) {
       const discordUser = await this.getDiscordUserByPublicKey(publicKey);
@@ -256,7 +262,7 @@ export class DiscordUserService {
       }
     }
 
-    const metadata = await this.getMetadataForUser(publicKey);
+    const metadata = await this.getMetadataForUser(publicKey, withDelay);
     this.logger.verbose({ metadata });
 
     const putResult = await fetch(

@@ -156,14 +156,24 @@ export class RealmService {
       where: { symbol },
     });
 
-    // assume it's a publick key next and try that
+    // assume it's a public key next and try that
     if (!realm) {
       realm = await this.realmRepository.findOne({
         where: { publicKeyStr: id },
       });
     }
 
-    // if it's still not found, it's not a realm realm
+    // if it's a valid dao, let's create the realm
+    if (!realm) {
+      try {
+        const publicKey = new PublicKey(id);
+        realm = await this.setupRealm(publicKey, environment);
+      } catch {
+        realm = null;
+      }
+    }
+
+    // if it's still not found, it's not a real realm
     if (!realm) {
       throw new errors.NotFound();
     }

@@ -252,9 +252,14 @@ export class DiscordUserService {
 
         accessToken = newAccessAndRefreshToken.accessToken;
 
-        await this.discordUserRepository.update(discordUser.id, {
-          refreshToken: newAccessAndRefreshToken.refreshToken,
-        });
+        await this.discordUserRepository.upsert(
+          {
+            authId: discordUser.authId,
+            publicKeyStr: publicKey.toBase58(),
+            refreshToken: newAccessAndRefreshToken.refreshToken,
+          },
+          { conflictPaths: ['authId'] },
+        );
       } else {
         throw new Error('No access / refresh token found!');
       }

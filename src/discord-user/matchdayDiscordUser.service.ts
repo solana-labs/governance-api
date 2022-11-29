@@ -38,14 +38,28 @@ export class MatchdayDiscordUserService {
 
     const { nfts } = await challengePassesResponse.json();
 
-    return { numChallengePasses: nfts ? nfts.length : 0 };
+    if (nfts.length) {
+      const oldestChallengePass = nfts
+        .map((nft) => new Date(nft.owners[0].first_acquired_date))
+        .sort((a, b) => a.getTime() - b.getTime())[0];
+
+      return {
+        numChallengePasses: nfts.length,
+        oldestChallengePass,
+      };
+    }
+
+    return { numChallengePasses: 0 };
   }
 
   async getMetadataForUser(publicKey: PublicKey) {
-    const { numChallengePasses } = await this.getChallengePassesForUser(publicKey);
+    const { numChallengePasses, oldestChallengePass } = await this.getChallengePassesForUser(
+      publicKey,
+    );
 
     return {
       num_challenge_passes: numChallengePasses,
+      challenge_pass_held_since: oldestChallengePass,
     };
   }
 

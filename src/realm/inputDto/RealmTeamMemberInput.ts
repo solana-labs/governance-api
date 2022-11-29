@@ -20,6 +20,12 @@ export class RealmTeamMemberInput {
   description?: RichTextDocument;
 
   @Field({
+    description: "The team member's linked in profile url",
+    nullable: true,
+  })
+  linkedIn?: string;
+
+  @Field({
     description: "The team member's name",
   })
   name: string;

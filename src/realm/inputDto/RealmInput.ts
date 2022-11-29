@@ -1,28 +1,28 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { InputType, Field } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
+import { RealmCategory } from '../dto/RealmCategory';
 import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 
-import { RealmAboutSection } from './RealmAboutSection';
-import { RealmCategory } from './RealmCategory';
-import { RealmDocumentation } from './RealmDocumentation';
-import { RealmFaqItem } from './RealmFaqItem';
-import { RealmGalleryItem } from './RealmGalleryItem';
-import { RealmResource } from './RealmResource';
-import { RealmRoadmap } from './RealmRoadmap';
-import { RealmTeamMember } from './RealmTeamMember';
-import { RealmTokenDetails } from './RealmTokenDetails';
+import { RealmAboutSectionInput } from './RealmAboutSectionInput';
+import { RealmDocumentationInput } from './RealmDocumentationInput';
+import { RealmFaqItemInput } from './RealmFaqItemInput';
+import { RealmGalleryItemInput } from './RealmGalleryItemInput';
+import { RealmResourceInput } from './RealmResourceInput';
+import { RealmRoadmapInput } from './RealmRoadmapInput';
+import { RealmTeamMemberInput } from './RealmTeamMemberInput';
+import { RealmTokenDetailsInput } from './RealmTokenDetailsInput';
 
-@ObjectType({
-  description: 'A Realm',
+@InputType({
+  description: 'An input for Realm fields',
 })
-export class Realm {
-  @Field(() => [RealmAboutSection], {
+export class RealmInput {
+  @Field(() => [RealmAboutSectionInput], {
     description: 'Long form text describing the Realm',
   })
-  about: RealmAboutSection[];
+  about: RealmAboutSectionInput[];
 
   @Field({
     description: "Url for the Realm's banner",
@@ -46,21 +46,21 @@ export class Realm {
   })
   displayName: string;
 
-  @Field(() => RealmDocumentation, {
+  @Field(() => RealmDocumentationInput, {
     description: 'Optional documentation for the Realm',
     nullable: true,
   })
-  documentation?: RealmDocumentation;
+  documentation?: RealmDocumentationInput;
 
-  @Field(() => [RealmFaqItem], {
+  @Field(() => [RealmFaqItemInput], {
     description: 'Frequently asked questions in the Realm',
   })
-  faq: RealmFaqItem[];
+  faq: RealmFaqItemInput[];
 
-  @Field(() => [RealmGalleryItem], {
+  @Field(() => [RealmGalleryItemInput], {
     description: 'A list of items in the gallery',
   })
-  gallery: RealmGalleryItem[];
+  gallery: RealmGalleryItemInput[];
 
   @Field({
     description: 'Github link',
@@ -92,31 +92,15 @@ export class Realm {
   })
   linkedInUrl?: string;
 
-  @Field({
-    description: 'Name of the Realm',
-  })
-  name: string;
-
-  @Field(() => PublicKeyScalar, {
-    description: 'Public key of the governance program the Realm uses',
-    nullable: true,
-  })
-  programPublicKey?: PublicKey;
-
-  @Field(() => PublicKeyScalar, {
-    description: 'Public Key address for the Realm',
-  })
-  publicKey: PublicKey;
-
-  @Field(() => [RealmResource], {
+  @Field(() => [RealmResourceInput], {
     description: 'A list of external resources relevant to the Realm',
   })
-  resources: RealmResource[];
+  resources: RealmResourceInput[];
 
-  @Field(() => RealmRoadmap, {
+  @Field(() => RealmRoadmapInput, {
     description: 'A roadmap for the Realm',
   })
-  roadmap: RealmRoadmap;
+  roadmap: RealmRoadmapInput;
 
   @Field({
     description: 'A short text description of the Realm',
@@ -130,27 +114,22 @@ export class Realm {
   })
   symbol?: string;
 
-  @Field(() => [RealmTeamMember], {
+  @Field(() => [RealmTeamMemberInput], {
     description: 'A list of highlighted team members',
   })
-  team: RealmTeamMember[];
+  team: RealmTeamMemberInput[];
 
-  @Field(() => RealmTokenDetails, {
+  @Field(() => RealmTokenDetailsInput, {
     description: 'Optional associated token',
     nullable: true,
   })
-  token?: RealmTokenDetails;
+  token?: RealmTokenDetailsInput;
 
   @Field({
     description: 'Twitter handle for the Realm',
     nullable: true,
   })
   twitterHandle?: string;
-
-  @Field({
-    description: 'The url id representation of the realm',
-  })
-  urlId: string;
 
   @Field({
     description: 'Website url for the Realm',

@@ -27,6 +27,12 @@ export class NotFound extends mercurius.ErrorWithProps {
   }
 }
 
+export class NotUnique extends mercurius.ErrorWithProps {
+  constructor(field?: string) {
+    super(field ? `"${field}" must be unique` : 'Not unique', { field }, 422);
+  }
+}
+
 export class RateLimit extends mercurius.ErrorWithProps {
   constructor(action?: string) {
     super("You've hit the rate limit", { action }, 409);

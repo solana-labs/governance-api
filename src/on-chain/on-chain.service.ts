@@ -5,9 +5,11 @@ import {
   pubkeyFilter,
   MemcmpFilter,
   getNativeTreasuryAddress,
+  TOKEN_PROGRAM_ID,
 } from '@solana/spl-governance';
 import { AccountInfo, MintInfo, u64 } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
 import { Cache } from 'cache-manager';
 import { hoursToMilliseconds } from 'date-fns';
 
@@ -165,6 +167,55 @@ export class OnChainService {
     {
       dedupeKey: (pk, env) => pk.toBase58() + env,
       maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get a token account for a user
+   */
+  getTokenAccountForUser = this.staleCacheService.dedupe(
+    async (user: PublicKey, mintPublicKey: PublicKey, environment: Environment) => {
+      if (environment === 'devnet') {
+        throw new errors.UnsupportedDevnet();
+      }
+
+      const resp = await fetch(this.configService.get('external.rpcEndpoint'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getTokenAccountsByOwner',
+          params: [
+            user.toBase58(),
+            {
+              mint: mintPublicKey.toBase58(),
+            },
+            {
+              encoding: 'jsonParsed',
+            },
+          ],
+        }),
+      });
+
+      const result = await resp.json();
+      const value = result?.result?.value?.[0]?.account?.data?.parsed?.info?.tokenAmount;
+
+      if (value) {
+        return value as {
+          amount: string;
+          decimals: string;
+          uiAmount: number;
+          uiAmountString: string;
+        };
+      }
+
+      return null;
+    },
+    {
+      dedupeKey: (user, mint, env) => user.toBase58() + mint.toBase58() + env,
     },
   );
 

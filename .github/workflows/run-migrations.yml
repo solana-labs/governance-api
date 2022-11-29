@@ -4,7 +4,7 @@ on: [workflow_dispatch]
 
 env:
   PROJECT_ID: solana-realms
-  DB_INSTANCE: solana-realms:us-central1:realms-harmony-testbed
+  DB_INSTANCE: solana-realms:us-central1:realm-pg-prod
 
 jobs:
   migrate:

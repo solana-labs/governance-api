@@ -50,7 +50,7 @@ on: [workflow_dispatch]
 
 env:
   PROJECT_ID: solana-realms
-  SERVICE: realms-harmony-testbed
+  SERVICE: governance-api
   REGION: us-central1
 
 jobs:

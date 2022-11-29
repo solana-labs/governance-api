@@ -108,7 +108,7 @@ export class DiscordUserService {
   }
 
   async getAccessTokenWithRefreshToken(refreshToken: string) {
-    const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+    const response = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -121,8 +121,9 @@ export class DiscordUserService {
       }),
     });
 
-    const { access_token: accessToken } = await response.json();
-    return accessToken;
+    const { access_token: accessToken, refresh_token } = await response.json();
+
+    return { accessToken, refreshToken: refresh_token };
   }
 
   // Updates the Helius Webhook account addresses field
@@ -223,41 +224,24 @@ export class DiscordUserService {
     });
   }
 
-  async refreshDiscordMetadataForPublicKey(publicKey: PublicKey, withDelay = 0) {
-    const discordUser = await this.getDiscordUserByPublicKey(publicKey);
-    if (discordUser) {
-      const { refreshToken } = discordUser;
-
-      try {
-        const response = await fetch('https://discord.com/api/v10/oauth2/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: JSON.stringify({
-            client_id: this.configService.get('discord.clientId'),
-            client_secret: this.configService.get('discord.clientSecret'),
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
-          }),
-        });
-        this.logger.verbose('Discord OAuth Token Response:', response.status, response.statusText);
-
-        const { access_token: accessToken } = await response.json();
-        await this.updateMetadataForUser(new PublicKey(publicKey), accessToken, withDelay);
-        return { publicKey };
-      } catch (e) {
-        return null;
-      }
-    }
-  }
-
-  async updateMetadataForUser(publicKey: PublicKey, _accessToken, withDelay = 0) {
+  async updateMetadataForUser(publicKey: PublicKey, _accessToken?: string | null, withDelay = 0) {
     let accessToken = _accessToken;
     if (!accessToken) {
       const discordUser = await this.getDiscordUserByPublicKey(publicKey);
       if (discordUser) {
-        accessToken = await this.getAccessTokenWithRefreshToken(discordUser.refreshToken);
+        const newAccessAndRefreshToken = await this.getAccessTokenWithRefreshToken(
+          discordUser.refreshToken,
+        );
+        accessToken = newAccessAndRefreshToken.accessToken;
+
+        await this.discordUserRepository.upsert(
+          {
+            authId: discordUser.authId,
+            publicKeyStr: publicKey.toBase58(),
+            refreshToken: newAccessAndRefreshToken.refreshToken,
+          },
+          { conflictPaths: ['authId'] },
+        );
       } else {
         throw new Error('No access / refresh token found!');
       }

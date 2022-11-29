@@ -21,12 +21,10 @@ export class MatchdayDiscordUserController {
       } = body[0];
       this.logger.verbose({ seller, buyer });
 
-      await this.matchdayDiscordUserService.refreshDiscordMetadataForPublicKey(
-        new PublicKey(seller),
-      );
-      await this.matchdayDiscordUserService.refreshDiscordMetadataForPublicKey(
-        new PublicKey(buyer),
-      );
+      await Promise.all([
+        this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(seller)),
+        this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(buyer)),
+      ]);
 
       return { publicKeys: [seller, buyer] };
     } else if (type === 'TRANSFER') {
@@ -38,11 +36,11 @@ export class MatchdayDiscordUserController {
       });
       this.logger.verbose({ affectedAddresses: Array.from(affectedAddresses) });
 
-      for await (const affectedAddress of affectedAddresses) {
-        await this.matchdayDiscordUserService.refreshDiscordMetadataForPublicKey(
-          new PublicKey(affectedAddress),
-        );
-      }
+      await Promise.all(
+        Array.from(affectedAddresses).map((address) =>
+          this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(address)),
+        ),
+      );
 
       return { publicKeys: Array.from(affectedAddresses) };
     }

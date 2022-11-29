@@ -65,22 +65,23 @@ export class MatchdayDiscordUserService {
 
   async getAccessTokenWithRefreshToken(refreshToken: string) {
     const { client_id, client_secret } = this.getDiscordApplicationCredentials();
+    const body = new URLSearchParams({
+      client_id,
+      client_secret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }).toString();
 
-    const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+    const response = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        client_id,
-        client_secret,
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      }),
+      body,
     });
 
-    const { access_token: accessToken } = await response.json();
-    return accessToken;
+    const { access_token: accessToken, refresh_token } = await response.json();
+    return { accessToken, refreshToken: refresh_token };
   }
 
   getDiscordApplicationCredentials() {
@@ -113,42 +114,20 @@ export class MatchdayDiscordUserService {
     });
   }
 
-  async refreshDiscordMetadataForPublicKey(publicKey: PublicKey) {
-    const discordUser = await this.getDiscordUserByPublicKey(publicKey);
-    if (discordUser) {
-      const { refreshToken } = discordUser;
-
-      const { client_id, client_secret } = this.getDiscordApplicationCredentials();
-
-      try {
-        const response = await fetch('https://discord.com/api/v10/oauth2/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: JSON.stringify({
-            client_id,
-            client_secret,
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
-          }),
-        });
-
-        const { access_token: accessToken } = await response.json();
-        await this.updateMetadataForUser(new PublicKey(publicKey), accessToken);
-        return { publicKey };
-      } catch (e) {
-        return null;
-      }
-    }
-  }
-
-  async updateMetadataForUser(publicKey: PublicKey, _accessToken: string) {
+  async updateMetadataForUser(publicKey: PublicKey, _accessToken?: string) {
     let accessToken = _accessToken;
     if (!accessToken) {
       const discordUser = await this.getDiscordUserByPublicKey(publicKey);
       if (discordUser) {
-        accessToken = await this.getAccessTokenWithRefreshToken(discordUser.refreshToken);
+        const newAccessAndRefreshToken = await this.getAccessTokenWithRefreshToken(
+          discordUser.refreshToken,
+        );
+
+        accessToken = newAccessAndRefreshToken.accessToken;
+
+        await this.matchdayDiscordUserRepository.update(discordUser.id, {
+          refreshToken: newAccessAndRefreshToken.refreshToken,
+        });
       } else {
         throw new Error('No access / refresh token found!');
       }
@@ -158,7 +137,6 @@ export class MatchdayDiscordUserService {
     this.logger.verbose({ metadata });
 
     const { client_id: clientId } = this.getDiscordApplicationCredentials();
-
     const putResult = await fetch(
       `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
       {

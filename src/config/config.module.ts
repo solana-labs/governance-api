@@ -60,9 +60,10 @@ import { ConfigService } from './config.service';
               apiKey: process.env.HELIUS_API_KEY as string,
               webhookId: process.env.HELIUS_WEBHOOK_ID as string,
               webhookUrl: process.env.HELIUS_WEBHOOK_URL as string,
-              webhookTransactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
-                .split(',')
-                .map((txType) => txType.toUpperCase()),
+              webhookTransactionTypes: [],
+              // webhookTransactionTypes: (process.env.HELIUS_WEBHOOK_TRANSACTION_TYPES as string)
+              //   .split(',')
+              //   .map((txType) => txType.toUpperCase()),
             },
             simplehash: {
               apiKey: process.env.SIMPLEHASH_API_KEY as string,

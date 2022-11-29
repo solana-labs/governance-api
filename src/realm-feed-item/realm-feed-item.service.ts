@@ -15,10 +15,14 @@ import { Environment } from '@lib/types/Environment';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 import { ConfigService } from '@src/config/config.service';
 import { DialectService, DIALECT_NOTIF_TYPE_ID_UPVOTE } from '@src/dialect/dialect.service';
+import { RealmFeedItemComment } from '@src/realm-feed-item-comment/entities/RealmFeedItemComment.entity';
+import { RealmFeedItemCommentService } from '@src/realm-feed-item-comment/realm-feed-item-comment.service';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
+import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
 import { RealmPostService } from '@src/realm-post/realm-post.service';
 import { RealmProposalState } from '@src/realm-proposal/dto/RealmProposalState';
 import { RealmProposalService } from '@src/realm-proposal/realm-proposal.service';
+import { RealmService } from '@src/realm/realm.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 import { TaskDedupeService } from '@src/task-dedupe/task-dedupe.service';
 
@@ -39,17 +43,23 @@ export class RealmFeedItemService {
   private logger = new Logger(RealmFeedItemService.name);
 
   constructor(
+    @InjectRepository(RealmFeedItemComment)
+    private readonly realmFeedItemCommentRepository: Repository<RealmFeedItemComment>,
     @InjectRepository(RealmFeedItemEntity)
     private readonly realmFeedItemRepository: Repository<RealmFeedItemEntity>,
     @InjectRepository(RealmFeedItemVoteEntity)
     private readonly realmFeedItemVoteRepository: Repository<RealmFeedItemVoteEntity>,
+    @InjectRepository(RealmPost)
+    private readonly realmPostRepository: Repository<RealmPost>,
     private readonly configService: ConfigService,
+    private readonly dialectService: DialectService,
+    private readonly realmFeedItemCommentService: RealmFeedItemCommentService,
+    private readonly realmMemberService: RealmMemberService,
     private readonly realmPostService: RealmPostService,
     private readonly realmProposalService: RealmProposalService,
-    private readonly realmMemberService: RealmMemberService,
+    private readonly realmService: RealmService,
     private readonly staleCacheService: StaleCacheService,
     private readonly taskDedupeService: TaskDedupeService,
-    private readonly dialectService: DialectService,
   ) {}
 
   /**
@@ -210,6 +220,57 @@ export class RealmFeedItemService {
     };
 
     return feedItemPost;
+  }
+
+  /**
+   * Deletes a post
+   */
+  async deletePost(args: {
+    environment: Environment;
+    id: number;
+    realmPublicKey: PublicKey;
+    requestingUser: User;
+  }) {
+    if (args.environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const canDelete = await this.realmService.userIsCouncilMember(
+      args.realmPublicKey,
+      args.requestingUser.publicKey,
+      args.environment,
+    );
+
+    if (!canDelete) {
+      throw new errors.Unauthorized();
+    }
+
+    const feedItem = await this.realmFeedItemRepository.findOne({ where: { id: args.id } });
+
+    if (!feedItem) {
+      throw new errors.NotFound();
+    }
+
+    if (feedItem.data.type === RealmFeedItemType.Proposal) {
+      throw new errors.MalformedRequest('You cannot delete a Proposal');
+    }
+
+    const post = await this.realmPostRepository.findOne({ where: { id: feedItem.data.ref } });
+    const comments = await this.realmFeedItemCommentRepository.find({
+      where: { feedItemId: feedItem.id },
+    });
+
+    if (comments.length) {
+      await this.realmFeedItemCommentRepository.delete(comments.map((c) => c.id));
+    }
+
+    await this.realmFeedItemRepository.delete(feedItem.id);
+
+    if (post) {
+      await this.realmPostRepository.delete(post.id);
+    }
+
+    return true;
   }
 
   /**
@@ -831,22 +892,29 @@ export class RealmFeedItemService {
         environment,
       ),
       TE.map((postsMap) =>
-        entities.map(
-          (post) =>
-            ({
+        entities
+          .map((post) => {
+            const data = postsMap[post.data.ref];
+
+            if (!data) {
+              return null;
+            }
+
+            return {
               realmPublicKey,
               type: RealmFeedItemType.Post,
-              author: postsMap[post.data.ref].author,
+              author: data.author,
               created: post.created,
-              document: postsMap[post.data.ref].document,
+              document: data.document,
               id: post.id,
               myVote: requestingUser ? votes[post.id]?.[requestingUser.id] : undefined,
-              post: postsMap[post.data.ref],
+              post: data,
               score: post.metadata.rawScore,
-              title: postsMap[post.data.ref].title,
+              title: data.title,
               updated: post.updated,
-            } as RealmFeedItemPost),
-        ),
+            } as RealmFeedItemPost;
+          })
+          .filter(exists),
       ),
     );
   }
@@ -870,22 +938,28 @@ export class RealmFeedItemService {
       ),
       TE.map((proposalMap) =>
         entities
-          .map(
-            (proposal) =>
-              ({
-                realmPublicKey,
-                type: RealmFeedItemType.Proposal,
-                author: proposalMap[proposal.data.ref].author,
-                created: proposal.created,
-                document: proposalMap[proposal.data.ref].document,
-                id: proposal.id,
-                myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
-                proposal: proposalMap[proposal.data.ref],
-                score: proposal.metadata.rawScore,
-                title: proposalMap[proposal.data.ref].title,
-                updated: proposal.updated,
-              } as RealmFeedItemProposal),
-          )
+          .map((proposal) => {
+            const data = proposalMap[proposal.data.ref];
+
+            if (!data) {
+              return null;
+            }
+
+            return {
+              realmPublicKey,
+              type: RealmFeedItemType.Proposal,
+              author: data.author,
+              created: proposal.created,
+              document: data.document,
+              id: proposal.id,
+              myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
+              proposal: data,
+              score: proposal.metadata.rawScore,
+              title: data.title,
+              updated: proposal.updated,
+            } as RealmFeedItemProposal;
+          })
+          .filter(exists)
           .filter((proposal) => !!proposal.proposal),
       ),
     );

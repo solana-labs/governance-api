@@ -67,6 +67,37 @@ export class RealmFeedItemCommentResolver {
     });
   }
 
+  @Mutation(() => Boolean, {
+    description: 'Delete a comment',
+  })
+  @UseGuards(AuthJwtGuard)
+  deleteComment(
+    @Args('realm', {
+      type: () => PublicKeyScalar,
+      description: 'Public key of the realm the comment belongs in',
+    })
+    realm: PublicKey,
+    @Args('commentId', {
+      type: () => RealmFeedItemCommentIDScalar,
+      description: 'The ID of the comment being voted on',
+    })
+    id: number,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmFeedItemCommentService.deleteComment({
+      environment,
+      id,
+      realmPublicKey: realm,
+      requestingUser: user,
+    });
+  }
+
   @Query(() => RealmFeedItemComment, {
     description: 'A comment on a feed item',
     nullable: true,

@@ -17,7 +17,7 @@ export class DiscordUserController {
       affectedAddresses.add(transfer.fromUserAccount);
       affectedAddresses.add(transfer.toUserAccount);
     });
-    this.logger.verbose({ affectedAddresses });
+    this.logger.verbose({ affectedAddresses: Array.from(affectedAddresses) });
 
     for await (const affectedAddress of affectedAddresses) {
       try {

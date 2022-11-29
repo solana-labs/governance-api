@@ -108,21 +108,22 @@ export class DiscordUserService {
   }
 
   async getAccessTokenWithRefreshToken(refreshToken: string) {
+    const body = new URLSearchParams({
+      client_id: this.configService.get('discord.clientId'),
+      client_secret: this.configService.get('discord.clientSecret'),
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }).toString();
+
     const response = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        client_id: this.configService.get('discord.clientId'),
-        client_secret: this.configService.get('discord.clientSecret'),
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      }),
+      body,
     });
 
     const { access_token: accessToken, refresh_token } = await response.json();
-
     return { accessToken, refreshToken: refresh_token };
   }
 
@@ -155,8 +156,8 @@ export class DiscordUserService {
   /**
    * Creates a new Discord user
    */
-  createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
-    return this.discordUserRepository.upsert(
+  async createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
+    const insertResult = await this.discordUserRepository.upsert(
       {
         authId,
         publicKeyStr: publicKey.toBase58(),
@@ -164,6 +165,8 @@ export class DiscordUserService {
       },
       { conflictPaths: ['authId'] },
     );
+
+    return insertResult;
   }
 
   async getLargeAmountOfTransactions(
@@ -232,16 +235,12 @@ export class DiscordUserService {
         const newAccessAndRefreshToken = await this.getAccessTokenWithRefreshToken(
           discordUser.refreshToken,
         );
+
         accessToken = newAccessAndRefreshToken.accessToken;
 
-        await this.discordUserRepository.upsert(
-          {
-            authId: discordUser.authId,
-            publicKeyStr: publicKey.toBase58(),
-            refreshToken: newAccessAndRefreshToken.refreshToken,
-          },
-          { conflictPaths: ['authId'] },
-        );
+        await this.discordUserRepository.update(discordUser.id, {
+          refreshToken: newAccessAndRefreshToken.refreshToken,
+        });
       } else {
         throw new Error('No access / refresh token found!');
       }

@@ -21,7 +21,7 @@ export class MatchdayDiscordUserController {
       } = body[0];
       this.logger.verbose({ seller, buyer });
 
-      await Promise.all([
+      await Promise.allSettled([
         this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(seller)),
         this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(buyer)),
       ]);
@@ -36,7 +36,7 @@ export class MatchdayDiscordUserController {
       });
       this.logger.verbose({ affectedAddresses: Array.from(affectedAddresses) });
 
-      await Promise.all(
+      await Promise.allSettled(
         Array.from(affectedAddresses).map((address) =>
           this.matchdayDiscordUserService.updateMetadataForUser(new PublicKey(address)),
         ),

@@ -20,12 +20,23 @@ export interface Config {
     username: string | undefined;
     useSsl: boolean;
   };
+  discord: {
+    clientId: string;
+    clientSecret: string;
+    oauthRedirectUri: string;
+  };
   external: {
     dialectSdkCredentials: string | undefined;
     dialectSdkEnvironment: string | undefined;
     discordBotKey: string | undefined;
     rpcEndpoint: string | undefined;
     twitterBearerKey: string | undefined;
+  };
+  helius: {
+    apiKey: string;
+    webhookId: string;
+    webhookUrl: string;
+    webhookTransactionTypes: string[],
   };
   jwt: {
     userSecret: string;

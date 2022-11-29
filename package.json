@@ -26,6 +26,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@bonfida/spl-name-service": "^0.1.56",
     "@cardinal/namespaces": "^4.1.56",
     "@civic/profile": "^0.1.2",
     "@dialectlabs/blockchain-sdk-solana": "^1.0.0",
@@ -127,6 +128,9 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^4.3.5"
+  },
+  "resolutions": {
+    "@bonfida/name-service/**/borsh": "0.7.0"
   },
   "jest": {
     "moduleFileExtensions": [

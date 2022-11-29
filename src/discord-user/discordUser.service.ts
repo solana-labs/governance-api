@@ -1,3 +1,4 @@
+import { getFavoriteDomain } from '@bonfida/spl-name-service';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -262,8 +263,18 @@ export class DiscordUserService {
     const metadata = await this.getMetadataForUser(publicKey, withDelay);
     this.logger.verbose({ metadata });
 
-    const { client_id: clientId } = this.getDiscordApplicationCredentials();
+    const body = { platform_name: 'Solana', metadata };
 
+    try {
+      const connection = new Connection(process.env.RPC_ENDPOINT as string);
+      const { reverse } = await getFavoriteDomain(connection, publicKey);
+      this.logger.verbose({ reverse });
+      body['platform_username'] = reverse;
+    } catch (e) {
+      this.logger.verbose(e);
+    }
+
+    const { client_id: clientId } = this.getDiscordApplicationCredentials();
     const putResult = await fetch(
       `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
       {
@@ -272,10 +283,7 @@ export class DiscordUserService {
           'authorization': `Bearer ${accessToken}`,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({
-          platform_name: 'Solana',
-          metadata,
-        }),
+        body: JSON.stringify(body),
       },
     );
 

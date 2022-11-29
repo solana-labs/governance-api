@@ -241,6 +241,7 @@ export class DiscordUserService {
             refresh_token: refreshToken,
           }),
         });
+        this.logger.verbose('Discord OAuth Token Response:', response.status, response.statusText);
 
         const { access_token: accessToken } = await response.json();
         await this.updateMetadataForUser(new PublicKey(publicKey), accessToken, withDelay);
@@ -282,6 +283,9 @@ export class DiscordUserService {
       },
     );
 
-    this.logger.verbose({ putResult });
+    this.logger.verbose({
+      discordMetadataUpdate: putResult.status,
+      discordMetadataUpdateText: putResult.statusText,
+    });
   }
 }

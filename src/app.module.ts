@@ -18,7 +18,7 @@ import { AuthModule } from '@src/auth/auth.module';
 import { ConfigModule } from '@src/config/config.module';
 import { ConfigService } from '@src/config/config.service';
 import { DiscordUserModule } from '@src/discord-user/discordUser.module';
-import { DiscordModule } from '@src/discord/discord.module';
+// import { DiscordModule } from '@src/discord/discord.module';
 import { EcosystemFeedModule } from '@src/ecosystem-feed/ecosystem-feed.module';
 import { HolaplexModule } from '@src/holaplex/holaplex.module';
 import { OnChainModule } from '@src/on-chain/on-chain.module';
@@ -87,7 +87,7 @@ import { UserModule } from '@src/user/user.module';
     RealmFeedItemCommentModule,
     RealmHubModule,
     StaleCacheModule,
-    DiscordModule,
+    // DiscordModule,
     DiscordUserModule,
     EcosystemFeedModule,
   ],

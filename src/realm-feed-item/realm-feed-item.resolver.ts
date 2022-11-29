@@ -335,6 +335,37 @@ export class RealmFeedItemResolver {
     });
   }
 
+  @Mutation(() => Boolean, {
+    description: 'Delete a post',
+  })
+  @UseGuards(AuthJwtGuard)
+  deletePost(
+    @Args('realm', {
+      type: () => PublicKeyScalar,
+      description: 'Public key of the realm the feed item belongs in',
+    })
+    realm: PublicKey,
+    @Args('feedItemId', {
+      type: () => RealmFeedItemIDScalar,
+      description: 'The ID of the feed item being voted on',
+    })
+    id: number,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmFeedItemService.deletePost({
+      environment,
+      id,
+      realmPublicKey: realm,
+      requestingUser: user,
+    });
+  }
+
   @Mutation(() => RealmFeedItem, {
     description: 'Approve or disapprove a feed item',
   })

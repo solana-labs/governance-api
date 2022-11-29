@@ -25,6 +25,7 @@ import { RealmFeedItemType } from '@src/realm-feed-item/dto/RealmFeedItemType';
 import { RealmFeedItem } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
 import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
+import { RealmService } from '@src/realm/realm.service';
 
 import { RealmFeedItemCommentSort, RealmFeedItemCommentConnection } from './dto/pagination';
 import { RealmFeedItemComment } from './dto/RealmFeedItemComment';
@@ -64,9 +65,10 @@ export class RealmFeedItemCommentService {
     private readonly realmFeedItemCommentVoteRepository: Repository<RealmFeedItemCommentVoteEntity>,
     @InjectRepository(RealmPost)
     private readonly realmPostRepository: Repository<RealmPost>,
-    private readonly realmMemberService: RealmMemberService,
     private readonly configService: ConfigService,
     private readonly dialectService: DialectService,
+    private readonly realmMemberService: RealmMemberService,
+    private readonly realmService: RealmService,
   ) {}
 
   /**
@@ -117,6 +119,39 @@ export class RealmFeedItemCommentService {
       requestingUser: args.requestingUser,
       votes: { [entity.id]: {} },
     });
+  }
+
+  /**
+   * Delete a comment
+   */
+  async deleteComment(args: {
+    environment: Environment;
+    id: RealmFeedItemCommentEntity['id'];
+    realmPublicKey: PublicKey;
+    requestingUser: User;
+  }) {
+    if (args.environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const canDelete = await this.realmService.userIsCouncilMember(
+      args.realmPublicKey,
+      args.requestingUser.publicKey,
+      args.environment,
+    );
+
+    if (!canDelete) {
+      throw new errors.Unauthorized();
+    }
+
+    const comment = await this.realmFeedItemCommentRepository.findOne({ where: { id: args.id } });
+
+    if (!comment) {
+      throw new errors.NotFound();
+    }
+
+    await this.realmFeedItemCommentRepository.delete(comment.id);
+    return true;
   }
 
   /**

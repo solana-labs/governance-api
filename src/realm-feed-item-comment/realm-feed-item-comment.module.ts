@@ -6,6 +6,7 @@ import { DialectModule } from '@src/dialect/dialect.module';
 import { RealmFeedItem } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
+import { RealmModule } from '@src/realm/realm.module';
 
 import { RealmFeedItemComment } from './entities/RealmFeedItemComment.entity';
 import { RealmFeedItemCommentVote } from './entities/RealmFeedItemCommentVote.entity';
@@ -23,6 +24,7 @@ import { RealmFeedItemCommentService } from './realm-feed-item-comment.service';
     RealmMemberModule,
     ConfigModule,
     DialectModule,
+    RealmModule,
   ],
   providers: [RealmFeedItemCommentService, RealmFeedItemCommentResolver],
   exports: [RealmFeedItemCommentService],

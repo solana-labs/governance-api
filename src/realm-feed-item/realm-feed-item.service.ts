@@ -892,22 +892,29 @@ export class RealmFeedItemService {
         environment,
       ),
       TE.map((postsMap) =>
-        entities.map(
-          (post) =>
-            ({
+        entities
+          .map((post) => {
+            const data = postsMap[post.data.ref];
+
+            if (!data) {
+              return null;
+            }
+
+            return {
               realmPublicKey,
               type: RealmFeedItemType.Post,
-              author: postsMap[post.data.ref].author,
+              author: data.author,
               created: post.created,
-              document: postsMap[post.data.ref].document,
+              document: data.document,
               id: post.id,
               myVote: requestingUser ? votes[post.id]?.[requestingUser.id] : undefined,
-              post: postsMap[post.data.ref],
+              post: data,
               score: post.metadata.rawScore,
-              title: postsMap[post.data.ref].title,
+              title: data.title,
               updated: post.updated,
-            } as RealmFeedItemPost),
-        ),
+            } as RealmFeedItemPost;
+          })
+          .filter(exists),
       ),
     );
   }
@@ -931,22 +938,28 @@ export class RealmFeedItemService {
       ),
       TE.map((proposalMap) =>
         entities
-          .map(
-            (proposal) =>
-              ({
-                realmPublicKey,
-                type: RealmFeedItemType.Proposal,
-                author: proposalMap[proposal.data.ref].author,
-                created: proposal.created,
-                document: proposalMap[proposal.data.ref].document,
-                id: proposal.id,
-                myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
-                proposal: proposalMap[proposal.data.ref],
-                score: proposal.metadata.rawScore,
-                title: proposalMap[proposal.data.ref].title,
-                updated: proposal.updated,
-              } as RealmFeedItemProposal),
-          )
+          .map((proposal) => {
+            const data = proposalMap[proposal.data.ref];
+
+            if (!data) {
+              return null;
+            }
+
+            return {
+              realmPublicKey,
+              type: RealmFeedItemType.Proposal,
+              author: data.author,
+              created: proposal.created,
+              document: data.document,
+              id: proposal.id,
+              myVote: requestingUser ? votes[proposal.id]?.[requestingUser.id] : undefined,
+              proposal: data,
+              score: proposal.metadata.rawScore,
+              title: data.title,
+              updated: proposal.updated,
+            } as RealmFeedItemProposal;
+          })
+          .filter(exists)
           .filter((proposal) => !!proposal.proposal),
       ),
     );

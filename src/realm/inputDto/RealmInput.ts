@@ -1,8 +1,6 @@
 import { InputType, Field } from '@nestjs/graphql';
-import { PublicKey } from '@solana/web3.js';
 
 import { RealmCategory } from '../dto/RealmCategory';
-import { PublicKeyScalar } from '@lib/scalars/PublicKey';
 import { RichTextDocumentScalar } from '@lib/scalars/RichTextDocument';
 import { RichTextDocument } from '@lib/types/RichTextDocument';
 

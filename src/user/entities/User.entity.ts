@@ -11,7 +11,9 @@ import {
 
 import { RealmPost } from '@src/realm-post/entities/RealmPost.entity';
 
-export interface Data {}
+export interface Data {
+  realmsFollowed?: string[];
+}
 
 @Entity()
 @Unique(['authId'])

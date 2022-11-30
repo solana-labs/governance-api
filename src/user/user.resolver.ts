@@ -1,12 +1,14 @@
 import { ResolveField, Resolver, Root, Query } from '@nestjs/graphql';
 
 import { CurrentEnvironment, Environment } from '@lib/decorators/CurrentEnvironment';
-import { CurrentUser } from '@lib/decorators/CurrentUser';
+import { CurrentUser, User as UserModel } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
 import { EitherResolver } from '@src/lib/decorators/EitherResolver';
 import { RealmMemberCivicInfo } from '@src/realm-member/dto/RealmMemberCivicInfo';
 import { RealmMemberTwitterInfo } from '@src/realm-member/dto/RealmMemberTwitterInfo';
 import { RealmMemberService } from '@src/realm-member/realm-member.service';
+import { Realm } from '@src/realm/dto/Realm';
+import { RealmService } from '@src/realm/realm.service';
 
 import { User } from './dto/User';
 import { UserService } from './user.service';
@@ -15,6 +17,7 @@ import { UserService } from './user.service';
 export class UserResolver {
   constructor(
     private readonly realmMemberService: RealmMemberService,
+    private readonly realmService: RealmService,
     private readonly userService: UserService,
   ) {}
 
@@ -25,6 +28,25 @@ export class UserResolver {
   @EitherResolver()
   civicInfo(@Root() member: User, @CurrentEnvironment() environment: Environment) {
     return this.realmMemberService.getCivicHandleForPublicKey(member.publicKey, environment);
+  }
+
+  @ResolveField(() => [Realm], {
+    description: 'A list of realms the user follows',
+  })
+  followedRealms(
+    @Root() user: User,
+    @CurrentUser() currentUser: UserModel | null,
+    @CurrentEnvironment() environment: Environment,
+  ) {
+    if (!currentUser) {
+      throw new errors.Unauthorized();
+    }
+
+    if (!user.publicKey.equals(currentUser.publicKey)) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmService.listFollowedRealms(currentUser, environment);
   }
 
   @ResolveField(() => RealmMemberTwitterInfo, {

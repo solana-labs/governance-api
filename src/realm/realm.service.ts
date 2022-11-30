@@ -16,6 +16,7 @@ import { OnChainService } from '@src/on-chain/on-chain.service';
 import { RealmHubService } from '@src/realm-hub/realm-hub.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
+import { User as UserEntity } from '@src/user/entities/User.entity';
 
 import { Realm as RealmDto } from './dto/Realm';
 import { RealmCategory } from './dto/RealmCategory';
@@ -67,6 +68,8 @@ export class RealmService {
     private readonly staleCacheService: StaleCacheService,
     @InjectRepository(Realm)
     private readonly realmRepository: Repository<Realm>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
 
   /**
@@ -112,6 +115,31 @@ export class RealmService {
       urlId: encodeURIComponent(realm.symbol || realm.publicKeyStr),
       websiteUrl: realm.data.websiteUrl,
     };
+  }
+
+  /**
+   * Follow a realm
+   */
+  async followRealm(realmPublicKey: PublicKey, user: User, environment: Environment) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const userEntity = await this.userRepository.findOne({ where: { id: user.id } });
+
+    if (!userEntity) {
+      throw new errors.NotFound();
+    }
+
+    const realms = userEntity.data.realmsFollowed || [];
+
+    if (!realms.includes(realmPublicKey.toBase58())) {
+      realms.push(realmPublicKey.toBase58());
+    }
+
+    userEntity.data.realmsFollowed = realms;
+    await this.userRepository.save(userEntity);
+    return { publicKey: user.publicKey };
   }
 
   /**
@@ -249,6 +277,25 @@ export class RealmService {
   }
 
   /**
+   * Get a list of realms that a user follows
+   */
+  async listFollowedRealms(user: User, environment: Environment) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const userEntity = await this.userRepository.findOne({ where: { id: user.id } });
+
+    if (!userEntity) {
+      throw new errors.Unauthorized();
+    }
+
+    const realmPks = userEntity.data.realmsFollowed || [];
+    const realms = await this.realmRepository.find({ where: { publicKeyStr: In(realmPks) } });
+    return realms.map(this.convertEntityDto);
+  }
+
+  /**
    * Set up a realm that exists but has not been added to the db yet
    */
   async setupRealm(publicKey: PublicKey, environment: Environment) {
@@ -336,6 +383,28 @@ export class RealmService {
     }
 
     return true;
+  }
+
+  /**
+   * Unfollow a realm
+   */
+  async unfollowRealm(realmPublicKey: PublicKey, user: User, environment: Environment) {
+    if (environment === 'devnet') {
+      throw new errors.UnsupportedDevnet();
+    }
+
+    const userEntity = await this.userRepository.findOne({ where: { id: user.id } });
+
+    if (!userEntity) {
+      throw new errors.NotFound();
+    }
+
+    const realms = (userEntity.data.realmsFollowed || []).filter(
+      (r) => r !== realmPublicKey.toBase58(),
+    );
+    userEntity.data.realmsFollowed = realms;
+    await this.userRepository.save(userEntity);
+    return { publicKey: user.publicKey };
   }
 
   /**

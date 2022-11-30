@@ -1,13 +1,11 @@
 import { Resolver, Mutation, Args } from '@nestjs/graphql';
+
+import { CurrentUser, User } from '@lib/decorators/CurrentUser';
+import * as errors from '@lib/errors/gql';
 import { ConfigService } from '@src/config/config.service';
 
-import { CurrentUser, User } from '@src/lib/decorators/CurrentUser';
-
 import { DiscordUserService } from './discordUser.service';
-
 import { VerifyWallet } from './dto/VerifyWallet';
-
-import * as errors from '@lib/errors/gql';
 
 @Resolver()
 export class DiscordUserResolver {
@@ -28,7 +26,9 @@ export class DiscordUserResolver {
     @CurrentUser()
     user: User | null,
   ) {
-    if (!user) { throw new errors.Unauthorized() }
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
 
     const tokenResponseData = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',

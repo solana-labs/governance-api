@@ -14,14 +14,17 @@ import { RealmFeedItem } from '@src/realm-feed-item/dto/RealmFeedItem';
 import { RealmFeedItem as RealmFeedItemEntity } from '@src/realm-feed-item/entities/RealmFeedItem.entity';
 import { RealmFeedItemCursor } from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
+import { User as UserEntity } from '@src/user/entities/User.entity';
 
 const PAGE_SIZE = 25;
 
 @Injectable()
-export class EcosystemFeedService {
+export class FollowFeedService {
   constructor(
     @InjectRepository(RealmFeedItemEntity)
     private readonly realmFeedItemRepository: Repository<RealmFeedItemEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
     private readonly configService: ConfigService,
     private readonly realmFeedItemService: RealmFeedItemService,
   ) {}
@@ -45,7 +48,7 @@ export class EcosystemFeedService {
    * Grab the first N feed items in a realm
    */
   async getFirstNFeedItems(
-    requestingUser: User | null,
+    requestingUser: User,
     n: number,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
@@ -54,9 +57,24 @@ export class EcosystemFeedService {
       throw new errors.UnsupportedDevnet();
     }
 
+    const user = await this.userRepository.findOne({ where: { id: requestingUser.id } });
+
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    const realmPks = user.data.realmsFollowed || [];
+
+    if (!realmPks.length) {
+      return [];
+    }
+
     const items = await this.realmFeedItemRepository
       .createQueryBuilder('feeditem')
       .where('feeditem.environment = :env', { env: environment })
+      .andWhere('feeditem.realmPublicKeyStr IN (:...pks)', {
+        pks: realmPks,
+      })
       .orderBy(this.orderByClause('feeditem', sortOrder))
       .limit(n)
       .getMany();
@@ -68,7 +86,7 @@ export class EcosystemFeedService {
    * Grab the last N feed items in a realm
    */
   async getLastNFeedItems(
-    requestingUser: User | null,
+    requestingUser: User,
     n: number,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
@@ -77,9 +95,24 @@ export class EcosystemFeedService {
       throw new errors.UnsupportedDevnet();
     }
 
+    const user = await this.userRepository.findOne({ where: { id: requestingUser.id } });
+
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    const realmPks = user.data.realmsFollowed || [];
+
+    if (!realmPks.length) {
+      return [];
+    }
+
     const items = await this.realmFeedItemRepository
       .createQueryBuilder('feeditem')
       .where('feeditem.environment = :env', { env: environment })
+      .andWhere('feeditem.realmPublicKeyStr IN (:...pks)', {
+        pks: realmPks,
+      })
       .orderBy(this.orderByClause('feeditem', sortOrder, false))
       .limit(n)
       .getMany();
@@ -91,7 +124,7 @@ export class EcosystemFeedService {
    * Get a list of feed items after a cursor
    */
   async getNFeedItemsAfter(
-    requestingUser: User | null,
+    requestingUser: User,
     n: number,
     after: RealmFeedItemCursor,
     sortOrder: RealmFeedItemSort,
@@ -99,6 +132,18 @@ export class EcosystemFeedService {
   ) {
     if (environment === 'devnet') {
       throw new errors.UnsupportedDevnet();
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: requestingUser.id } });
+
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    const realmPks = user.data.realmsFollowed || [];
+
+    if (!realmPks.length) {
+      return [];
     }
 
     const parsedCursor = this.fromCursor(after);
@@ -112,6 +157,9 @@ export class EcosystemFeedService {
     const items = await this.realmFeedItemRepository
       .createQueryBuilder('feeditem')
       .where('feeditem.environment = :env', { env: environment })
+      .andWhere('feeditem.realmPublicKeyStr IN (:...pks)', {
+        pks: realmPks,
+      })
       .andWhere(afterClause.clause, afterClause.params)
       .orderBy(this.orderByClause('feeditem', sortOrder))
       .limit(n)
@@ -124,7 +172,7 @@ export class EcosystemFeedService {
    * Get a list of feed items before a cursor
    */
   async getNFeedItemsBefore(
-    requestingUser: User | null,
+    requestingUser: User,
     n: number,
     after: RealmFeedItemCursor,
     sortOrder: RealmFeedItemSort,
@@ -132,6 +180,18 @@ export class EcosystemFeedService {
   ) {
     if (environment === 'devnet') {
       throw new errors.UnsupportedDevnet();
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: requestingUser.id } });
+
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    const realmPks = user.data.realmsFollowed || [];
+
+    if (!realmPks.length) {
+      return [];
     }
 
     const parsedCursor = this.fromCursor(after);
@@ -145,6 +205,9 @@ export class EcosystemFeedService {
     const items = await this.realmFeedItemRepository
       .createQueryBuilder('feeditem')
       .where('feeditem.environment = :env', { env: environment })
+      .andWhere('feeditem.realmPublicKeyStr IN (:...pks)', {
+        pks: realmPks,
+      })
       .andWhere(beforeClause.clause, beforeClause.params)
       .orderBy(this.orderByClause('feeditem', sortOrder, false))
       .limit(n)
@@ -157,7 +220,7 @@ export class EcosystemFeedService {
    * Get a GQL compatible list of feed items
    */
   async getGQLFeedItemsList(
-    requestingUser: User | null,
+    requestingUser: User,
     sortOrder: RealmFeedItemSort,
     environment: Environment,
     after?: RealmFeedItemCursor,

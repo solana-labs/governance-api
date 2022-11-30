@@ -36,7 +36,7 @@ export interface Config {
     apiKey: string;
     webhookId: string;
     webhookUrl: string;
-    webhookTransactionTypes: string[],
+    webhookTransactionTypes: string[];
   };
   jwt: {
     userSecret: string;

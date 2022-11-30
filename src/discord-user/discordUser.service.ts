@@ -269,7 +269,7 @@ export class DiscordUserService {
       const connection = new Connection(process.env.RPC_ENDPOINT as string);
       const { reverse } = await getFavoriteDomain(connection, publicKey);
       this.logger.verbose({ reverse });
-      body['platform_username'] = reverse;
+      body['platform_username'] = `${reverse}.sol`;
     } catch (e) {
       this.logger.verbose(e);
     }

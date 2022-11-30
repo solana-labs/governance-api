@@ -11,6 +11,10 @@ import { MatchdayDiscordUser } from './entities/MatchdayDiscordUser.entity';
 // and seeing what collection id gets returned
 const SIMPLEHASH_CHALLENGE_PASS_COLLECTION_ID = '220efa958c716cd8ad1788d07861e511';
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
 export class MatchdayDiscordUserService {
   private logger = new Logger(MatchdayDiscordUserService.name);
@@ -114,7 +118,11 @@ export class MatchdayDiscordUserService {
     });
   }
 
-  async updateMetadataForUser(publicKey: PublicKey, _accessToken?: string) {
+  async updateMetadataForUser(
+    publicKey: PublicKey,
+    _accessToken?: string | null,
+    delayDuration = 0,
+  ) {
     let accessToken = _accessToken;
     if (!accessToken) {
       const discordUser = await this.getDiscordUserByPublicKey(publicKey);
@@ -129,8 +137,15 @@ export class MatchdayDiscordUserService {
           refreshToken: newAccessAndRefreshToken.refreshToken,
         });
       } else {
-        throw new Error('No access / refresh token found!');
+        this.logger.error('Discord user not found');
+        throw new Error('Discord user not found');
       }
+    }
+
+    if (delayDuration) {
+      // The Helius webhook comes in at `confirmed`, and SimpleHash updates at `finalized`.
+      // Solana is too fast, imo
+      await delay(delayDuration);
     }
 
     const metadata = await this.getMetadataForUser(publicKey);

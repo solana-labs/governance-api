@@ -27,5 +27,8 @@ export class HeliusWebhookPayload {
   type: 'TRANSFER' | 'NFT_SALE';
 
   @Field()
+  signature: string;
+
+  @Field()
   events: { nft: { buyer: string; seller: string } };
 }

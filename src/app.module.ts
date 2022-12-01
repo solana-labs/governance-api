@@ -37,6 +37,8 @@ import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 import { UserModule } from '@src/user/user.module';
 
+import { FollowFeedModule } from './follow-feed/follow-feed.module';
+
 @Module({
   imports: [
     ConfigModule,
@@ -90,6 +92,7 @@ import { UserModule } from '@src/user/user.module';
     // DiscordModule,
     DiscordUserModule,
     EcosystemFeedModule,
+    FollowFeedModule,
   ],
   controllers: [AppController],
   providers: [

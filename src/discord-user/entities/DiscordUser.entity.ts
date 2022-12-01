@@ -10,7 +10,7 @@ import {
 import { EncryptionTransformer } from 'typeorm-encrypted';
 
 export const ENCRYPTION_CONFIG = {
-  key: process.env.REFRESH_TOKEN_SECRET!,
+  key: process.env.REFRESH_TOKEN_SECRET || '',
   algorithm: 'aes-256-gcm',
   ivLength: 16,
 };

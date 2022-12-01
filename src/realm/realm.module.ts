@@ -11,10 +11,10 @@ import { RealmProposalModule } from '@src/realm-proposal/realm-proposal.module';
 import { RealmSettingsModule } from '@src/realm-settings/realm-settings.module';
 import { RealmTreasuryModule } from '@src/realm-treasury/realm-treasury.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
+import { User } from '@src/user/entities/User.entity';
 
 import { Realm } from './entities/Realm.entity';
 import {
-  RealmDropdownListItemResolver,
   RealmFaqItemResolver,
   RealmResolver,
   RealmTeamMemberResolver,
@@ -33,11 +33,10 @@ import { RealmService } from './realm.service';
     RealmProposalModule,
     RealmSettingsModule,
     RealmTreasuryModule,
-    TypeOrmModule.forFeature([Realm]),
+    TypeOrmModule.forFeature([Realm, User]),
     forwardRef(() => RealmFeedItemModule),
   ],
   providers: [
-    RealmDropdownListItemResolver,
     RealmFaqItemResolver,
     RealmResolver,
     RealmService,

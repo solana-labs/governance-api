@@ -36,9 +36,9 @@ import { ConfigService } from './config.service';
               useSsl: process.env.DATABASE_USE_SSL === 'true',
             },
             discord: {
-              clientId: process.env.DISCORD_CONNECTION_CLIENT_ID!,
-              clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET!,
-              oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI!,
+              clientId: process.env.DISCORD_CONNECTION_CLIENT_ID || '',
+              clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET || '',
+              oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI || '',
             },
             external: {
               dialectSdkCredentials: process.env.DIALECT_SDK_CREDENTIALS,

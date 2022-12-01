@@ -9,8 +9,6 @@ import {
 } from '@solana/web3.js';
 import { Repository } from 'typeorm';
 
-import * as errors from '@lib/errors/gql';
-
 import { ConfigService } from '@src/config/config.service';
 
 import { DiscordUser } from './entities/DiscordUser.entity';

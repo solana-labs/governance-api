@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '@src/config/config.module';
@@ -24,7 +24,7 @@ import { RealmFeedItemCommentService } from './realm-feed-item-comment.service';
     RealmMemberModule,
     ConfigModule,
     DialectModule,
-    RealmModule,
+    forwardRef(() => RealmModule),
   ],
   providers: [RealmFeedItemCommentService, RealmFeedItemCommentResolver],
   exports: [RealmFeedItemCommentService],

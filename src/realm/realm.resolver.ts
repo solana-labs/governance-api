@@ -19,7 +19,6 @@ import {
   RealmFeedItemCursor,
 } from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
-import { RealmHub } from '@src/realm-hub/dto/RealmHub';
 import { RealmHubService } from '@src/realm-hub/realm-hub.service';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
@@ -30,9 +29,9 @@ import {
 } from '@src/realm-proposal/realm-proposal.gql.service';
 import { RealmTreasury } from '@src/realm-treasury/dto/RealmTreasury';
 import { RealmTreasuryService } from '@src/realm-treasury/realm-treasury.service';
+import { User as UserDto } from '@src/user/dto/User';
 
 import { Realm } from './dto/Realm';
-import { RealmDropdownListItem } from './dto/RealmDropdownListItem';
 import { RealmFaqItem } from './dto/RealmFaqItem';
 import { RealmTeamMember } from './dto/RealmTeamMember';
 import { RealmTokenDetails } from './dto/RealmTokenDetails';
@@ -118,13 +117,6 @@ export class RealmResolver {
       args.first,
       args.last,
     );
-  }
-
-  @ResolveField(() => RealmHub, {
-    description: 'The hub for this Realm',
-  })
-  hub(@Root() realm: Realm) {
-    return { realm: realm.publicKey };
   }
 
   @ResolveField(() => [RealmFeedItem], {
@@ -261,11 +253,51 @@ export class RealmResolver {
     return this.realmService.getRealmByUrlId(id, environment);
   }
 
-  @Query(() => [RealmDropdownListItem], {
+  @Query(() => [Realm], {
     description: 'A list of Realms to display in a dropdown',
   })
   realmDropdownList(@CurrentEnvironment() environment: Environment) {
     return this.realmService.getRealmDropdownList(environment);
+  }
+
+  @Mutation(() => UserDto, {
+    description: 'Follow a Realm',
+  })
+  followRealm(
+    @Args('publicKey', {
+      description: 'The public key of the Realm',
+      type: () => PublicKeyScalar,
+    })
+    realm: PublicKey,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmService.followRealm(realm, user, environment);
+  }
+
+  @Mutation(() => UserDto, {
+    description: 'Unfollow a Realm',
+  })
+  unfollowRealm(
+    @Args('publicKey', {
+      description: 'The public key of the Realm',
+      type: () => PublicKeyScalar,
+    })
+    realm: PublicKey,
+    @CurrentEnvironment()
+    environment: Environment,
+    @CurrentUser() user: User | null,
+  ) {
+    if (!user) {
+      throw new errors.Unauthorized();
+    }
+
+    return this.realmService.unfollowRealm(realm, user, environment);
   }
 
   @Mutation(() => Realm, {
@@ -291,31 +323,6 @@ export class RealmResolver {
     }
 
     return this.realmService.updateRealm(user, publicKey, environment, realm);
-  }
-}
-
-@Resolver(() => RealmDropdownListItem)
-export class RealmDropdownListItemResolver {
-  constructor(
-    private readonly realmService: RealmService,
-    private readonly realmHubService: RealmHubService,
-  ) {}
-
-  @ResolveField(() => Realm, {
-    description: 'The full realm this dropdown list item represents',
-  })
-  realm(@CurrentEnvironment() environment: Environment, @Root() listItem: RealmDropdownListItem) {
-    return this.realmService.getRealm(listItem.publicKey, environment);
-  }
-
-  @ResolveField(() => Int, {
-    description: 'Number of twitter followers',
-  })
-  twitterFollowerCount(
-    @Root() realm: RealmDropdownListItem,
-    @CurrentEnvironment() environment: Environment,
-  ) {
-    return this.realmHubService.getTwitterFollowerCount(realm.publicKey, environment);
   }
 }
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as _ConfigModule } from '@nestjs/config';
+import { PublicKey } from '@solana/web3.js';
 
 import type { Config } from './config.service';
 import { ConfigService } from './config.service';
@@ -20,6 +21,9 @@ import { ConfigService } from './config.service';
               codeCommitedInfoUrl: process.env.CODE_COMMITED_INFO_URL || 'https://app.realms.today',
             },
             constants: {
+              admins: process.env.ADMINS
+                ? JSON.parse(process.env.ADMINS).map((str) => new PublicKey(str))
+                : [],
               voteDecay: process.env.CONSTANTS_VOTE_DECAY
                 ? parseInt(process.env.CONSTANTS_VOTE_DECAY, 10)
                 : 6,

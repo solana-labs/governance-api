@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Path } from '@nestjs/config';
 import { ConfigService as _ConfigService } from '@nestjs/config';
+import type { PublicKey } from '@solana/web3.js';
 
 export interface Config {
   app: {
@@ -9,6 +10,7 @@ export interface Config {
     codeCommitedInfoUrl: string;
   };
   constants: {
+    admins: PublicKey[];
     voteDecay: number;
     timeValue: number;
   };

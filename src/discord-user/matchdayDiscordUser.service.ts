@@ -56,14 +56,45 @@ export class MatchdayDiscordUserService {
     return { numChallengePasses: 0 };
   }
 
-  async getMetadataForUser(publicKey: PublicKey) {
+  async getMatchdayMetadata(
+    accessToken: string,
+  ): Promise<{ matchdayUsername: string; twitterFollow: boolean }> {
+    const discordResponse = await (
+      await fetch('https://discord.com/api/users/@me', {
+        headers: {
+          'authorization': `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+        },
+      })
+    ).json();
+
+    const MATCHDAY_API_URL = `https://discordapi.matchday.com/verify/${discordResponse.id}`;
+    const matchdayResponse = await (
+      await fetch(MATCHDAY_API_URL, {
+        method: 'GET',
+        headers: {
+          auth: process.env.MATCHDAY_API_KEY!,
+        },
+      })
+    ).json();
+
+    return matchdayResponse.data;
+  }
+
+  async getMetadataForUser(publicKey: PublicKey, accessToken: string) {
     const { numChallengePasses, oldestChallengePass } = await this.getChallengePassesForUser(
       publicKey,
     );
 
+    const { matchdayUsername, twitterFollow } = await this.getMatchdayMetadata(accessToken);
+
     return {
-      num_challenge_passes: numChallengePasses,
-      challenge_pass_held_since: oldestChallengePass,
+      platform_username: matchdayUsername,
+      metadata: {
+        num_challenge_passes: numChallengePasses,
+        challenge_pass_held_since: oldestChallengePass,
+        following_on_twitter: twitterFollow ? 1 : 0,
+      },
     };
   }
 
@@ -98,8 +129,8 @@ export class MatchdayDiscordUserService {
   /**
    * Creates a new Discord user
    */
-  createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
-    return this.matchdayDiscordUserRepository.upsert(
+  async createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
+    const insertResult = await this.matchdayDiscordUserRepository.upsert(
       {
         authId,
         publicKeyStr: publicKey.toBase58(),
@@ -107,15 +138,18 @@ export class MatchdayDiscordUserService {
       },
       { conflictPaths: ['authId'] },
     );
+
+    return insertResult;
   }
 
   /**
    * Returns a user by their ID
    */
   async getDiscordUserByPublicKey(publicKey: PublicKey) {
-    return await this.matchdayDiscordUserRepository.findOne({
+    const result = await this.matchdayDiscordUserRepository.findOne({
       where: { publicKeyStr: publicKey.toBase58() },
     });
+    return result;
   }
 
   async updateMetadataForUser(
@@ -133,23 +167,27 @@ export class MatchdayDiscordUserService {
 
         accessToken = newAccessAndRefreshToken.accessToken;
 
+        this.logger.debug(`Storing refresh token for ${publicKey.toBase58()}`);
         await this.matchdayDiscordUserRepository.update(discordUser.id, {
           refreshToken: newAccessAndRefreshToken.refreshToken,
         });
       } else {
-        this.logger.error('Discord user not found');
+        this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
         throw new Error('Discord user not found');
       }
     }
 
-    if (delayDuration) {
-      // The Helius webhook comes in at `confirmed`, and SimpleHash updates at `finalized`.
-      // Solana is too fast, imo
-      await delay(delayDuration);
-    }
+    this.logger.debug(`Updating metadata for ${publicKey.toBase58()}`);
 
-    const metadata = await this.getMetadataForUser(publicKey);
-    this.logger.verbose({ metadata });
+    // if (delayDuration) {
+    //   // The Helius webhook comes in at `confirmed`, and SimpleHash updates at `finalized`.
+    //   // Solana is too fast, imo
+    //   // TODO(jon): Re-evaluate this
+    //   await delay(delayDuration);
+    // }
+
+    const { metadata, platform_username } = await this.getMetadataForUser(publicKey, accessToken!);
+    this.logger.verbose({ platform_username, metadata });
 
     const { client_id: clientId } = this.getDiscordApplicationCredentials();
     const putResult = await fetch(
@@ -162,6 +200,7 @@ export class MatchdayDiscordUserService {
         },
         body: JSON.stringify({
           platform_name: 'Matchday',
+          platform_username,
           metadata,
         }),
       },

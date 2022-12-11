@@ -4,7 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
 import { MatchdayDiscordUserService } from './matchdayDiscordUser.service';
 
-const DELAY_DURATION = 25_000;
+const DELAY_DURATION = 15_000;
 
 const connection = new Connection(process.env.RPC_ENDPOINT as string);
 

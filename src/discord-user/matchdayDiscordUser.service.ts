@@ -179,12 +179,10 @@ export class MatchdayDiscordUserService {
 
     this.logger.debug(`Updating metadata for ${publicKey.toBase58()}`);
 
-    // if (delayDuration) {
-    //   // The Helius webhook comes in at `confirmed`, and SimpleHash updates at `finalized`.
-    //   // Solana is too fast, imo
-    //   // TODO(jon): Re-evaluate this
-    //   await delay(delayDuration);
-    // }
+    if (delayDuration) {
+      // Solana is too fast, imo
+      await delay(delayDuration);
+    }
 
     const { metadata, platform_username } = await this.getMetadataForUser(publicKey, accessToken!);
     this.logger.verbose({ platform_username, metadata });

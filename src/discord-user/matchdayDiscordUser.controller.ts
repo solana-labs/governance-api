@@ -26,7 +26,7 @@ export class MatchdayDiscordUserController {
   private logger = new Logger(MatchdayDiscordUserService.name);
   constructor(private readonly matchdayDiscordUserService: MatchdayDiscordUserService) {}
 
-  @Post('/verify-command')
+  @Post('/matchday/verify-command')
   @HttpCode(200)
   async verifyCommand(
     @Body() body: DiscordInteractionPayload,
@@ -67,6 +67,7 @@ export class MatchdayDiscordUserController {
               'Verify and link your Solana wallet at https://app.realms.today/matchday/verify-wallet in order to qualify for roles in this server',
             embeds: [],
             allowed_mentions: { parse: [] },
+            // Sends an ephemeral message that only the sender can see.
             flags: 1 << 6,
           },
         });

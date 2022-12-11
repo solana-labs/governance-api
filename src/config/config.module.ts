@@ -43,6 +43,7 @@ import { ConfigService } from './config.service';
               clientId: process.env.DISCORD_CONNECTION_CLIENT_ID as string,
               clientSecret: process.env.DISCORD_CONNECTION_CLIENT_SECRET as string,
               oauthRedirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI as string,
+              publicKey: process.env.DISCORD_APPLICATION_PUBLIC_KEY as string,
             },
             matchdayDiscord: {
               clientId: process.env.DISCORD_MATCHDAY_CONNECTION_CLIENT_ID as string,

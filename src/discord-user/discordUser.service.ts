@@ -133,6 +133,7 @@ export class DiscordUserService {
     return {
       client_id: this.configService.get('discord.clientId'),
       client_secret: this.configService.get('discord.clientSecret'),
+      public_key: this.configService.get('discord.publicKey'),
     };
   }
 

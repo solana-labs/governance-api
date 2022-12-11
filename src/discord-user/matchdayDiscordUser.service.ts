@@ -123,6 +123,7 @@ export class MatchdayDiscordUserService {
     return {
       client_id: this.configService.get('matchdayDiscord.clientId'),
       client_secret: this.configService.get('matchdayDiscord.clientSecret'),
+      public_key: this.configService.get('matchdayDiscord.publicKey'),
     };
   }
 

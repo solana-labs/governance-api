@@ -30,6 +30,7 @@ export interface Config {
   matchdayDiscord: {
     clientId: string;
     clientSecret: string;
+    publicKey: string;
     oauthRedirectUri: string;
   };
   external: {

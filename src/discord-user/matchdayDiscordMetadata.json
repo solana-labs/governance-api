@@ -1,0 +1,26 @@
+[
+  {
+    "type": 2,
+    "key": "num_challenge_passes",
+    "name": "Number of Matchday Challenge Passes",
+    "description": "Minimum number of Challenge Passes",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 6,
+    "key": "challenge_pass_held_since",
+    "name": "Date of first Challenge Pass",
+    "description": "Minimum days holding a Challenge Pass",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 7,
+    "key": "following_on_twitter",
+    "name": "Follows @Matchday on Twitter",
+    "description": "Follows @Matchday on Twitter",
+    "name_localizations": null,
+    "description_localizations": null
+  }
+]

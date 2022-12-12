@@ -73,10 +73,9 @@ export class DiscordUserService {
   }
 
   async getSolBalance(publicKey: string) {
-    this.logger.verbose({ url: this.heliusBalancesUrl(publicKey) });
-    const response = await fetch(this.heliusBalancesUrl(publicKey));
-    const responseJson = await response.json();
-    const { nativeBalance }: { nativeBalance: number } = responseJson;
+    const connection = new Connection(process.env.RPC_ENDPOINT as string);
+    const nativeBalance = await connection.getBalance(new PublicKey(publicKey), 'confirmed');
+
     this.logger.verbose({
       publicKey,
       nativeBalance,
@@ -96,11 +95,16 @@ export class DiscordUserService {
     );
     const mostRecentTxTimestamp = await this.getMostRecentTxTimestamp(publicKey.toBase58());
 
-    return {
+    const metadata = {
       first_wallet_transaction: walletAge?.date ?? null,
-      most_recent_wallet_transaction: mostRecentTxTimestamp,
       has_minimum_sol: hasMinimumSol ? 1 : 0,
     };
+
+    if (mostRecentTxTimestamp) {
+      metadata['most_recent_wallet_transaction'] = mostRecentTxTimestamp;
+    }
+
+    return metadata;
   }
 
   async getAccessTokenWithRefreshToken(refreshToken: string) {

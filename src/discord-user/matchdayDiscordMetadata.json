@@ -18,8 +18,8 @@
   {
     "type": 7,
     "key": "following_on_twitter",
-    "name": "Follows @Matchday on Twitter",
-    "description": "Follows @Matchday on Twitter",
+    "name": "Part of the Matchday.com Accesslist",
+    "description": "Part of the Matchday.com Accesslist, follows @Matchday on Twitter, and has connected their Discord account",
     "name_localizations": null,
     "description_localizations": null
   }

@@ -62,14 +62,12 @@ export class DiscordUserService {
     return `${HELIUS_BASE_URL}/addresses/${publicKey}/transactions${this.heliusUrlOptions()}`;
   }
 
-  async activeWithin30Days(publicKey: string) {
+  async getMostRecentTxTimestamp(publicKey: string) {
     const req = await fetch(this.heliusAddressesUrl(publicKey));
     const recentTxes = await req.json();
     if (recentTxes.length) {
-      const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
-      const timestampThirtyDaysAgo = new Date().getTime() - thirtyDaysInMs;
       const mostRecentTxTimestamp = recentTxes[0].timestamp * 1000;
-      return mostRecentTxTimestamp >= timestampThirtyDaysAgo;
+      return new Date(mostRecentTxTimestamp).toISOString().split('T')[0];
     }
     return null;
   }
@@ -96,11 +94,11 @@ export class DiscordUserService {
     const hasMinimumSol = await delay(withDelay).then(() =>
       this.getSolBalance(publicKey.toBase58()),
     );
-    const isRecentlyActive = await this.activeWithin30Days(publicKey.toBase58());
+    const mostRecentTxTimestamp = await this.getMostRecentTxTimestamp(publicKey.toBase58());
 
     return {
       first_wallet_transaction: walletAge?.date ?? null,
-      most_recent_wallet_transaction: isRecentlyActive ? 1 : 0,
+      most_recent_wallet_transaction: mostRecentTxTimestamp,
       has_minimum_sol: hasMinimumSol ? 1 : 0,
     };
   }

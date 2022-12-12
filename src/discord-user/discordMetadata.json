@@ -1,0 +1,26 @@
+[
+  {
+    "type": 6,
+    "key": "first_wallet_transaction",
+    "name": "First Transaction Date",
+    "description": "Minimum number of days since this wallet’s first transaction (proxy for wallet age)",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 5,
+    "key": "most_recent_wallet_transaction",
+    "name": "Most Recent Transaction Date",
+    "description": "Maximum number of days since this wallet’s most recent transaction (proxy for recently active wallet)",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 7,
+    "key": "has_minimum_sol",
+    "name": "Funded Wallet",
+    "description": "Wallet has at least 0.1 SOL",
+    "name_localizations": null,
+    "description_localizations": null
+  }
+]

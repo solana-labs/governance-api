@@ -67,7 +67,6 @@ export class DiscordUserResolver {
     const oauthData = await tokenResponseData.json();
 
     const { refresh_token: refreshToken, access_token: accessToken } = oauthData;
-    console.info({ refreshToken, accessToken, application, client_id });
 
     await userService.createDiscordUser(user.id, user.publicKey, refreshToken);
     await userService.updateMetadataForUser(user.publicKey, accessToken);

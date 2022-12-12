@@ -12,9 +12,7 @@ import { Repository } from 'typeorm';
 
 import { ConfigService } from '@src/config/config.service';
 
-import { DiscordApplication } from './dto/VerifyWallet';
 import { DiscordUser } from './entities/DiscordUser.entity';
-import { MatchdayDiscordUser } from './entities/MatchdayDiscordUser.entity';
 
 type WalletAge = {
   txId: string;

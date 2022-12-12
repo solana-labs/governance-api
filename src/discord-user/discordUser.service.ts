@@ -41,8 +41,6 @@ export class DiscordUserService {
   constructor(
     @InjectRepository(DiscordUser)
     private readonly discordUserRepository: Repository<DiscordUser>,
-    @InjectRepository(MatchdayDiscordUser)
-    private readonly matchdayDiscordUserRepository: Repository<MatchdayDiscordUser>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -231,13 +229,8 @@ export class DiscordUserService {
   /**
    * Returns a user by their ID
    */
-  async getDiscordUserByPublicKey(publicKey: PublicKey, application?: DiscordApplication) {
-    const repository =
-      application === DiscordApplication.MATCHDAY
-        ? this.matchdayDiscordUserRepository
-        : this.discordUserRepository;
-
-    return await repository.findOne({
+  async getDiscordUserByPublicKey(publicKey: PublicKey) {
+    return await this.discordUserRepository.findOne({
       where: { publicKeyStr: publicKey.toBase58() },
     });
   }

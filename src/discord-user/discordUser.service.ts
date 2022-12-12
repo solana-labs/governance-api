@@ -26,7 +26,7 @@ type PublicKeyStrObj = { publicKeyStr: string };
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 const MINIMUM_SOL = 0.1;
-const MAX_TXS_TO_SCAN = 10000;
+const MAX_TXS_TO_SCAN = 50_000;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

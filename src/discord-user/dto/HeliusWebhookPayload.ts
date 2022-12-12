@@ -1,6 +1,6 @@
 import { ObjectType, Field } from '@nestjs/graphql';
 
-class NativeTransfer {
+class HeliusTransfer {
   @Field()
   amount: number;
   @Field()
@@ -13,8 +13,22 @@ class NativeTransfer {
   description: 'A Helius webhook payload',
 })
 export class HeliusWebhookPayload {
-  @Field(() => NativeTransfer, {
+  @Field(() => HeliusTransfer, {
     description: 'Native transfers',
   })
-  nativeTransfers: NativeTransfer[];
+  nativeTransfers: HeliusTransfer[];
+
+  @Field(() => HeliusTransfer, {
+    description: 'Token transfers',
+  })
+  tokenTransfers: HeliusTransfer[];
+
+  @Field()
+  type: 'TRANSFER' | 'NFT_SALE';
+
+  @Field()
+  signature: string;
+
+  @Field()
+  events: { nft: { buyer: string; seller: string } };
 }

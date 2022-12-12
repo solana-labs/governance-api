@@ -1,3 +1,4 @@
+import { getFavoriteDomain } from '@bonfida/spl-name-service';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -13,9 +14,6 @@ import { ConfigService } from '@src/config/config.service';
 
 import { DiscordUser } from './entities/DiscordUser.entity';
 
-const MINIMUM_SOL = 0.1;
-const MAX_TXS_TO_SCAN = 10000;
-
 type WalletAge = {
   txId: string;
   slot: number;
@@ -27,6 +25,8 @@ type WalletAge = {
 type PublicKeyStrObj = { publicKeyStr: string };
 
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
+const MINIMUM_SOL = 0.1;
+const MAX_TXS_TO_SCAN = 10000;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -123,6 +123,14 @@ export class DiscordUserService {
 
     const { access_token: accessToken, refresh_token } = await response.json();
     return { accessToken, refreshToken: refresh_token };
+  }
+
+  getDiscordApplicationCredentials() {
+    return {
+      client_id: this.configService.get('discord.clientId'),
+      client_secret: this.configService.get('discord.clientSecret'),
+      public_key: this.configService.get('discord.publicKey'),
+    };
   }
 
   // Updates the Helius Webhook account addresses field
@@ -247,20 +255,27 @@ export class DiscordUserService {
     const metadata = await this.getMetadataForUser(publicKey, withDelay);
     this.logger.verbose({ metadata });
 
+    const body = { platform_name: 'Solana', metadata };
+
+    try {
+      const connection = new Connection(process.env.RPC_ENDPOINT as string);
+      const { reverse } = await getFavoriteDomain(connection, publicKey);
+      this.logger.verbose({ reverse });
+      body['platform_username'] = `${reverse}.sol`;
+    } catch (e) {
+      this.logger.verbose(e);
+    }
+
+    const { client_id: clientId } = this.getDiscordApplicationCredentials();
     const putResult = await fetch(
-      `https://discord.com/api/users/@me/applications/${this.configService.get(
-        'discord.clientId',
-      )}/role-connection`,
+      `https://discord.com/api/users/@me/applications/${clientId}/role-connection`,
       {
         method: 'PUT',
         headers: {
           'authorization': `Bearer ${accessToken}`,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({
-          platform_name: 'Solana',
-          metadata,
-        }),
+        body: JSON.stringify(body),
       },
     );
 

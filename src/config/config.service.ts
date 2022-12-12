@@ -26,6 +26,13 @@ export interface Config {
     clientId: string;
     clientSecret: string;
     oauthRedirectUri: string;
+    publicKey: string;
+  };
+  matchdayDiscord: {
+    clientId: string;
+    clientSecret: string;
+    publicKey: string;
+    oauthRedirectUri: string;
   };
   external: {
     dialectSdkCredentials: string | undefined;
@@ -39,6 +46,9 @@ export interface Config {
     webhookId: string;
     webhookUrl: string;
     webhookTransactionTypes: string[];
+  };
+  simplehash: {
+    apiKey: string;
   };
   jwt: {
     userSecret: string;

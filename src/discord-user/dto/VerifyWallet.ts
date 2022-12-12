@@ -1,7 +1,16 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field, registerEnumType } from '@nestjs/graphql';
 import { PublicKey } from '@solana/web3.js';
 
 import { PublicKeyScalar } from '@src/lib/scalars/PublicKey';
+
+export enum DiscordApplication {
+  SOLANA,
+  MATCHDAY,
+}
+
+registerEnumType(DiscordApplication, {
+  name: 'DiscordApplication',
+});
 
 @ObjectType({
   description: 'Status on the wallet verification',

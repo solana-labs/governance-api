@@ -79,7 +79,6 @@ export class MatchdayDiscordUserService {
     ).json();
 
     const { twitterFollow, matchdayUsername, userName } = matchdayResponse.data;
-    console.info({ d: matchdayResponse.data });
 
     // twitterFollow == true and the existence of the username mean both a Twitter follow and Discord connection
     return { matchdayUsername, socialFollow: twitterFollow && !!userName };

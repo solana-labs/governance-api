@@ -40,6 +40,7 @@ export const query = gql`
         }
         tokenOwnerRecord {
           address
+          governingTokenOwner
         }
       }
       ... on ProposalV2 {
@@ -79,6 +80,7 @@ export const query = gql`
         }
         tokenOwnerRecord {
           address
+          governingTokenOwner
         }
       }
     }

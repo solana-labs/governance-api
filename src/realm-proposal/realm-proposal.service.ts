@@ -550,7 +550,7 @@ export class RealmProposalService {
     return {
       author: holaplexProposal.tokenOwnerRecord
         ? {
-            publicKey: new PublicKey(holaplexProposal.tokenOwnerRecord.address),
+            publicKey: new PublicKey(holaplexProposal.tokenOwnerRecord.governingTokenOwner),
           }
         : undefined,
       created: new Date(holaplexProposal.draftAt),

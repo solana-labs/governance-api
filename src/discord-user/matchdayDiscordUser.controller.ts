@@ -3,6 +3,7 @@ import {
   Controller,
   Headers,
   HttpCode,
+  HttpException,
   HttpStatus,
   Logger,
   Post,
@@ -12,6 +13,8 @@ import {
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Request } from 'express';
 import * as nacl from 'tweetnacl';
+
+import { ConfigService } from '@src/config/config.service';
 
 import { DiscordInteractionPayload } from './dto/DiscordInteractionPayload';
 import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
@@ -24,7 +27,10 @@ const connection = new Connection(process.env.RPC_ENDPOINT as string);
 @Controller()
 export class MatchdayDiscordUserController {
   private logger = new Logger(MatchdayDiscordUserService.name);
-  constructor(private readonly matchdayDiscordUserService: MatchdayDiscordUserService) {}
+  constructor(
+    private readonly matchdayDiscordUserService: MatchdayDiscordUserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('/matchday/verify-command')
   @HttpCode(200)
@@ -78,7 +84,14 @@ export class MatchdayDiscordUserController {
   }
 
   @Post('/matchday-webhook')
-  async getHello(@Body() body: HeliusWebhookPayload[]): Promise<{ publicKeys: string[] }> {
+  async getHello(
+    @Body() body: HeliusWebhookPayload[],
+    @Headers() headers,
+  ): Promise<{ publicKeys: string[] }> {
+    if (headers['authorization'] !== this.configService.get('helius.webhookKey')) {
+      throw new HttpException('Forbidden', HttpStatus.UNAUTHORIZED);
+    }
+
     const { type, signature } = body[0];
 
     const blockhash = await connection.getLatestBlockhash('finalized');

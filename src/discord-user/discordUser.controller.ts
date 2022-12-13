@@ -3,6 +3,7 @@ import {
   Controller,
   Headers,
   HttpCode,
+  HttpException,
   HttpStatus,
   Logger,
   Post,
@@ -13,6 +14,8 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import * as nacl from 'tweetnacl';
 
+import { ConfigService } from '@src/config/config.service';
+
 import { DiscordUserService } from './discordUser.service';
 import { DiscordInteractionPayload } from './dto/DiscordInteractionPayload';
 import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
@@ -20,7 +23,10 @@ import { HeliusWebhookPayload } from './dto/HeliusWebhookPayload';
 @Controller()
 export class DiscordUserController {
   private logger = new Logger(DiscordUserService.name);
-  constructor(private readonly discordUserService: DiscordUserService) {}
+  constructor(
+    private readonly discordUserService: DiscordUserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('/verify-command')
   @HttpCode(200)
@@ -72,7 +78,14 @@ export class DiscordUserController {
   }
 
   @Post('/webhook')
-  async getHello(@Body() body: HeliusWebhookPayload[]): Promise<{ publicKeys: string[] }> {
+  async getHello(
+    @Body() body: HeliusWebhookPayload[],
+    @Headers() headers,
+  ): Promise<{ publicKeys: string[] }> {
+    if (headers['authorization'] !== this.configService.get('helius.webhookKey')) {
+      throw new HttpException('Forbidden', HttpStatus.UNAUTHORIZED);
+    }
+
     const { nativeTransfers } = body[0];
     const affectedAddresses = new Set<string>();
     nativeTransfers.forEach((transfer) => {

@@ -5,7 +5,7 @@ import { respProposal } from './realmProposal';
 
 export const query = gql`
   query ($governances: [PublicKey!]!) {
-    proposals(governances: $governances) {
+    proposals(governances: $governances, limit: 1000) {
       ... on ProposalV1 {
         address
         closedAt

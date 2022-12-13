@@ -58,7 +58,7 @@ export class MatchdayDiscordUserService {
 
   async getMatchdayMetadata(
     accessToken: string,
-  ): Promise<{ matchdayUsername: string; twitterFollow: boolean }> {
+  ): Promise<{ matchdayUsername: string; socialFollow: boolean }> {
     const discordResponse = await (
       await fetch('https://discord.com/api/users/@me', {
         headers: {
@@ -78,7 +78,11 @@ export class MatchdayDiscordUserService {
       })
     ).json();
 
-    return matchdayResponse.data;
+    const { twitterFollow, matchdayUsername, userName } = matchdayResponse.data;
+    console.info({ d: matchdayResponse.data });
+
+    // twitterFollow == true and the existence of the username mean both a Twitter follow and Discord connection
+    return { matchdayUsername, socialFollow: twitterFollow && !!userName };
   }
 
   async getMetadataForUser(publicKey: PublicKey, accessToken: string) {
@@ -86,14 +90,14 @@ export class MatchdayDiscordUserService {
       publicKey,
     );
 
-    const { matchdayUsername, twitterFollow } = await this.getMatchdayMetadata(accessToken);
+    const { matchdayUsername, socialFollow } = await this.getMatchdayMetadata(accessToken);
 
     return {
       platform_username: matchdayUsername,
       metadata: {
         num_challenge_passes: numChallengePasses,
         challenge_pass_held_since: oldestChallengePass,
-        following_on_twitter: twitterFollow ? 1 : 0,
+        following_on_twitter: socialFollow ? 1 : 0,
       },
     };
   }

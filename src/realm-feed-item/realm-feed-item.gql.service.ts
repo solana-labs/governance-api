@@ -13,6 +13,7 @@ import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
+import { exists } from '@src/lib/typeGuards/exists';
 
 import { RealmFeedItemSort } from './dto/pagination';
 import { RealmFeedItem } from './dto/RealmFeedItem';
@@ -230,9 +231,17 @@ export class RealmFeedItemGQLService {
           ),
         ),
         TE.map(({ entities, feedItems }) => {
-          const edges = entities.map((entity) =>
-            this.buildEdge(entity, feedItems[entity.id], sortOrder),
-          );
+          const edges = entities
+            .map((entity) => {
+              const data = feedItems[entity.id];
+
+              if (!data) {
+                return null;
+              }
+
+              return this.buildEdge(entity, data, sortOrder);
+            })
+            .filter(exists);
 
           return {
             edges,
@@ -263,9 +272,17 @@ export class RealmFeedItemGQLService {
           ),
         ),
         TE.map(({ entities, feedItems }) => {
-          const edges = entities.map((entity) =>
-            this.buildEdge(entity, feedItems[entity.id], sortOrder),
-          );
+          const edges = entities
+            .map((entity) => {
+              const data = feedItems[entity.id];
+
+              if (!data) {
+                return null;
+              }
+
+              return this.buildEdge(entity, data, sortOrder);
+            })
+            .filter(exists);
 
           return {
             edges,
@@ -303,9 +320,17 @@ export class RealmFeedItemGQLService {
           ),
         ),
         TE.map(({ entities, feedItems }) => {
-          const edges = entities.map((entity) =>
-            this.buildEdge(entity, feedItems[entity.id], sortOrder),
-          );
+          const edges = entities
+            .map((entity) => {
+              const data = feedItems[entity.id];
+
+              if (!data) {
+                return null;
+              }
+
+              return this.buildEdge(entity, data, sortOrder);
+            })
+            .filter(exists);
 
           return {
             edges,
@@ -343,9 +368,17 @@ export class RealmFeedItemGQLService {
           ),
         ),
         TE.map(({ entities, feedItems }) => {
-          const edges = entities.map((entity) =>
-            this.buildEdge(entity, feedItems[entity.id], sortOrder),
-          );
+          const edges = entities
+            .map((entity) => {
+              const data = feedItems[entity.id];
+
+              if (!data) {
+                return null;
+              }
+
+              return this.buildEdge(entity, data, sortOrder);
+            })
+            .filter(exists);
 
           return {
             edges,

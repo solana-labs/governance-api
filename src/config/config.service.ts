@@ -43,6 +43,7 @@ export interface Config {
   };
   helius: {
     apiKey: string;
+    webhookKey: string;
     webhookId: string;
     webhookUrl: string;
     webhookTransactionTypes: string[];

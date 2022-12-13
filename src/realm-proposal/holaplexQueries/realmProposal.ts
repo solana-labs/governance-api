@@ -38,6 +38,7 @@ export const query = gql`
         }
         tokenOwnerRecord {
           address
+          governingTokenOwner
         }
       }
       ... on ProposalV2 {
@@ -77,6 +78,7 @@ export const query = gql`
         }
         tokenOwnerRecord {
           address
+          governingTokenOwner
         }
       }
     }
@@ -144,6 +146,7 @@ export const respProposal = IT.type({
     IT.undefined,
     IT.type({
       address: IT.string,
+      governingTokenOwner: IT.string,
     }),
   ]),
 });

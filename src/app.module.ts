@@ -37,6 +37,7 @@ import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 import { TaskDedupeModule } from '@src/task-dedupe/task-dedupe.module';
 import { UserModule } from '@src/user/user.module';
 
+import { DiscoverPageModule } from './discover-page/discover-page.module';
 import { FollowFeedModule } from './follow-feed/follow-feed.module';
 
 @Module({
@@ -93,6 +94,7 @@ import { FollowFeedModule } from './follow-feed/follow-feed.module';
     DiscordUserModule,
     EcosystemFeedModule,
     FollowFeedModule,
+    DiscoverPageModule,
   ],
   controllers: [AppController],
   providers: [

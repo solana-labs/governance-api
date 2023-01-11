@@ -41,7 +41,7 @@
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/platform-fastify": "^9.0.8",
     "@nestjs/typeorm": "^9.0.0",
-    "@solana/spl-governance": "^0.3.1",
+    "@solana/spl-governance": "^0.3.19",
     "@solana/spl-token-registry": "^0.2.4574",
     "@solana/web3.js": "^1.50.1",
     "@stablelib/aead": "^1.0.1",

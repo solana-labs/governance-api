@@ -1,10 +1,12 @@
-import { CACHE_MANAGER, Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER, Injectable, Inject, forwardRef } from '@nestjs/common';
 import {
   getGovernanceAccounts,
   Governance,
   pubkeyFilter,
   MemcmpFilter,
   getNativeTreasuryAddress,
+  getGovernanceProgramVersion,
+  getGovernance,
 } from '@solana/spl-governance';
 import { AccountInfo, MintInfo, u64 } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
@@ -80,6 +82,7 @@ export class OnChainService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => RealmGovernanceService))
     private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmSettingsService: RealmSettingsService,
     private readonly staleCacheService: StaleCacheService,
@@ -165,6 +168,28 @@ export class OnChainService {
     {
       dedupeKey: (pk, env) => pk.toBase58() + env,
       maxStaleAgeMs: hoursToMilliseconds(1),
+    },
+  );
+
+  /**
+   * Get the program version for a program
+   */
+  getProgramVersion = this.staleCacheService.dedupe(
+    async (programAddress: PublicKey) => {
+      const endpoint = this.configService.get('external.rpcEndpoint');
+
+      if (!endpoint) {
+        throw new Error('Please specify an RPC endpoint');
+      }
+
+      const connection = new Connection(endpoint, {
+        commitment: 'recent',
+      });
+
+      return getGovernanceProgramVersion(connection, programAddress);
+    },
+    {
+      dedupeKey: (pk) => pk.toBase58(),
     },
   );
 
@@ -388,6 +413,21 @@ export class OnChainService {
     const tokenAssets = await this.convertRawTokenAssets(valid, assetOwners, environment);
     return tokenAssets;
   }
+
+  /**
+   * Get a single governance
+   */
+  getGovernanceAccount = async (governancePublicKey: PublicKey) => {
+    const endpoint = this.configService.get('external.rpcEndpoint');
+
+    if (!endpoint) {
+      throw new Error('Please specify an RPC endpoint');
+    }
+
+    const connection = new Connection(endpoint);
+
+    return getGovernance(connection, governancePublicKey);
+  };
 
   /**
    * Get a list of governances for a realm

@@ -48,6 +48,11 @@ export class TokenBasedGovernanceRules {
   })
   quorumPercent: number;
 
+  @Field(() => PublicKeyScalar, {
+    description: 'Public address of the token mint',
+  })
+  tokenMintAddress: PublicKey;
+
   @Field(() => GovernanceTokenType, {
     description: 'Token type the rules apply to',
   })

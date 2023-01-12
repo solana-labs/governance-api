@@ -14,6 +14,8 @@ import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 import { GovernanceRules, GovernanceTokenType, GovernanceVoteTipping } from './dto/GovernanceRules';
 import * as queries from './holaplexQueries';
 
+const MAX_NUM = new BigNumber('18446744073709551615');
+
 export interface Governance {
   address: PublicKey;
   communityMint: PublicKey | null;
@@ -124,6 +126,9 @@ export class RealmGovernanceService {
         programVersion >= 3 ? millisecondsToHours(parseInt(holaplexConfig.proposalCoolOffTime)) : 0, // FIX
       councilTokenRules: councilMintInfo
         ? {
+            canCreateProposal: new BigNumber(
+              holaplexConfig.minCouncilWeightToCreateProposal,
+            ).isLessThan(MAX_NUM),
             canVeto:
               onChainConfig.councilVetoVoteThreshold?.type ===
                 VoteThresholdType.YesVotePercentage ||
@@ -157,6 +162,9 @@ export class RealmGovernanceService {
           }
         : null,
       communityTokenRules: {
+        canCreateProposal: new BigNumber(
+          holaplexConfig.minCommunityWeightToCreateProposal,
+        ).isLessThan(MAX_NUM),
         canVeto:
           onChainConfig.communityVetoVoteThreshold?.type === VoteThresholdType.YesVotePercentage ||
           onChainConfig.communityVetoVoteThreshold?.type === VoteThresholdType.QuorumPercentage

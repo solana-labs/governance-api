@@ -29,6 +29,11 @@ registerEnumType(GovernanceVoteTipping, {
 })
 export class TokenBasedGovernanceRules {
   @Field(() => Boolean, {
+    description: 'Can holders of this token type create a proposal',
+  })
+  canCreateProposal: boolean;
+
+  @Field(() => Boolean, {
     description: 'Can holders of this token type veto a proposal',
   })
   canVeto: boolean;

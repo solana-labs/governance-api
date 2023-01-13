@@ -19,6 +19,8 @@ import {
   RealmFeedItemCursor,
 } from '@src/realm-feed-item/realm-feed-item.gql.service';
 import { RealmFeedItemService } from '@src/realm-feed-item/realm-feed-item.service';
+import { GovernanceRules } from '@src/realm-governance/dto/GovernanceRules';
+import { RealmGovernanceService } from '@src/realm-governance/realm-governance.service';
 import { RealmHubService } from '@src/realm-hub/realm-hub.service';
 import { RealmMemberSort, RealmMemberConnection } from '@src/realm-member/dto/pagination';
 import { RealmMemberService, RealmMemberCursor } from '@src/realm-member/realm-member.service';
@@ -43,6 +45,7 @@ export class RealmResolver {
   constructor(
     private readonly realmFeedItemGQLService: RealmFeedItemGQLService,
     private readonly realmFeedItemService: RealmFeedItemService,
+    private readonly realmGovernanceService: RealmGovernanceService,
     private readonly realmHubService: RealmHubService,
     private readonly realmMemberService: RealmMemberService,
     private readonly realmProposalGqlService: RealmProposalGQLService,
@@ -116,6 +119,29 @@ export class RealmResolver {
       args.before as RealmFeedItemCursor | undefined,
       args.first,
       args.last,
+    );
+  }
+
+  @ResolveField(() => GovernanceRules, {
+    description: 'A governance in a Realm',
+  })
+  async governance(
+    @Args('governance', {
+      type: () => PublicKeyScalar,
+      description: 'The address of the governance',
+    })
+    governance: PublicKey,
+    @Root() realm: Realm,
+    @CurrentEnvironment() environment: Environment,
+  ) {
+    if (!realm.programPublicKey) {
+      throw new errors.MalformedData();
+    }
+
+    return this.realmGovernanceService.getGovernanceRules(
+      realm.programPublicKey,
+      governance,
+      environment,
     );
   }
 

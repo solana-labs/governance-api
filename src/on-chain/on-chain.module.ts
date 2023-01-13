@@ -1,4 +1,4 @@
-import { CacheModule, Module } from '@nestjs/common';
+import { CacheModule, Module, forwardRef } from '@nestjs/common';
 
 import { ConfigModule } from '@src/config/config.module';
 import { RealmGovernanceModule } from '@src/realm-governance/realm-governance.module';
@@ -11,7 +11,7 @@ import { OnChainService } from './on-chain.service';
   imports: [
     StaleCacheModule,
     CacheModule.register(),
-    RealmGovernanceModule,
+    forwardRef(() => RealmGovernanceModule),
     RealmSettingsModule,
     ConfigModule,
   ],

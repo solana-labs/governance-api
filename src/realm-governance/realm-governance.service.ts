@@ -104,9 +104,28 @@ export class RealmGovernanceService {
     }
 
     const governance = resp.right.governances[0];
-    const holaplexConfig = governance.governanceConfig;
-    const councilMint = governance.realm?.realmConfig?.councilMint;
-    const communityMint = governance.realm?.communityMint;
+    const holaplexConfig = governance?.governanceConfig || {
+      governanceAddress,
+      voteThresholdType: 'QUORUM',
+      voteThresholdPercentage: onChainConfig.communityVoteThreshold.value || 60,
+      minCommunityWeightToCreateProposal:
+        onChainConfig.minCommunityTokensToCreateProposal.toString(),
+      minInstructionHoldUpTime: onChainConfig.minInstructionHoldUpTime.toString(),
+      maxVotingTime: onChainConfig.maxVotingTime.toString(),
+      voteTipping: onChainConfig.communityVoteTipping,
+      proposalCoolOffTime: '0',
+      minCouncilWeightToCreateProposal: onChainConfig.minCouncilTokensToCreateProposal.toString(),
+    };
+    let councilMint = governance?.realm?.realmConfig?.councilMint;
+    let communityMint = governance?.realm?.communityMint;
+
+    if (!governance) {
+      const realmPublicKey = governanceAccount.account.realm;
+      const realmAccount = await this.onChainService.getRealmAccount(realmPublicKey);
+
+      councilMint = realmAccount.account.config.councilMint?.toBase58();
+      communityMint = realmAccount.account.communityMint.toBase58();
+    }
 
     if (!holaplexConfig || !communityMint) {
       throw new errors.MalformedData();
@@ -142,7 +161,7 @@ export class RealmGovernanceService {
             quorumPercent: onChainConfig.councilVoteThreshold
               ? onChainConfig.councilVoteThreshold.type === VoteThresholdType.Disabled
                 ? 100
-                : onChainConfig.councilVoteThreshold.value || 0
+                : onChainConfig.councilVoteThreshold.value || 60
               : holaplexConfig.voteThresholdPercentage,
             tokenMintAddress: councilMintInfo.publicKey,
             tokenType: GovernanceTokenType.Council,
@@ -152,7 +171,7 @@ export class RealmGovernanceService {
             vetoQuorumPercent: onChainConfig.councilVetoVoteThreshold
               ? onChainConfig.councilVetoVoteThreshold.type === VoteThresholdType.Disabled
                 ? 100
-                : onChainConfig.councilVetoVoteThreshold.value || 100
+                : onChainConfig.councilVetoVoteThreshold.value || 60
               : 100,
             voteTipping: onChainConfig.councilVoteTipping
               ? voteTippingToGovernanceVoteTipping(onChainConfig.councilVoteTipping)
@@ -176,7 +195,7 @@ export class RealmGovernanceService {
         quorumPercent: onChainConfig.communityVoteThreshold
           ? onChainConfig.communityVoteThreshold.type === VoteThresholdType.Disabled
             ? 100
-            : onChainConfig.communityVoteThreshold.value || 0
+            : onChainConfig.communityVoteThreshold.value || 60
           : holaplexConfig.voteThresholdPercentage,
         tokenMintAddress: communityMintInfo.publicKey,
         tokenType: GovernanceTokenType.Community,
@@ -186,7 +205,7 @@ export class RealmGovernanceService {
         vetoQuorumPercent: onChainConfig.communityVetoVoteThreshold
           ? onChainConfig.communityVetoVoteThreshold.type === VoteThresholdType.Disabled
             ? 100
-            : onChainConfig.communityVetoVoteThreshold.value || 100
+            : onChainConfig.communityVetoVoteThreshold.value || 60
           : 100,
         voteTipping: onChainConfig.communityVoteTipping
           ? voteTippingToGovernanceVoteTipping(onChainConfig.communityVoteTipping)
@@ -195,11 +214,10 @@ export class RealmGovernanceService {
           holaplexConfig.minCommunityWeightToCreateProposal,
         ).shiftedBy(-communityMintInfo.account.decimals),
       },
-      depositExemptProposalCount: (onChainConfig as any)['depositExemptProposalCount'] || 0,
-      maxVoteDays: Math.floor(secondsToHours(parseInt(holaplexConfig.maxVotingTime, 10)) / 24),
-      minInstructionHoldupDays: Math.floor(
+      depositExemptProposalCount: (onChainConfig as any)['depositExemptProposalCount'] || 10,
+      maxVoteDays: secondsToHours(parseInt(holaplexConfig.maxVotingTime, 10)) / 24,
+      minInstructionHoldupDays:
         secondsToHours(parseInt(holaplexConfig.minInstructionHoldUpTime, 10)) / 24,
-      ),
       version: programVersion,
     };
 

@@ -7,6 +7,7 @@ import {
   getNativeTreasuryAddress,
   getGovernanceProgramVersion,
   getGovernance,
+  getRealm,
 } from '@solana/spl-governance';
 import { AccountInfo, MintInfo, u64 } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
@@ -533,4 +534,16 @@ export class OnChainService {
       maxStaleAgeMs: hoursToMilliseconds(12),
     },
   );
+
+  async getRealmAccount(realmPublicKey: PublicKey) {
+    const endpoint = this.configService.get('external.rpcEndpoint');
+
+    if (!endpoint) {
+      throw new Error('Please specify an RPC endpoint');
+    }
+
+    const connection = new Connection(endpoint);
+
+    return getRealm(connection, realmPublicKey);
+  }
 }

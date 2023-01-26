@@ -104,18 +104,6 @@ export class RealmGovernanceService {
     }
 
     const governance = resp.right.governances[0];
-    const holaplexConfig = governance?.governanceConfig || {
-      governanceAddress,
-      voteThresholdType: 'QUORUM',
-      voteThresholdPercentage: onChainConfig.communityVoteThreshold.value || 60,
-      minCommunityWeightToCreateProposal:
-        onChainConfig.minCommunityTokensToCreateProposal.toString(),
-      minInstructionHoldUpTime: onChainConfig.minInstructionHoldUpTime.toString(),
-      maxVotingTime: onChainConfig.maxVotingTime.toString(),
-      voteTipping: onChainConfig.communityVoteTipping,
-      proposalCoolOffTime: '0',
-      minCouncilWeightToCreateProposal: onChainConfig.minCouncilTokensToCreateProposal.toString(),
-    };
     let councilMint = governance?.realm?.realmConfig?.councilMint;
     let communityMint = governance?.realm?.communityMint;
 
@@ -127,7 +115,7 @@ export class RealmGovernanceService {
       communityMint = realmAccount.account.communityMint.toBase58();
     }
 
-    if (!holaplexConfig || !communityMint) {
+    if (!communityMint) {
       throw new errors.MalformedData();
     }
 
@@ -141,12 +129,11 @@ export class RealmGovernanceService {
     const rules: GovernanceRules = {
       governanceAddress,
       walletAddress,
-      coolOffHours:
-        programVersion >= 3 ? millisecondsToHours(parseInt(holaplexConfig.proposalCoolOffTime)) : 0, // FIX
+      coolOffHours: secondsToHours(onChainConfig.votingCoolOffTime),
       councilTokenRules: councilMintInfo
         ? {
             canCreateProposal: new BigNumber(
-              holaplexConfig.minCouncilWeightToCreateProposal,
+              onChainConfig.minCouncilTokensToCreateProposal.toString(),
             ).isLessThan(MAX_NUM),
             canVeto:
               onChainConfig.councilVetoVoteThreshold?.type ===
@@ -162,8 +149,9 @@ export class RealmGovernanceService {
               ? onChainConfig.councilVoteThreshold.type === VoteThresholdType.Disabled
                 ? 100
                 : onChainConfig.councilVoteThreshold.value || 60
-              : holaplexConfig.voteThresholdPercentage,
+              : 60,
             tokenMintAddress: councilMintInfo.publicKey,
+            tokenMintDecimals: new BigNumber(councilMintInfo.account.decimals),
             tokenType: GovernanceTokenType.Council,
             totalSupply: new BigNumber(councilMintInfo.account.supply.toString()).shiftedBy(
               -councilMintInfo.account.decimals,
@@ -173,17 +161,15 @@ export class RealmGovernanceService {
                 ? 100
                 : onChainConfig.councilVetoVoteThreshold.value || 60
               : 100,
-            voteTipping: onChainConfig.councilVoteTipping
-              ? voteTippingToGovernanceVoteTipping(onChainConfig.councilVoteTipping)
-              : voteTippingToGovernanceVoteTipping(holaplexConfig.voteTipping),
+            voteTipping: voteTippingToGovernanceVoteTipping(onChainConfig.councilVoteTipping),
             votingPowerToCreateProposals: new BigNumber(
-              holaplexConfig.minCouncilWeightToCreateProposal,
+              onChainConfig.minCouncilTokensToCreateProposal.toString(),
             ).shiftedBy(-councilMintInfo.account.decimals),
           }
         : null,
       communityTokenRules: {
         canCreateProposal: new BigNumber(
-          holaplexConfig.minCommunityWeightToCreateProposal,
+          onChainConfig.minCommunityTokensToCreateProposal.toString(),
         ).isLessThan(MAX_NUM),
         canVeto:
           onChainConfig.communityVetoVoteThreshold?.type === VoteThresholdType.YesVotePercentage ||
@@ -196,8 +182,9 @@ export class RealmGovernanceService {
           ? onChainConfig.communityVoteThreshold.type === VoteThresholdType.Disabled
             ? 100
             : onChainConfig.communityVoteThreshold.value || 60
-          : holaplexConfig.voteThresholdPercentage,
+          : 60,
         tokenMintAddress: communityMintInfo.publicKey,
+        tokenMintDecimals: new BigNumber(communityMintInfo.account.decimals),
         tokenType: GovernanceTokenType.Community,
         totalSupply: new BigNumber(communityMintInfo.account.supply.toString()).shiftedBy(
           -communityMintInfo.account.decimals,
@@ -207,17 +194,14 @@ export class RealmGovernanceService {
             ? 100
             : onChainConfig.communityVetoVoteThreshold.value || 60
           : 100,
-        voteTipping: onChainConfig.communityVoteTipping
-          ? voteTippingToGovernanceVoteTipping(onChainConfig.communityVoteTipping)
-          : voteTippingToGovernanceVoteTipping(holaplexConfig.voteTipping),
+        voteTipping: voteTippingToGovernanceVoteTipping(onChainConfig.communityVoteTipping),
         votingPowerToCreateProposals: new BigNumber(
-          holaplexConfig.minCommunityWeightToCreateProposal,
+          onChainConfig.minCommunityTokensToCreateProposal.toString(),
         ).shiftedBy(-communityMintInfo.account.decimals),
       },
       depositExemptProposalCount: (onChainConfig as any)['depositExemptProposalCount'] || 10,
-      maxVoteDays: secondsToHours(parseInt(holaplexConfig.maxVotingTime, 10)) / 24,
-      minInstructionHoldupDays:
-        secondsToHours(parseInt(holaplexConfig.minInstructionHoldUpTime, 10)) / 24,
+      maxVoteDays: secondsToHours(onChainConfig.maxVotingTime) / 24,
+      minInstructionHoldupDays: secondsToHours(onChainConfig.minInstructionHoldUpTime) / 24,
       version: programVersion,
     };
 

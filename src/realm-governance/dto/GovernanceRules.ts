@@ -53,6 +53,11 @@ export class TokenBasedGovernanceRules {
   })
   tokenMintAddress: PublicKey;
 
+  @Field(() => BigNumberScalar, {
+    description: 'The token mint decimals',
+  })
+  tokenMintDecimals: BigNumber;
+
   @Field(() => GovernanceTokenType, {
     description: 'Token type the rules apply to',
   })

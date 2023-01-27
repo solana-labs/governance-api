@@ -147,7 +147,7 @@ export class RealmGovernanceService {
                 : true,
             quorumPercent: onChainConfig.councilVoteThreshold
               ? onChainConfig.councilVoteThreshold.type === VoteThresholdType.Disabled
-                ? 100
+                ? 60
                 : onChainConfig.councilVoteThreshold.value || 60
               : 60,
             tokenMintAddress: councilMintInfo.publicKey,
@@ -158,9 +158,9 @@ export class RealmGovernanceService {
             ),
             vetoQuorumPercent: onChainConfig.councilVetoVoteThreshold
               ? onChainConfig.councilVetoVoteThreshold.type === VoteThresholdType.Disabled
-                ? 100
+                ? 60
                 : onChainConfig.councilVetoVoteThreshold.value || 60
-              : 100,
+              : 60,
             voteTipping: voteTippingToGovernanceVoteTipping(onChainConfig.councilVoteTipping),
             votingPowerToCreateProposals: new BigNumber(
               onChainConfig.minCouncilTokensToCreateProposal.toString(),
@@ -180,7 +180,7 @@ export class RealmGovernanceService {
           onChainConfig.communityVoteThreshold?.type === VoteThresholdType.Disabled ? false : true,
         quorumPercent: onChainConfig.communityVoteThreshold
           ? onChainConfig.communityVoteThreshold.type === VoteThresholdType.Disabled
-            ? 100
+            ? 60
             : onChainConfig.communityVoteThreshold.value || 60
           : 60,
         tokenMintAddress: communityMintInfo.publicKey,
@@ -191,9 +191,9 @@ export class RealmGovernanceService {
         ),
         vetoQuorumPercent: onChainConfig.communityVetoVoteThreshold
           ? onChainConfig.communityVetoVoteThreshold.type === VoteThresholdType.Disabled
-            ? 100
+            ? 60
             : onChainConfig.communityVetoVoteThreshold.value || 60
-          : 100,
+          : 60,
         voteTipping: voteTippingToGovernanceVoteTipping(onChainConfig.communityVoteTipping),
         votingPowerToCreateProposals: new BigNumber(
           onChainConfig.minCommunityTokensToCreateProposal.toString(),

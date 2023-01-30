@@ -272,10 +272,6 @@ export class RealmService {
    * Get a list of realms that a user follows
    */
   async listFollowedRealms(user: User, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
     const userEntity = await this.userRepository.findOne({ where: { id: user.id } });
 
     if (!userEntity) {

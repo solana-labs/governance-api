@@ -289,7 +289,15 @@ export class RealmService {
    * Set up a realm that exists but has not been added to the db yet
    */
   async setupRealm(publicKey: PublicKey, environment: Environment) {
-    const { name } = await this.getHolaplexRealm(publicKey, environment);
+    let name: string | undefined = undefined;
+
+    try {
+      name = (await this.getHolaplexRealm(publicKey, environment)).name;
+    } catch (e) {
+      const realm = await this.onChainService.getRealmAccount(publicKey, environment);
+      name = realm.account.name;
+    }
+
     const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
       publicKey,
       environment,

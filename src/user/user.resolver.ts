@@ -79,11 +79,7 @@ export class UserResolver {
       'User making the request, as determined by the jwt bearer token in the authorization header',
     nullable: true,
   })
-  me(@CurrentUser() user: User | null, @CurrentEnvironment() environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
+  me(@CurrentUser() user: User | null) {
     return user;
   }
 }

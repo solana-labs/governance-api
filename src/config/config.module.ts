@@ -56,6 +56,7 @@ import { ConfigService } from './config.service';
               dialectSdkEnvironment: process.env.DIALECT_SDK_ENVIRONMENT,
               discordBotKey: process.env.DISCORD_BOT_KEY,
               rpcEndpoint: process.env.RPC_ENDPOINT,
+              rpcEndpointDevnet: process.env.RPC_ENDPOINT_DEVNET,
               twitterBearerKey: process.env.TWITTER_API_BEARER_KEY,
             },
             helius: {

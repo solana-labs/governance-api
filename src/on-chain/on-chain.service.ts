@@ -176,8 +176,11 @@ export class OnChainService {
    * Get the program version for a program
    */
   getProgramVersion = this.staleCacheService.dedupe(
-    async (programAddress: PublicKey) => {
-      const endpoint = this.configService.get('external.rpcEndpoint');
+    async (programAddress: PublicKey, environment: Environment) => {
+      const endpoint =
+        environment === 'devnet'
+          ? this.configService.get('external.rpcEndpointDevnet')
+          : this.configService.get('external.rpcEndpoint');
 
       if (!endpoint) {
         throw new Error('Please specify an RPC endpoint');
@@ -248,13 +251,9 @@ export class OnChainService {
    */
   getTokenMintInfo = this.staleCacheService.dedupe(
     async (mintPublicKey: PublicKey, environment: Environment) => {
-      if (environment === 'devnet') {
-        throw new errors.UnsupportedDevnet();
-      }
-
       const {
         result: { value },
-      } = await this.getOnChainTokenMintInfo(mintPublicKey);
+      } = await this.getOnChainTokenMintInfo(mintPublicKey, environment);
       const publicKey = mintPublicKey;
       const data = Buffer.from(value.data[0], 'base64');
       const account = parseMintAccountData(data);
@@ -418,8 +417,11 @@ export class OnChainService {
   /**
    * Get a single governance
    */
-  getGovernanceAccount = async (governancePublicKey: PublicKey) => {
-    const endpoint = this.configService.get('external.rpcEndpoint');
+  getGovernanceAccount = async (governancePublicKey: PublicKey, environment: Environment) => {
+    const endpoint =
+      environment === 'devnet'
+        ? this.configService.get('external.rpcEndpointDevnet')
+        : this.configService.get('external.rpcEndpoint');
 
     if (!endpoint) {
       throw new Error('Please specify an RPC endpoint');
@@ -435,11 +437,10 @@ export class OnChainService {
    */
   getGovernancesForRealm = this.staleCacheService.dedupe(
     async (realmPublicKey: PublicKey, environment: Environment) => {
-      if (environment === 'devnet') {
-        throw new errors.UnsupportedDevnet();
-      }
-
-      const endpoint = this.configService.get('external.rpcEndpoint');
+      const endpoint =
+        environment === 'devnet'
+          ? this.configService.get('external.rpcEndpointDevnet')
+          : this.configService.get('external.rpcEndpoint');
 
       if (!endpoint) {
         throw new Error('Please specify an RPC endpoint');
@@ -485,8 +486,11 @@ export class OnChainService {
   );
 
   private getOnChainTokenMintInfo = this.staleCacheService.dedupe(
-    (mintPublicKey: PublicKey) => {
-      const endpoint = this.configService.get('external.rpcEndpoint');
+    (mintPublicKey: PublicKey, environment: Environment) => {
+      const endpoint =
+        environment === 'devnet'
+          ? this.configService.get('external.rpcEndpointDevnet')
+          : this.configService.get('external.rpcEndpoint');
 
       if (!endpoint) {
         throw new Error('Please specify an RPC endpoint');
@@ -535,8 +539,11 @@ export class OnChainService {
     },
   );
 
-  async getRealmAccount(realmPublicKey: PublicKey) {
-    const endpoint = this.configService.get('external.rpcEndpoint');
+  async getRealmAccount(realmPublicKey: PublicKey, environment: Environment) {
+    const endpoint =
+      environment === 'devnet'
+        ? this.configService.get('external.rpcEndpointDevnet')
+        : this.configService.get('external.rpcEndpoint');
 
     if (!endpoint) {
       throw new Error('Please specify an RPC endpoint');

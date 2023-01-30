@@ -47,10 +47,6 @@ export class RealmMemberService {
    * Returns a user's civic handle, if it exists
    */
   getCivicHandleForPublicKey(userPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
-
     const cacheKey = `civic-handle-${userPublicKey.toBase58()}`;
 
     return FN.pipe(
@@ -123,10 +119,6 @@ export class RealmMemberService {
    * Returns a user's twitter handle, if it exists
    */
   getTwitterHandleForPublicKey(userPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      return TE.left(new errors.UnsupportedDevnet());
-    }
-
     const cacheKey = `twitter-handle-${userPublicKey.toBase58()}`;
 
     return FN.pipe(

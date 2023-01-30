@@ -39,6 +39,7 @@ export interface Config {
     dialectSdkEnvironment: string | undefined;
     discordBotKey: string | undefined;
     rpcEndpoint: string | undefined;
+    rpcEndpointDevnet: string | undefined;
     twitterBearerKey: string | undefined;
   };
   helius: {

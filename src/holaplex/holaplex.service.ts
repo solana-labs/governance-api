@@ -5,6 +5,7 @@ import { request, RequestDocument } from 'graphql-request';
 import * as IT from 'io-ts';
 
 import * as errors from '@lib/errors/gql';
+import { Environment } from '@lib/types/Environment';
 
 @Injectable()
 export class HolaplexService {
@@ -17,10 +18,18 @@ export class HolaplexService {
       variables?: Variables;
     },
     res: IT.Type<A, O, I>,
+    environment?: Environment,
   ) {
     return FN.pipe(
       TE.tryCatch(
-        () => request('https://graph.holaplex.com/v1', req.query, req.variables),
+        () =>
+          request(
+            environment === 'devnet'
+              ? 'https://graph.devnet.holaplex.tools/v1/graphql'
+              : 'https://graph.holaplex.com/v1',
+            req.query,
+            req.variables,
+          ),
         (e) => new errors.Exception(e),
       ),
       TE.chainW((result) => TE.fromEither(res.decode(result))),

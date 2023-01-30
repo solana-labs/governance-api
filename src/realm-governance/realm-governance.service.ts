@@ -87,8 +87,14 @@ export class RealmGovernanceService {
     environment: Environment,
   ) {
     const walletAddress = await getNativeTreasuryAddress(programPublicKey, governanceAddress);
-    const programVersion = await this.onChainService.getProgramVersion(programPublicKey);
-    const governanceAccount = await this.onChainService.getGovernanceAccount(governanceAddress);
+    const programVersion = await this.onChainService.getProgramVersion(
+      programPublicKey,
+      environment,
+    );
+    const governanceAccount = await this.onChainService.getGovernanceAccount(
+      governanceAddress,
+      environment,
+    );
     const onChainConfig = governanceAccount.account.config;
 
     const resp = await this.holaplexService.requestV1(
@@ -109,7 +115,7 @@ export class RealmGovernanceService {
 
     if (!governance) {
       const realmPublicKey = governanceAccount.account.realm;
-      const realmAccount = await this.onChainService.getRealmAccount(realmPublicKey);
+      const realmAccount = await this.onChainService.getRealmAccount(realmPublicKey, environment);
 
       councilMint = realmAccount.account.config.councilMint?.toBase58();
       communityMint = realmAccount.account.communityMint.toBase58();

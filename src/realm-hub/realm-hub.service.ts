@@ -124,10 +124,6 @@ export class RealmHubService {
    * Get all the hub info committed into the app.realms.today github repo
    */
   async fetchAllCodeCommittedHubInfo(environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
     const cacheKey = `realm-hub-info-all-${environment}`;
     const cached = await this.cacheManager.get<{ [address: string]: CodeCommittedHubInfo }>(
       cacheKey,

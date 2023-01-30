@@ -146,10 +146,6 @@ export class RealmService {
    * Get a db entity for a realm
    */
   async getRealmEntity(publicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
     let realm = await this.realmRepository.findOne({
       where: { publicKeyStr: publicKey.toBase58() },
     });
@@ -173,10 +169,6 @@ export class RealmService {
    * Fetch a realm by its url id
    */
   async getRealmByUrlId(id: string, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
     // assumed the url id is a symbol and try to fetch by that first
     const symbol = decodeURIComponent(id).toLocaleLowerCase();
 
@@ -299,11 +291,7 @@ export class RealmService {
    * Set up a realm that exists but has not been added to the db yet
    */
   async setupRealm(publicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
-    const { name } = await this.getHolaplexRealm(publicKey);
+    const { name } = await this.getHolaplexRealm(publicKey, environment);
     const settings = await this.realmSettingsService.getCodeCommittedSettingsForRealm(
       publicKey,
       environment,
@@ -556,7 +544,7 @@ export class RealmService {
   );
 
   private readonly getHolaplexRealm = this.staleCacheService.dedupe(
-    async (publicKey: PublicKey) => {
+    async (publicKey: PublicKey, environment: Environment) => {
       const resp = await this.holaplexService.requestV1(
         {
           query: queries.realm.query,
@@ -565,6 +553,7 @@ export class RealmService {
           },
         },
         queries.realm.resp,
+        environment,
       )();
 
       if (EI.isLeft(resp)) {

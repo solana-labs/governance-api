@@ -279,7 +279,9 @@ export class RealmService {
     }
 
     const realmPks = userEntity.data.realmsFollowed || [];
-    const realms = await this.realmRepository.find({ where: { publicKeyStr: In(realmPks) } });
+    const realms = await this.realmRepository.find({
+      where: { environment, publicKeyStr: In(realmPks) },
+    });
     return realms.map(this.convertEntityDto);
   }
 

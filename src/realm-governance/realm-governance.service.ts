@@ -135,7 +135,7 @@ export class RealmGovernanceService {
     const rules: GovernanceRules = {
       governanceAddress,
       walletAddress,
-      coolOffHours: secondsToHours(onChainConfig.votingCoolOffTime),
+      coolOffHours: secondsToHours(onChainConfig.votingCoolOffTime || 0),
       councilTokenRules: councilMintInfo
         ? {
             canCreateProposal: new BigNumber(

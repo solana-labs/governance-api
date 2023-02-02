@@ -193,7 +193,7 @@ export class OnChainService {
       return getGovernanceProgramVersion(connection, programAddress);
     },
     {
-      dedupeKey: (pk) => pk.toBase58(),
+      dedupeKey: (pk, env) => pk.toBase58() + env,
     },
   );
 

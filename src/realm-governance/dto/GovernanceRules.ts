@@ -43,8 +43,8 @@ export class TokenBasedGovernanceRules {
   })
   canVote: boolean;
 
-  @Field(() => Int, {
-    description: 'The & of tokens that must vote Yes for the propsal to be valid',
+  @Field(() => Number, {
+    description: 'The % of tokens that must vote Yes for the propsal to be valid',
   })
   quorumPercent: number;
 
@@ -68,7 +68,7 @@ export class TokenBasedGovernanceRules {
   })
   totalSupply: BigNumber;
 
-  @Field(() => Int, {
+  @Field(() => Number, {
     description: 'The % of tokens that must veto a proposal for it to be vetoed',
   })
   vetoQuorumPercent: number;
@@ -98,7 +98,7 @@ export class GovernanceRules {
   })
   version: number;
 
-  @Field(() => Int, {
+  @Field(() => Number, {
     description: 'Hours in the cool-off period',
   })
   coolOffHours: number;
@@ -119,12 +119,12 @@ export class GovernanceRules {
   })
   depositExemptProposalCount: number;
 
-  @Field(() => Int, {
+  @Field(() => Number, {
     description: 'Total max number of voting days',
   })
   maxVoteDays: number;
 
-  @Field(() => Int, {
+  @Field(() => Number, {
     description: 'Minimum number of days to holdup instruction execution',
   })
   minInstructionHoldupDays: number;

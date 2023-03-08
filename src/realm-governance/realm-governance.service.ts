@@ -1,18 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { getNativeTreasuryAddress, VoteTipping, VoteThresholdType } from '@solana/spl-governance';
+import { MintMaxVoteWeightSourceType } from '@solana/spl-governance';
 import { PublicKey } from '@solana/web3.js';
 import { BigNumber } from 'bignumber.js';
-import { hoursToMilliseconds, millisecondsToHours, secondsToHours } from 'date-fns';
-import * as EI from 'fp-ts/Either';
+import { secondsToHours } from 'date-fns';
 
 import * as errors from '@lib/errors/gql';
-import { HolaplexService } from '@src/holaplex/holaplex.service';
-import { Environment } from '@src/lib/types/Environment';
-import { OnChainService } from '@src/on-chain/on-chain.service';
+import { Environment } from '@lib/types/Environment';
+import { HeliusService } from '@src/helius/helius.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import { GovernanceRules, GovernanceTokenType, GovernanceVoteTipping } from './dto/GovernanceRules';
-import * as queries from './holaplexQueries';
 
 const MAX_NUM = new BigNumber('18446744073709551615');
 
@@ -21,7 +19,7 @@ export interface Governance {
   communityMint: PublicKey | null;
   councilMint: PublicKey | null;
   communityMintMaxVoteWeight: BigNumber | null;
-  communityMintMaxVoteWeightSource: string | null;
+  communityMintMaxVoteWeightSource: MintMaxVoteWeightSourceType | null;
 }
 
 function voteTippingToGovernanceVoteTipping(voteTipping: VoteTipping | string) {
@@ -46,34 +44,30 @@ function voteTippingToGovernanceVoteTipping(voteTipping: VoteTipping | string) {
 @Injectable()
 export class RealmGovernanceService {
   constructor(
-    private readonly holaplexService: HolaplexService,
-    private readonly onChainService: OnChainService,
     private readonly staleCacheService: StaleCacheService,
+    private readonly heliusService: HeliusService,
   ) {}
 
   /**
    * Get a list of governances for a realm
    */
   async getGovernancesForRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
+    const [governances, realm] = await Promise.all([
+      this.heliusService.getGovernances(realmPublicKey, environment),
+      this.heliusService.getRealm(realmPublicKey, environment),
+    ]);
 
-    const governances = await this.holaplexGetGovernances(realmPublicKey);
     return governances.map((data) => {
       const governance: Governance = {
-        address: new PublicKey(data.address),
-        communityMint: data.realm?.communityMint ? new PublicKey(data.realm.communityMint) : null,
-        councilMint: data.realm?.realmConfig?.councilMint
-          ? new PublicKey(data.realm.realmConfig.councilMint)
-          : null,
-        communityMintMaxVoteWeight: data.realm?.realmConfig?.communityMintMaxVoteWeight
-          ? new BigNumber(data.realm.realmConfig.communityMintMaxVoteWeight)
-          : null,
+        address: data.pubkey,
+        communityMint: realm.account.communityMint,
+        councilMint: realm.account.config.councilMint || null,
+        communityMintMaxVoteWeight: new BigNumber(
+          realm.account.config.communityMintMaxVoteWeightSource.value.toString(),
+        ),
         communityMintMaxVoteWeightSource:
-          data.realm?.realmConfig?.communityMintMaxVoteWeightSource || null,
+          realm.account.config.communityMintMaxVoteWeightSource.type,
       };
-
       return governance;
     });
   }
@@ -86,40 +80,19 @@ export class RealmGovernanceService {
     governanceAddress: PublicKey,
     environment: Environment,
   ) {
-    const walletAddress = await getNativeTreasuryAddress(programPublicKey, governanceAddress);
-    const programVersion = await this.onChainService.getProgramVersion(
-      programPublicKey,
-      environment,
-    );
-    const governanceAccount = await this.onChainService.getGovernanceAccount(
-      governanceAddress,
-      environment,
-    );
+    const [walletAddress, programVersion, governanceAccount] = await Promise.all([
+      getNativeTreasuryAddress(programPublicKey, governanceAddress),
+      this.heliusService.getProgramVersion(programPublicKey, environment),
+      this.heliusService.getGovernance(governanceAddress, environment),
+    ]);
+
     const onChainConfig = governanceAccount.account.config;
+    const realmPublicKey = governanceAccount.account.realm;
 
-    const resp = await this.holaplexService.requestV1(
-      {
-        query: queries.governance.query,
-        variables: { address: governanceAddress.toBase58() },
-      },
-      queries.governance.resp,
-    )();
+    const realm = await this.heliusService.getRealm(realmPublicKey, environment);
 
-    if (EI.isLeft(resp)) {
-      throw resp.left;
-    }
-
-    const governance = resp.right.governances[0];
-    let councilMint = governance?.realm?.realmConfig?.councilMint;
-    let communityMint = governance?.realm?.communityMint;
-
-    if (!governance) {
-      const realmPublicKey = governanceAccount.account.realm;
-      const realmAccount = await this.onChainService.getRealmAccount(realmPublicKey, environment);
-
-      councilMint = realmAccount.account.config.councilMint?.toBase58();
-      communityMint = realmAccount.account.communityMint.toBase58();
-    }
+    const councilMint = realm.account.config.councilMint?.toBase58();
+    const communityMint = realm.account.communityMint.toBase58();
 
     if (!communityMint) {
       throw new errors.MalformedData();
@@ -127,9 +100,9 @@ export class RealmGovernanceService {
 
     const [councilMintInfo, communityMintInfo] = await Promise.all([
       councilMint
-        ? this.onChainService.getTokenMintInfo(new PublicKey(councilMint), environment)
+        ? this.heliusService.getTokenMintInfo(new PublicKey(councilMint), environment)
         : null,
-      this.onChainService.getTokenMintInfo(new PublicKey(communityMint), environment),
+      this.heliusService.getTokenMintInfo(new PublicKey(communityMint), environment),
     ]);
 
     const rules: GovernanceRules = {
@@ -213,31 +186,4 @@ export class RealmGovernanceService {
 
     return rules;
   }
-
-  /**
-   * Get governances from holaplex
-   */
-  private readonly holaplexGetGovernances = this.staleCacheService.dedupe(
-    async (realm: PublicKey) => {
-      const resp = await this.holaplexService.requestV1(
-        {
-          query: queries.realmGovernance.query,
-          variables: {
-            realms: [realm.toBase58()],
-          },
-        },
-        queries.realmGovernance.resp,
-      )();
-
-      if (EI.isLeft(resp)) {
-        throw resp.left;
-      }
-
-      return resp.right.governances;
-    },
-    {
-      dedupeKey: (realm) => realm.toBase58(),
-      maxStaleAgeMs: hoursToMilliseconds(6),
-    },
-  );
 }

@@ -39,11 +39,15 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealmAndUser(
-        realmPublicKey,
-        requestingUser,
-        sortOrder,
-        environment,
+      TE.tryCatch(
+        () =>
+          this.realmProposalService.getProposalsForRealmAndUser(
+            realmPublicKey,
+            requestingUser,
+            sortOrder,
+            environment,
+          ),
+        (e) => new errors.Exception(e),
       ),
       TE.map(AR.takeLeft(n)),
     );
@@ -64,11 +68,15 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealmAndUser(
-        realmPublicKey,
-        requestingUser,
-        sortOrder,
-        environment,
+      TE.tryCatch(
+        () =>
+          this.realmProposalService.getProposalsForRealmAndUser(
+            realmPublicKey,
+            requestingUser,
+            sortOrder,
+            environment,
+          ),
+        (e) => new errors.Exception(e),
       ),
       TE.map(AR.takeRight(n)),
     );
@@ -96,11 +104,15 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealmAndUser(
-        realmPublicKey,
-        requestingUser,
-        sortOrder,
-        environment,
+      TE.tryCatch(
+        () =>
+          this.realmProposalService.getProposalsForRealmAndUser(
+            realmPublicKey,
+            requestingUser,
+            sortOrder,
+            environment,
+          ),
+        (e) => new errors.Exception(e),
       ),
       TE.map(AR.dropLeftWhile((proposal) => !proposal.publicKey.equals(parsedCursor.proposal))),
       TE.map(AR.tail),
@@ -130,11 +142,15 @@ export class RealmProposalGQLService {
     }
 
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealmAndUser(
-        realmPublicKey,
-        requestingUser,
-        sortOrder,
-        environment,
+      TE.tryCatch(
+        () =>
+          this.realmProposalService.getProposalsForRealmAndUser(
+            realmPublicKey,
+            requestingUser,
+            sortOrder,
+            environment,
+          ),
+        (e) => new errors.Exception(e),
       ),
       TE.map(AR.takeLeftWhile((proposal) => !proposal.publicKey.equals(parsedCursor.proposal))),
       TE.map(AR.takeRight(n)),

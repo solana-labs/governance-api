@@ -2,8 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '@src/config/config.module';
-import { HolaplexModule } from '@src/holaplex/holaplex.module';
-import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { HeliusModule } from '@src/helius/helius.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmGovernanceModule } from '@src/realm-governance/realm-governance.module';
 import { RealmHubModule } from '@src/realm-hub/realm-hub.module';
@@ -26,9 +25,8 @@ import { RealmService } from './realm.service';
 @Module({
   imports: [
     ConfigModule,
+    HeliusModule,
     StaleCacheModule,
-    HolaplexModule,
-    OnChainModule,
     RealmGovernanceModule,
     RealmHubModule,
     RealmMemberModule,

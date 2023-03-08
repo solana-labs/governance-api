@@ -1,13 +1,12 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
-import { HolaplexModule } from '@src/holaplex/holaplex.module';
-import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { HeliusModule } from '@src/helius/helius.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
 
 import { RealmGovernanceService } from './realm-governance.service';
 
 @Module({
-  imports: [HolaplexModule, forwardRef(() => OnChainModule), StaleCacheModule],
+  imports: [HeliusModule, StaleCacheModule],
   providers: [RealmGovernanceService],
   exports: [RealmGovernanceService],
 })

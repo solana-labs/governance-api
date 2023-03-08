@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PublicKey } from '@solana/web3.js';
-import BigNumber from 'bignumber.js';
-import { hoursToMilliseconds } from 'date-fns';
-import * as EI from 'fp-ts/Either';
 import { In, Repository } from 'typeorm';
 
 import { User } from '@lib/decorators/CurrentUser';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
-import { HolaplexService } from '@src/holaplex/holaplex.service';
+import { HeliusService } from '@src/helius/helius.service';
 import { exists } from '@src/lib/typeGuards/exists';
-import { OnChainService } from '@src/on-chain/on-chain.service';
 import { RealmHubService } from '@src/realm-hub/realm-hub.service';
 import { RealmSettingsService } from '@src/realm-settings/realm-settings.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
@@ -22,7 +18,6 @@ import { Realm as RealmDto } from './dto/Realm';
 import { RealmCategory } from './dto/RealmCategory';
 import { RealmRoadmap } from './dto/RealmRoadmap';
 import { Realm } from './entities/Realm.entity';
-import * as queries from './holaplexQueries';
 import { RealmInput as RealmInputDto } from './inputDto/RealmInput';
 
 /**
@@ -61,8 +56,7 @@ function normalizeCategory(plain?: string): RealmCategory {
 export class RealmService {
   constructor(
     private readonly configService: ConfigService,
-    private readonly holaplexService: HolaplexService,
-    private readonly onChainService: OnChainService,
+    private readonly heliusService: HeliusService,
     private readonly realmHubService: RealmHubService,
     private readonly realmSettingsService: RealmSettingsService,
     private readonly staleCacheService: StaleCacheService,
@@ -292,9 +286,9 @@ export class RealmService {
     let name: string | undefined = undefined;
 
     try {
-      name = (await this.getHolaplexRealm(publicKey, environment)).name;
+      name = (await this.heliusService.getRealm(publicKey, environment)).account.name;
     } catch (e) {
-      const realm = await this.onChainService.getRealmAccount(publicKey, environment);
+      const realm = await this.heliusService.getRealm(publicKey, environment);
       name = realm.account.name;
     }
 
@@ -466,117 +460,28 @@ export class RealmService {
     userPublicKey: PublicKey,
     environment: Environment,
   ) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
+    const realm = await this.heliusService.getRealm(realmPublicKey, environment);
 
-    const realmResp = await this.holaplexService.requestV1(
-      {
-        query: queries.realmCouncil.query,
-        variables: {
-          address: realmPublicKey.toBase58(),
-        },
-      },
-      queries.realmCouncil.resp,
-    )();
+    const councilMint = realm.account.config.councilMint;
 
-    if (EI.isLeft(realmResp)) {
+    if (!councilMint) {
       return false;
     }
 
-    const councilMintPublicKeyStr = realmResp.right.realms[0].realmConfig?.councilMint;
+    const programId = await this.heliusService.getProgramId(realmPublicKey, environment);
 
-    if (!councilMintPublicKeyStr) {
-      return false;
-    }
-
-    const tokenAccount = await this.onChainService.getTokenAccountForUser(
+    const tokenAccount = await this.heliusService.getTokenOwnerRecordForRealm(
+      programId,
+      realmPublicKey,
+      councilMint,
       userPublicKey,
-      new PublicKey(councilMintPublicKeyStr),
       environment,
     );
 
-    if (tokenAccount && tokenAccount.uiAmount > 0) {
+    if (tokenAccount && tokenAccount.account.governingTokenDepositAmount.toNumber() > 0) {
       return true;
-    }
-
-    // see if they have some tokens deposited
-    const holaplexResp = await this.holaplexService.requestV1(
-      {
-        query: queries.councilMintAmount.query,
-        variables: { mint: councilMintPublicKeyStr, realm: realmPublicKey.toBase58() },
-      },
-      queries.councilMintAmount.resp,
-    )();
-
-    if (EI.isRight(holaplexResp)) {
-      const amountStr =
-        holaplexResp.right.tokenOwnerRecords.find(
-          ({ governingTokenOwner }) => userPublicKey.toBase58() === governingTokenOwner,
-        )?.governingTokenDepositAmount || '0';
-
-      const amount = new BigNumber(amountStr);
-
-      if (amount.isGreaterThan(0)) {
-        return true;
-      }
     }
 
     return false;
   }
-
-  private readonly getHolaplexRealms = this.staleCacheService.dedupe(
-    async (publicKeys: PublicKey[]) => {
-      const resp = await this.holaplexService.requestV1(
-        {
-          query: queries.realms.query,
-          variables: {
-            addresses: publicKeys.map((pk) => pk.toBase58()),
-          },
-        },
-        queries.realm.resp,
-      )();
-
-      if (EI.isLeft(resp)) {
-        throw resp.left;
-      }
-
-      return resp.right;
-    },
-    {
-      dedupeKey: (pks) => pks.map((pk) => pk.toBase58()).join('-'),
-      maxStaleAgeMs: hoursToMilliseconds(12),
-    },
-  );
-
-  private readonly getHolaplexRealm = this.staleCacheService.dedupe(
-    async (publicKey: PublicKey, environment: Environment) => {
-      const resp = await this.holaplexService.requestV1(
-        {
-          query: queries.realm.query,
-          variables: {
-            address: publicKey.toBase58(),
-          },
-        },
-        queries.realm.resp,
-        environment,
-      )();
-
-      if (EI.isLeft(resp)) {
-        throw resp.left;
-      }
-
-      const realm = resp.right.realms[0];
-
-      if (!realm) {
-        throw new errors.NotFound();
-      }
-
-      return realm;
-    },
-    {
-      dedupeKey: (pk) => pk.toBase58(),
-      maxStaleAgeMs: hoursToMilliseconds(12),
-    },
-  );
 }

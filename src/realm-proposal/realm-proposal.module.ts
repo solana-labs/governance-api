@@ -1,7 +1,6 @@
 import { CacheModule, Module } from '@nestjs/common';
 
-import { HolaplexModule } from '@src/holaplex/holaplex.module';
-import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { HeliusModule } from '@src/helius/helius.module';
 import { RealmGovernanceModule } from '@src/realm-governance/realm-governance.module';
 import { RealmMemberModule } from '@src/realm-member/realm-member.module';
 import { StaleCacheModule } from '@src/stale-cache/stale-cache.module';
@@ -13,8 +12,7 @@ import { RealmProposalService } from './realm-proposal.service';
 @Module({
   imports: [
     CacheModule.register(),
-    HolaplexModule,
-    OnChainModule,
+    HeliusModule,
     RealmGovernanceModule,
     RealmMemberModule,
     StaleCacheModule,

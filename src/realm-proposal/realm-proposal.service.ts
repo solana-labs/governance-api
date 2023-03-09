@@ -62,7 +62,7 @@ export class RealmProposalService {
       author: {
         publicKey: proposal.account.tokenOwnerRecord,
       },
-      created: new Date(proposal.account.draftAt.toNumber()),
+      created: new Date(proposal.account.draftAt.toNumber() * 1000),
       document: await convertTextToRichTextDocument(proposal.account.descriptionLink),
       description: proposal.account.descriptionLink,
       publicKey: proposal.pubkey,
@@ -112,7 +112,7 @@ export class RealmProposalService {
       author: {
         publicKey: proposal.account.tokenOwnerRecord,
       },
-      created: new Date(proposal.account.draftAt.toNumber()),
+      created: new Date(proposal.account.draftAt.toNumber() * 1000),
       document: await convertTextToRichTextDocument(proposal.account.descriptionLink),
       description: proposal.account.descriptionLink,
       publicKey: proposal.pubkey,
@@ -169,7 +169,7 @@ export class RealmProposalService {
           author: {
             publicKey: proposal.account.tokenOwnerRecord,
           },
-          created: new Date(proposal.account.draftAt.toNumber()),
+          created: new Date(proposal.account.draftAt.toNumber() * 1000),
           document: await convertTextToRichTextDocument(proposal.account.descriptionLink),
           description: proposal.account.descriptionLink,
           publicKey: proposal.pubkey,
@@ -252,7 +252,7 @@ export class RealmProposalService {
           author: {
             publicKey: proposal.account.tokenOwnerRecord,
           },
-          created: new Date(proposal.account.draftAt.toNumber()),
+          created: new Date(proposal.account.draftAt.toNumber() * 1000),
           document: await convertTextToRichTextDocument(proposal.account.descriptionLink),
           description: proposal.account.descriptionLink,
           publicKey: proposal.pubkey,
@@ -348,7 +348,7 @@ export class RealmProposalService {
     if (governance.config.maxVotingTime && proposal.state === ProposalState.Voting) {
       const nowUnixSeconds = Date.now() / 1000;
       const votingAt = proposal.votingAt
-        ? new Date(proposal.votingAt.toNumber()).getTime() / 1000
+        ? new Date(proposal.votingAt.toNumber() * 1000).getTime() / 1000
         : 0;
       const maxVotingTime = governance.config.maxVotingTime;
       const timeToVoteEnd = votingAt + maxVotingTime - nowUnixSeconds;
@@ -409,19 +409,19 @@ export class RealmProposalService {
     >,
   ) => {
     if (proposal.closedAt) {
-      return new Date(proposal.closedAt.toNumber());
+      return new Date(proposal.closedAt.toNumber() * 1000);
     } else if (proposal.executingAt) {
-      return new Date(proposal.executingAt.toNumber());
+      return new Date(proposal.executingAt.toNumber() * 1000);
     } else if (proposal.votingCompletedAt) {
-      return new Date(proposal.votingCompletedAt.toNumber());
+      return new Date(proposal.votingCompletedAt.toNumber() * 1000);
     } else if (proposal.votingAt) {
-      return new Date(proposal.votingAt.toNumber());
+      return new Date(proposal.votingAt.toNumber() * 1000);
     } else if (proposal.startVotingAt) {
-      return new Date(proposal.startVotingAt.toNumber());
+      return new Date(proposal.startVotingAt.toNumber() * 1000);
     } else if (proposal.signingOffAt) {
-      return new Date(proposal.signingOffAt.toNumber());
+      return new Date(proposal.signingOffAt.toNumber() * 1000);
     } else {
-      return new Date(proposal.draftAt.toNumber());
+      return new Date(proposal.draftAt.toNumber() * 1000);
     }
   };
 
@@ -515,7 +515,7 @@ export class RealmProposalService {
       const maxVotingTimeInMs = maxVotingTime * 1000;
 
       if (proposal.account.votingAt) {
-        const start = new Date(proposal.account.votingAt.toNumber());
+        const start = new Date(proposal.account.votingAt.toNumber() * 1000);
         votingEndTime = start.getTime() + maxVotingTimeInMs;
       }
     }

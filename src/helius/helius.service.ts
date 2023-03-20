@@ -280,7 +280,13 @@ export class HeliusService {
         tokenAccountsRaw,
         assetOwners,
         environment,
-      );
+      ).catch((e) => {
+        console.error(e);
+        console.log(JSON.stringify(tokenAccountsResp, null, 2));
+        console.log(JSON.stringify(tokenAccountsRaw, null, 2));
+        console.log(JSON.stringify(assetOwners, null, 2));
+        return [];
+      });
 
       const lamportMap = solAccounts.reduce((cur, acc) => {
         cur[acc.owner.toBase58()] = acc.value?.lamports;

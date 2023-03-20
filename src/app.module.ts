@@ -38,6 +38,7 @@ import { UserModule } from '@src/user/user.module';
 import { DiscoverPageModule } from './discover-page/discover-page.module';
 import { FollowFeedModule } from './follow-feed/follow-feed.module';
 import { HeliusModule } from './helius/helius.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { HeliusModule } from './helius/helius.module';
     FollowFeedModule,
     DiscoverPageModule,
     HeliusModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [

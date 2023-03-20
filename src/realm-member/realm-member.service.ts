@@ -2,7 +2,6 @@ import { getNamespaceByName, nameForDisplay } from '@cardinal/namespaces';
 import { CivicProfile } from '@civic/profile';
 import { CACHE_MANAGER, Injectable, Inject, Logger } from '@nestjs/common';
 import { Connection, PublicKey } from '@solana/web3.js';
-import BigNumber from 'bignumber.js';
 import { Cache } from 'cache-manager';
 import { hoursToMilliseconds } from 'date-fns';
 import * as AR from 'fp-ts/Array';
@@ -18,12 +17,11 @@ import { Environment } from '@lib/decorators/CurrentEnvironment';
 import * as errors from '@lib/errors/gql';
 import { abbreviateAddress } from '@lib/textManipulation/abbreviateAddress';
 import { ConfigService } from '@src/config/config.service';
-import { HolaplexService } from '@src/holaplex/holaplex.service';
+import { HeliusService } from '@src/helius/helius.service';
 import { StaleCacheService } from '@src/stale-cache/stale-cache.service';
 
 import { RealmMemberSort } from './dto/pagination';
 import { RealmMember } from './dto/RealmMember';
-import * as queries from './holaplexQueries';
 
 export const RealmMemberCursor = BrandedString('realm member cursor');
 export type RealmMemberCursor = IT.TypeOf<typeof RealmMemberCursor>;
@@ -39,7 +37,7 @@ export class RealmMemberService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
-    private readonly holaplexService: HolaplexService,
+    private readonly heliusService: HeliusService,
     private readonly staleCacheService: StaleCacheService,
   ) {}
 
@@ -79,40 +77,22 @@ export class RealmMemberService {
   /**
    * Fetch a list of members in a Realm
    */
-  getMembersForRealm(realmPublicKey: PublicKey, environment: Environment) {
+  getMembersForRealm(
+    realmPublicKey: PublicKey,
+    environment: Environment,
+  ): TE.TaskEither<Error, RealmMember[]> {
     if (environment === 'devnet') {
       return TE.left(new errors.UnsupportedDevnet());
     }
 
-    return FN.pipe(
-      TE.tryCatch(
-        () => this.holaplexGetTokenOwnerRecords(realmPublicKey),
-        (e) => new errors.Exception(e),
-      ),
-      TE.map(
-        AR.map(({ address, governingTokenDepositAmount }) => ({
-          publicKey: new PublicKey(address),
-          votingPower: new BigNumber(governingTokenDepositAmount),
-        })),
-      ),
-    );
+    return TE.of([] as RealmMember[]);
   }
 
   /**
    * Get a count of the total members in the realm
    */
   async getMembersCountForRealm(realmPublicKey: PublicKey, environment: Environment) {
-    if (environment === 'devnet') {
-      throw new errors.UnsupportedDevnet();
-    }
-
-    try {
-      const tors = await this.holaplexGetTokenOwnerRecords(realmPublicKey);
-      return tors.length;
-    } catch (e) {
-      this.logger.error(e);
-      return 0;
-    }
+    return 0;
   }
 
   /**
@@ -412,33 +392,6 @@ export class RealmMemberService {
       member: new PublicKey(parsed.member),
     };
   }
-
-  /**
-   * Get a list of token owner records from holaplex
-   */
-  private holaplexGetTokenOwnerRecords = this.staleCacheService.dedupe(
-    async (realmPublicKey: PublicKey) => {
-      const resp = await this.holaplexService.requestV1(
-        {
-          query: queries.realmMembers.query,
-          variables: {
-            realm: realmPublicKey.toBase58(),
-          },
-        },
-        queries.realmMembers.resp,
-      )();
-
-      if (EI.isLeft(resp)) {
-        throw resp.left;
-      }
-
-      return resp.right.tokenOwnerRecords;
-    },
-    {
-      dedupeKey: (pk) => pk.toBase58(),
-      maxStaleAgeMs: hoursToMilliseconds(6),
-    },
-  );
 
   /**
    * Create a GQL list edge

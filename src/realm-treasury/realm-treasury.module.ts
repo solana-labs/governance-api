@@ -1,13 +1,13 @@
 import { CacheModule, Module } from '@nestjs/common';
 
 import { ConfigModule } from '@src/config/config.module';
-import { OnChainModule } from '@src/on-chain/on-chain.module';
+import { HeliusModule } from '@src/helius/helius.module';
 
 import { RealmTreasuryResolver } from './realm-treasury.resolver';
 import { RealmTreasuryService } from './realm-treasury.service';
 
 @Module({
-  imports: [CacheModule.register(), ConfigModule, OnChainModule],
+  imports: [CacheModule.register(), ConfigModule, HeliusModule],
   providers: [RealmTreasuryService, RealmTreasuryResolver],
   exports: [RealmTreasuryService],
 })

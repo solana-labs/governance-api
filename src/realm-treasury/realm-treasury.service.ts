@@ -11,7 +11,7 @@ import { mergeDeepRight } from 'ramda';
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
 import { ConfigService } from '@src/config/config.service';
-import { OnChainService } from '@src/on-chain/on-chain.service';
+import { HeliusService } from '@src/helius/helius.service';
 
 const PRICE_ENDPOINT = 'https://price.jup.ag/v1/price';
 
@@ -24,7 +24,7 @@ export class RealmTreasuryService {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
-    private readonly onChainService: OnChainService,
+    private readonly heliusService: HeliusService,
   ) {}
 
   /**
@@ -39,8 +39,8 @@ export class RealmTreasuryService {
       TE.tryCatch(
         () =>
           Promise.all([
-            this.onChainService.getTokenAccountsInRealm(realmPublicKey, environment),
-            this.onChainService.getAuxiliaryTokenAccountsInRealm(realmPublicKey, environment),
+            this.heliusService.getTokenAccountsInRealm(realmPublicKey, environment),
+            this.heliusService.getAuxiliaryTokenAccountsInRealm(realmPublicKey, environment),
           ]),
         (e) => new errors.Exception(e),
       ),

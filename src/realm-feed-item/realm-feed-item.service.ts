@@ -429,13 +429,9 @@ export class RealmFeedItemService {
     const proposalsResp = await this.realmProposalService.getProposalsForRealm(
       realmPublicKey,
       environment,
-    )();
+    );
 
-    if (EI.isLeft(proposalsResp)) {
-      throw proposalsResp.left;
-    }
-
-    const openProposals = proposalsResp.right
+    const openProposals = proposalsResp
       .filter(
         (proposal) =>
           proposal.state === RealmProposalState.Voting ||
@@ -576,7 +572,10 @@ export class RealmFeedItemService {
       key: `syncProposalsToFeedItems-${realmPublicKey.toBase58()}-${environment}`,
       ttl: 10 * 1000,
       fn: FN.pipe(
-        this.realmProposalService.getProposalAddressesForRealm(realmPublicKey, environment),
+        TE.tryCatch(
+          () => this.realmProposalService.getProposalAddressesForRealm(realmPublicKey, environment),
+          (e) => new errors.Exception(e),
+        ),
         TE.bindTo('proposals'),
         TE.bindW('existingEntities', ({ proposals }) =>
           TE.tryCatch(
@@ -849,10 +848,14 @@ export class RealmFeedItemService {
         );
       case RealmFeedItemType.Proposal:
         return FN.pipe(
-          this.realmProposalService.getProposalForUserByPublicKey(
-            new PublicKey(entity.data.ref),
-            requestingUser?.publicKey || null,
-            environment,
+          TE.tryCatch(
+            () =>
+              this.realmProposalService.getProposalForUserByPublicKey(
+                new PublicKey(entity.data.ref),
+                requestingUser?.publicKey || null,
+                environment,
+              ),
+            (e) => new errors.Exception(e),
           ),
           TE.map(
             (proposal) =>
@@ -930,11 +933,15 @@ export class RealmFeedItemService {
     environment: Environment,
   ) {
     return FN.pipe(
-      this.realmProposalService.getProposalsForRealmAndUserByPublicKeys(
-        realmPublicKey,
-        entities.map((p) => new PublicKey(p.data.ref)),
-        requestingUser?.publicKey || null,
-        environment,
+      TE.tryCatch(
+        () =>
+          this.realmProposalService.getProposalsForRealmAndUserByPublicKeys(
+            realmPublicKey,
+            entities.map((p) => new PublicKey(p.data.ref)),
+            requestingUser?.publicKey || null,
+            environment,
+          ),
+        (e) => new errors.Exception(e),
       ),
       TE.map((proposalMap) =>
         entities

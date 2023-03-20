@@ -20,8 +20,6 @@ import { ConfigService } from '@src/config/config.service';
 import { DiscordUserModule } from '@src/discord-user/discordUser.module';
 // import { DiscordModule } from '@src/discord/discord.module';
 import { EcosystemFeedModule } from '@src/ecosystem-feed/ecosystem-feed.module';
-import { HolaplexModule } from '@src/holaplex/holaplex.module';
-import { OnChainModule } from '@src/on-chain/on-chain.module';
 import { RealmFeedItemCommentModule } from '@src/realm-feed-item-comment/realm-feed-item-comment.module';
 import { RealmFeedItemModule } from '@src/realm-feed-item/realm-feed-item.module';
 import { RealmFeedModule } from '@src/realm-feed/realm-feed.module';
@@ -39,6 +37,8 @@ import { UserModule } from '@src/user/user.module';
 
 import { DiscoverPageModule } from './discover-page/discover-page.module';
 import { FollowFeedModule } from './follow-feed/follow-feed.module';
+import { HeliusModule } from './helius/helius.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -75,7 +75,6 @@ import { FollowFeedModule } from './follow-feed/follow-feed.module';
     }),
     AuthModule,
     UserModule,
-    HolaplexModule,
     RealmModule,
     RealmMemberModule,
     RealmProposalModule,
@@ -84,7 +83,6 @@ import { FollowFeedModule } from './follow-feed/follow-feed.module';
     RealmSettingsModule,
     RealmPostModule,
     RealmTreasuryModule,
-    OnChainModule,
     RealmGovernanceModule,
     TaskDedupeModule,
     RealmFeedItemCommentModule,
@@ -95,6 +93,8 @@ import { FollowFeedModule } from './follow-feed/follow-feed.module';
     EcosystemFeedModule,
     FollowFeedModule,
     DiscoverPageModule,
+    HeliusModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [

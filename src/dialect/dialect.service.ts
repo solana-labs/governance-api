@@ -13,7 +13,7 @@ export class DialectService implements OnModuleInit {
   constructor(private readonly sdk: DialectSdk) {}
 
   async onModuleInit() {
-    this.realmsDapp = await this.sdk.dapps.find();
+    this.realmsDapp = await this.sdk?.dapps?.find();
     if (!this.realmsDapp) {
       console.error(`Dialect Error: unable to load dapp from sdk`, this.sdk);
     }

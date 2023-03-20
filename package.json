@@ -11,6 +11,7 @@
     "db:m:new": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/typeorm/cli.js -d ./orm-cli-config.ts migration:generate -p ./migrations/${npm_config_name}",
     "db:m:revert": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/typeorm/cli.js -d ./orm-cli-config.ts migration:revert",
     "db:m:run": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/typeorm/cli.js -d ./orm-cli-config.ts migration:run",
+    "db:setup": "yarn db schema:sync",
     "db": "ts-node -r tsconfig-paths/register --project ./tsconfig.json ./node_modules/typeorm/cli.js -d ./orm-cli-config.ts",
     "fmt": "prettier --write '{*,**/*}.{js,ts,jsx,tsx,json}'",
     "lint": "eslint --ext .ts . && prettier --check '{*,**/*}.{js,ts,jsx,tsx,json}'",
@@ -127,7 +128,7 @@
     "ts-loader": "^9.2.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.1.0",
-    "typescript": "^4.3.5"
+    "typescript": "^4.9.5"
   },
   "resolutions": {
     "@bonfida/name-service/**/borsh": "0.7.0"
@@ -157,5 +158,8 @@
     "*.{json,css,scss,md,yaml, yml}": [
       "prettier -w"
     ]
+  },
+  "volta": {
+    "node": "18.15.0"
   }
 }

@@ -77,7 +77,9 @@ export class StatsService {
     });
 
     if (force) {
-      this.tvlRepository.delete(pending.map((p) => p.id));
+      if (pending.length > 0) {
+        this.tvlRepository.delete(pending.map((p) => p.id));
+      }
     } else if (pending.length > 0) {
       return DEFAULT_TVL;
     }
@@ -144,23 +146,29 @@ export class StatsService {
     const realmsWithGovernances = await this.fetchGovernances(realms);
 
     this.logger.verbose('Fetching a list of tokens in each governance');
-    for (const realm of realmsWithGovernances) {
-      const tokenLists = await this.fetchTokens(realm.realm, realm.governances);
+    const batches = batch(realmsWithGovernances, 10);
 
-      for (const [mint, amount] of Object.entries(tokenLists)) {
-        tokens.add(mint);
+    await Promise.all(
+      batches.map(async (batch) => {
+        for (const realm of batch) {
+          const tokenLists = await this.fetchTokens(realm.realm, realm.governances);
 
-        if (mint === SOL_ADDR || mint === USDC_ADDR) {
-          totalTvl.tvl[mint] = totalTvl.tvl[mint].plus(amount);
-        } else {
-          if (!totalTvl.ownTokens[mint]) {
-            totalTvl.ownTokens[mint] = new BigNumber(0);
+          for (const [mint, amount] of Object.entries(tokenLists)) {
+            tokens.add(mint);
+
+            if (mint === SOL_ADDR || mint === USDC_ADDR) {
+              totalTvl.tvl[mint] = totalTvl.tvl[mint].plus(amount);
+            } else {
+              if (!totalTvl.ownTokens[mint]) {
+                totalTvl.ownTokens[mint] = new BigNumber(0);
+              }
+
+              totalTvl.ownTokens[mint] = totalTvl.ownTokens[mint].plus(amount);
+            }
           }
-
-          totalTvl.ownTokens[mint] = totalTvl.ownTokens[mint].plus(amount);
         }
-      }
-    }
+      }),
+    );
 
     this.logger.verbose('Completed calculating TVL');
     return totalTvl;
@@ -168,7 +176,7 @@ export class StatsService {
 
   async fetchGovernances(realms: Realm[]) {
     const connection = this.heliusService.connection('mainnet');
-    const batches = batch(realms, 5);
+    const batches = batch(realms, 50);
     const realmsWithGovernances: {
       realm: Realm;
       name: string;

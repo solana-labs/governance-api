@@ -19,15 +19,14 @@ import { DialectService } from './dialect.service';
     {
       provide: DialectSdk,
       useFactory: (configService: ConfigService) => {
-        // return Dialect.sdk(
-        //   {
-        //     environment: configService.get('external.dialectSdkEnvironment') as Environment,
-        //   },
-        //   SolanaSdkFactory.create({
-        //     wallet: NodeDialectSolanaWalletAdapter.create(),
-        //   }),
-        // );
-        return null;
+        return Dialect.sdk(
+          {
+            environment: configService.get('external.dialectSdkEnvironment') as Environment,
+          },
+          SolanaSdkFactory.create({
+            wallet: NodeDialectSolanaWalletAdapter.create(),
+          }),
+        );
       },
       inject: [ConfigService],
     },

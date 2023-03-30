@@ -9,7 +9,7 @@ import { MatchdayDiscordUser } from './entities/MatchdayDiscordUser.entity';
 
 // You figure this ID out by passing a Solana NFT into this API: https://simplehash.readme.io/reference/nft-by-token_id-1
 // and seeing what collection id gets returned
-const SIMPLEHASH_CHALLENGE_PASS_COLLECTION_ID = '220efa958c716cd8ad1788d07861e511';
+const SIMPLEHASH_CHALLENGE_PASS_COLLECTION_ID = '12ad92a4cf8347afe051326ddd7e439a';
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

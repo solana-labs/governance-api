@@ -12,6 +12,8 @@ import {
   Res,
 } from '@nestjs/common';
 import { PublicKey } from '@solana/web3.js';
+import { Request } from 'express';
+
 import * as nacl from 'tweetnacl';
 
 import { ConfigService } from '@src/config/config.service';

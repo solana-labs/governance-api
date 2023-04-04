@@ -29,33 +29,41 @@
 ## Installation
 
 ```bash
-$ npm install
+$ yarn install
+```
+
+## Setup
+
+You'll need to have a postgresql instance running locally.
+
+```bash
+$ yarn run db:setup
 ```
 
 ## Running the app
 
 ```bash
 # development
-$ npm run start
+$ yarn run start
 
 # watch mode
-$ npm run start:dev
+$ yarn run start:dev
 
 # production mode
-$ npm run start:prod
+$ yarn run start:prod
 ```
 
 ## Test
 
 ```bash
 # unit tests
-$ npm run test
+$ yarn run test
 
 # e2e tests
-$ npm run test:e2e
+$ yarn run test:e2e
 
 # test coverage
-$ npm run test:cov
+$ yarn run test:cov
 ```
 
 ## Support

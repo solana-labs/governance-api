@@ -235,7 +235,7 @@ export class RealmFeedItemService {
       throw new errors.UnsupportedDevnet();
     }
 
-    const canDelete = await this.realmService.userIsCouncilMember(
+    const canDelete = await this.realmService.userIsAdminMember(
       args.realmPublicKey,
       args.requestingUser.publicKey,
       args.environment,

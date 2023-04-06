@@ -408,7 +408,7 @@ export class RealmService {
       throw new errors.UnsupportedDevnet();
     }
 
-    if (!(await this.userIsCouncilMember(publicKey, user.publicKey, environment))) {
+    if (!(await this.userIsAdminMember(publicKey, user.publicKey, environment))) {
       throw new errors.Unauthorized();
     }
 
@@ -453,33 +453,49 @@ export class RealmService {
   }
 
   /**
-   * Check if a user is a council member
+   * Check if a user is an admin member of the dao
    */
-  async userIsCouncilMember(
+  async userIsAdminMember(
     realmPublicKey: PublicKey,
     userPublicKey: PublicKey,
     environment: Environment,
   ) {
     const realm = await this.heliusService.getRealm(realmPublicKey, environment);
-
-    const councilMint = realm.account.config.councilMint;
-
-    if (!councilMint) {
-      return false;
-    }
-
     const programId = await this.heliusService.getProgramId(realmPublicKey, environment);
 
-    const tokenAccount = await this.heliusService.getTokenOwnerRecordForRealm(
-      programId,
-      realmPublicKey,
-      councilMint,
-      userPublicKey,
-      environment,
-    );
+    const councilMint = realm.account.config.councilMint;
+    const communityMint = realm.account.communityMint;
 
-    if (tokenAccount && tokenAccount.account.governingTokenDepositAmount.toNumber() > 0) {
-      return true;
+    if (councilMint) {
+      const tokenAccount = await this.heliusService.getTokenOwnerRecordForRealm(
+        programId,
+        realmPublicKey,
+        councilMint,
+        userPublicKey,
+        environment,
+      );
+
+      if (tokenAccount && tokenAccount.account.governingTokenDepositAmount.toNumber() > 0) {
+        return true;
+      }
+    }
+
+    if (!councilMint && communityMint) {
+      const minTokenToCreateGovernance = realm.account.config.minCommunityTokensToCreateGovernance;
+      const tokenAccount = await this.heliusService.getTokenOwnerRecordForRealm(
+        programId,
+        realmPublicKey,
+        communityMint,
+        userPublicKey,
+        environment,
+      );
+
+      if (
+        tokenAccount &&
+        tokenAccount.account.governingTokenDepositAmount.gte(minTokenToCreateGovernance)
+      ) {
+        return true;
+      }
     }
 
     return false;

@@ -64,7 +64,7 @@ export class RealmResolver {
       return false;
     }
 
-    return this.realmService.userIsCouncilMember(realm.publicKey, user.publicKey, environment);
+    return this.realmService.userIsAdminMember(realm.publicKey, user.publicKey, environment);
   }
 
   @ResolveField(() => ClippedRichTextDocument, {

@@ -4,6 +4,7 @@ import { MintMaxVoteWeightSourceType } from '@solana/spl-governance';
 import { PublicKey } from '@solana/web3.js';
 import { BigNumber } from 'bignumber.js';
 import { secondsToHours } from 'date-fns';
+import { isNil } from 'ramda';
 
 import * as errors from '@lib/errors/gql';
 import { Environment } from '@lib/types/Environment';
@@ -178,7 +179,9 @@ export class RealmGovernanceService {
           onChainConfig.minCommunityTokensToCreateProposal.toString(),
         ).shiftedBy(-communityMintInfo.account.decimals),
       },
-      depositExemptProposalCount: (onChainConfig as any)['depositExemptProposalCount'] || 10,
+      depositExemptProposalCount: isNil((onChainConfig as any)['depositExemptProposalCount'])
+        ? 10
+        : (onChainConfig as any)['depositExemptProposalCount'],
       maxVoteDays: secondsToHours(onChainConfig.maxVotingTime) / 24,
       minInstructionHoldupDays: secondsToHours(onChainConfig.minInstructionHoldUpTime) / 24,
       version: programVersion,

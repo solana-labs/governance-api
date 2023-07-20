@@ -51,6 +51,12 @@ import { ConfigService } from './config.service';
               publicKey: process.env.DISCORD_MATCHDAY_APPLICATION_PUBLIC_KEY as string,
               oauthRedirectUri: process.env.DISCORD_MATCHDAY_OAUTH_REDIRECT_URI as string,
             },
+            validatorDiscord: {
+              clientId: process.env.DISCORD_VALIDATOR_CONNECTION_CLIENT_ID as string,
+              clientSecret: process.env.DISCORD_VALIDATOR_CONNECTION_CLIENT_SECRET as string,
+              publicKey: process.env.DISCORD_VALIDATOR_APPLICATION_PUBLIC_KEY as string,
+              oauthRedirectUri: process.env.DISCORD_VALIDATOR_OAUTH_REDIRECT_URI as string,
+            },
             external: {
               dialectSdkCredentials: process.env.DIALECT_SDK_CREDENTIALS,
               dialectSdkEnvironment: process.env.DIALECT_SDK_ENVIRONMENT,

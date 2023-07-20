@@ -30,7 +30,7 @@ export class MatchdayDiscordUserController {
   constructor(
     private readonly matchdayDiscordUserService: MatchdayDiscordUserService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {} 
 
   @Post('/matchday/verify-command')
   @HttpCode(200)

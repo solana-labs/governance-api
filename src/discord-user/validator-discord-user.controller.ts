@@ -20,6 +20,7 @@ import * as crypto from "crypto";
 import { ConfigService } from '@src/config/config.service';
 
 import { ValidatorDiscordUserService } from './validator-discord-user.service';
+import { access } from 'fs';
 
 const DELAY_DURATION = 15_000;
 
@@ -62,23 +63,27 @@ export class ValidatorDiscordUserController {
 
         const { signature } = body;
 
-        const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordauthorizationcode);
+        // check to see if the signature is a validator and signature matches
 
-        // 2. Uses the Discord Access Token to fetch the user profile
-        const meData = await this.validatorDiscordUserService.getUserData(tokens);
-        const userId = meData.user.id;        
+        const discordUser = await this.validatorDiscordUserService.getDiscordUserByPublicKey(new PublicKey(publicKey));
 
-        await this.validatorDiscordUserService.createDiscordUser(userId, new PublicKey(publicKey), tokens.refresh_token);
+        if (discordUser) {
+          await this.validatorDiscordUserService.updateMetadataForUser(new PublicKey(publicKey));
+        }
+        else {
+          const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordauthorizationcode);
 
-        const metadata = await this.validatorDiscordUserService.calculateMetadata(publicKey);
+          const meData = await this.validatorDiscordUserService.getUserData(tokens);
+          const userId = meData.user.id;
 
-        console.log(metadata);
+          await this.validatorDiscordUserService.createDiscordUser(userId, new PublicKey(publicKey), tokens.refresh_token);
 
-        await this.validatorDiscordUserService.pushMetadata(userId, tokens, metadata);
+          const metadata = await this.validatorDiscordUserService.calculateMetadata(publicKey);
 
-
-
+          await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
+        }
         
+
 
         // await this.validatorDiscordUserService.updateMetadata(userId);
 

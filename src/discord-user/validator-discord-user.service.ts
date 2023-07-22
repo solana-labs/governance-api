@@ -197,67 +197,76 @@ export class ValidatorDiscordUserService {
         }
     }
 
-    async getAccessToken(userId, tokens) {
-        if (Date.now() > tokens.expires_at) {
-        const url = 'https://discord.com/api/v10/oauth2/token';
-        const body = new URLSearchParams({
-            client_id: this.configService.get('validatorDiscord.clientId'),
-            client_secret: this.configService.get('validatorDiscord.clientSecret'),
-            grant_type: 'authorization_code',
-            refresh_token: tokens.refresh_token,
-        });
+    async getUserDataWithAccessToken(access_token) {
+        const url = 'https://discord.com/api/v10/oauth2/@me';
         const response = await fetch(url, {
-            body,
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            },
+        headers: {
+            Authorization: `Bearer ${access_token}`,
+        },
         });
         if (response.ok) {
-            const tokens = await response.json();
-            tokens.expires_at = Date.now() + tokens.expires_in * 1000;
-            //await storage.storeDiscordTokens(userId, tokens);
-            return tokens.access_token;
+            const data = await response.json();
+            return data;
         } else {
-            throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
+            throw new Error(`Error fetching user data: [${response.status}] ${response.statusText}`);
         }
+    }
+
+    async getAccessToken(userId, tokens) {
+        if (Date.now() > tokens.expires_at) {
+            const url = 'https://discord.com/api/v10/oauth2/token';
+            const body = new URLSearchParams({
+                client_id: this.configService.get('validatorDiscord.clientId'),
+                client_secret: this.configService.get('validatorDiscord.clientSecret'),
+                grant_type: 'authorization_code',
+                refresh_token: tokens.refresh_token,
+            });
+            const response = await fetch(url, {
+                body,
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            });
+            if (response.ok) {
+                const tokens = await response.json();
+                tokens.expires_at = Date.now() + tokens.expires_in * 1000;
+                return tokens.access_token;
+            } else {
+                throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
+            }
         }
         return tokens.access_token;
     }
 
-    // async updateMetadata(userId) {
-    //     // Fetch the Discord tokens from storage
-    //     const tokens = await storage.getDiscordTokens(userId);
-          
-    //     let metadata = {};
-    //     try {
-    //       // Fetch the new metadata you want to use from an external source. 
-    //       // This data could be POST-ed to this endpoint, but every service
-    //       // is going to be different.  To keep the example simple, we'll
-    //       // just generate some random data. 
-    //       metadata = {
-    //         cookieseaten: 1483,
-    //         allergictonuts: 0, // 0 for false, 1 for true
-    //         firstcookiebaked: '2003-12-20',
-    //       };
-    //     } catch (e) {
-    //       e.message = `Error fetching external data: ${e.message}`;
-    //       console.error(e);
-    //       // If fetching the profile data for the external service fails for any reason,
-    //       // ensure metadata on the Discord side is nulled out. This prevents cases
-    //       // where the user revokes an external app permissions, and is left with
-    //       // stale linked role data.
-    //     }
-      
-    //     // Push the data to Discord.
-    //     await discord.pushMetadata(userId, tokens, metadata);
-    //   }
-      
+    async updateMetadataForUser(publicKey: PublicKey) {
+        const discordUser = await this.getDiscordUserByPublicKey(publicKey);
 
-    async pushMetadata(userId, tokens, metadata) {
+        if (discordUser) {
+            const accessAndRefreshTokens = await this.getAccessTokenWithRefreshToken(discordUser.refreshToken);
+
+            // update the refresh token
+            await this.validatorDiscordUserRepository.update(discordUser.id, {
+                refreshToken: accessAndRefreshTokens.refresh_token,
+            });
+
+            const metadata = await this.calculateMetadata(publicKey.toBase58());
+
+            const meData = await this.getUserDataWithAccessToken(accessAndRefreshTokens.access_token);
+            const userId = meData.user.id;
+
+            await this.pushMetadata(userId, accessAndRefreshTokens.access_token, metadata);
+        }
+        else {
+            this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
+            throw new Error('Discord user not found');
+        }
+    }
+
+    async pushMetadata(userId, accessToken, metadata) {
         // PUT /users/@me/applications/:id/role-connection
         const url = `https://discord.com/api/v10/users/@me/applications/${this.configService.get('validatorDiscord.clientId')}/role-connection`;
-        const accessToken = await this.getAccessToken(userId, tokens);
+        //const accessToken = await this.getAccessToken(userId, tokens);
         const body = {
           platform_name: 'Validator',
           metadata,
@@ -276,21 +285,38 @@ export class ValidatorDiscordUserService {
       }
 
     async getAccessTokenWithRefreshToken(refreshToken: string) {
-        const { client_id, client_secret } = this.getDiscordApplicationCredentials();
         const body = new URLSearchParams({
-          client_id,
-          client_secret,
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
+            client_id: this.configService.get('validatorDiscord.clientId'),
+            client_secret: this.configService.get('validatorDiscord.clientSecret'),
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
         }).toString();
     
-        const response = await fetch('https://discord.com/api/oauth2/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body,
+        const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+            body,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
         });
+
+        if (response.ok) {
+            const tokens = await response.json();
+
+            tokens.expires_at = Date.now() + tokens.expires_in * 1000;
+            //await storage.storeDiscordTokens(userId, tokens);
+
+            const access_token = tokens.access_token;
+            const refresh_token = tokens.refresh_token;
+
+            return { access_token, refresh_token };
+        }
+        else {
+            const errorText = await response.text();
+            console.log("Error text: ", errorText);
+
+            throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
+        }
     
         const { access_token: accessToken, refresh_token } = await response.json();
         return { accessToken, refreshToken: refresh_token };
@@ -305,19 +331,19 @@ export class ValidatorDiscordUserService {
       }
     
     /**
-   * Creates a new Discord user
-   */
-  async createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
-    const insertResult = await this.validatorDiscordUserRepository.upsert(
-      {
-        authId,
-        publicKeyStr: publicKey.toBase58(),
-        refreshToken,
-      },
-      { conflictPaths: ['authId'] },
-    );
+    * Creates a new Discord user
+    */
+    async createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
+        const insertResult = await this.validatorDiscordUserRepository.upsert(
+        {
+            authId,
+            publicKeyStr: publicKey.toBase58(),
+            refreshToken,
+        },
+        { conflictPaths: ['authId'] },
+        );
 
-    return insertResult;
+        return insertResult;
   }
 
   /**

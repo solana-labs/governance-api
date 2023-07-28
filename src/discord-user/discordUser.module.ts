@@ -17,7 +17,7 @@ import { ValidatorDiscordUserService } from './validator-discord-user.service';
 @Module({
   imports: [TypeOrmModule.forFeature([DiscordUser, MatchdayDiscordUser, ValidatorDiscordUser]), ConfigModule],
   controllers: [DiscordUserController, MatchdayDiscordUserController, ValidatorDiscordUserController],
-  providers: [DiscordUserResolver, DiscordUserService, MatchdayDiscordUserService, ValidatorDiscordUserService],
-  exports: [DiscordUserService],
+  providers: [DiscordUserResolver, DiscordUserService, MatchdayDiscordUserService, ValidatorDiscordUserService, ValidatorDiscordUser],
+  exports: [DiscordUserService, ValidatorDiscordUser],
 })
 export class DiscordUserModule {}

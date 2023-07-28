@@ -30,5 +30,21 @@
     "description": "Whether or not this keypair operates a validator on mainnet within last epoch",
     "name_localizations": null,
     "description_localizations": null
+  },
+  {
+    "type": 3,
+    "key": "testnet_activated_stake",
+    "name": "Activated stake on testnet",
+    "description": "The stake weight associated with this acocunt on testnet",
+    "name_localizations": null,
+    "description_localizations": null
+  },
+  {
+    "type": 3,
+    "key": "mainnet_activated_stake",
+    "name": "Activated stake on mainnet",
+    "description": "The stake weight associated with this acocunt on mainnet",
+    "name_localizations": null,
+    "description_localizations": null
   }
 ]

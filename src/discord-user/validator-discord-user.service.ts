@@ -1,15 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PublicKey } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { Repository } from 'typeorm';
 
 import { ConfigService } from '@src/config/config.service';
 import axios from "axios";
 import { ValidatorDiscordUser } from './entities/ValidatorDiscordUser.entity';
-
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 @Injectable()
 export class ValidatorDiscordUserService {
@@ -27,6 +23,7 @@ export class ValidatorDiscordUserService {
             is_mainnet_validator: 0,
             is_active_testnet_validator: 0,
             is_active_mainnet_validator: 0,
+            mainnet_activated_stake: 0,
         };
 
         if (await this.isTestnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
@@ -41,6 +38,8 @@ export class ValidatorDiscordUserService {
         if (await this.isActiveMainnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
             metadata.is_active_mainnet_validator = 1;
         }
+        metadata.mainnet_activated_stake = await this.getMainnetActivatedStake(publicKey, this.configService.get('helius.apiKey')) || 0
+
 
         return metadata;
     }
@@ -154,6 +153,38 @@ export class ValidatorDiscordUserService {
         } catch (error) {
             console.error('Failed to check validator status:', error);
             return false;
+        }
+    }
+
+    // get testnet stake weight
+    async getMainnetActivatedStake(votePubkey: string, apiKey: string) {
+        try {
+            if (await this.isMainnetValidator(votePubkey, apiKey)) {
+                const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
+                jsonrpc: "2.0",
+                id: 1,
+                method: "getVoteAccounts",
+                params: [
+                    {
+                        "votePubkey": votePubkey
+                    }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+    
+            if (response.data.result.current[0] != null) {
+                const lamport_stake = response.data.result.current[0].activatedStake
+                return Math.round(lamport_stake / LAMPORTS_PER_SOL);
+            }
+            return 0;
+            }
+    
+        } catch (error) {
+            console.error('Failed to check validator status:', error);
+            return 0;
         }
     }
 
@@ -317,10 +348,7 @@ export class ValidatorDiscordUserService {
 
             throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
         }
-    
-        const { access_token: accessToken, refresh_token } = await response.json();
-        return { accessToken, refreshToken: refresh_token };
-      }
+    }
 
     getDiscordApplicationCredentials() {
         return {

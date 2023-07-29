@@ -299,19 +299,19 @@ export class ValidatorDiscordUserService {
         const url = `https://discord.com/api/v10/users/@me/applications/${this.configService.get('validatorDiscord.clientId')}/role-connection`;
         //const accessToken = await this.getAccessToken(userId, tokens);
         const body = {
-          platform_name: 'Validator',
-          metadata,
+            platform_name: 'Validator',
+            metadata,
         };
         const response = await fetch(url, {
-          method: 'PUT',
-          body: JSON.stringify(body),
-          headers: {
+            method: 'PUT',
+            body: JSON.stringify(body),
+            headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-          },
+            },
         });
         if (!response.ok) {
-          throw new Error(`Error pushing discord metadata: [${response.status}] ${response.statusText}`);
+            throw new Error(`Error pushing discord metadata: [${response.status}] ${response.statusText}`);
         }
       }
 
@@ -331,14 +331,16 @@ export class ValidatorDiscordUserService {
             },
         });
 
+        console.log('refresh token 1: ', refreshToken);
+
         if (response.ok) {
             const tokens = await response.json();
 
             tokens.expires_at = Date.now() + tokens.expires_in * 1000;
-            //await storage.storeDiscordTokens(userId, tokens);
 
             const access_token = tokens.access_token;
             const refresh_token = tokens.refresh_token;
+            console.log('refresh token 2: ', refresh_token);
 
             return { access_token, refresh_token };
         }
@@ -370,6 +372,8 @@ export class ValidatorDiscordUserService {
         },
         { conflictPaths: ['authId'] },
         );
+
+        console.log('initial refresh token: ', refreshToken)
 
         return insertResult;
   }

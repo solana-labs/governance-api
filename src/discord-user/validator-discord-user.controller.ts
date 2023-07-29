@@ -28,22 +28,23 @@ export class ValidatorDiscordUserController {
         private readonly configService: ConfigService,
     ) {}
 
-    @Post('/verify-gossip-keypair')
-    @HttpCode(200)
-    async validatorPayload(
-        @Body() body: {code: string, publicKey: string},
-        // @Headers() headers,
-        // @Req() req: Request,
-        // @Res() res,
-    ) {
-        const { code, publicKey } = body;
-        const payload = {
-            code: code,
-            publicKey: publicKey
-        };
+    // this is for time-bound verification, which is not currently implemented
+    // @Post('/verify-gossip-keypair')
+    // @HttpCode(200)
+    // async validatorPayload(
+    //     @Body() body: {code: string, publicKey: string},
+    //     // @Headers() headers,
+    //     // @Req() req: Request,
+    //     // @Res() res,
+    // ) {
+    //     const { code, publicKey } = body;
+    //     const payload = {
+    //         code: code,
+    //         publicKey: publicKey
+    //     };
 
-        return code;
-    }
+    //     return code;
+    // }
 
     async verifySignature (publicKeyBase58: string, m: string, signatureBase58: string) {
         // equivalent of "solana offchain" in bytes
@@ -81,13 +82,6 @@ export class ValidatorDiscordUserController {
     ) {
 
         const { signature } = body;
-
-        // const payload = {
-        //   "code": discordauthorizationcode,
-        //   "publicKey": publicKey
-        // };
-
-        // const messagePayload = JSON.stringify(payload);
         
         const discordUser = await this.validatorDiscordUserService.getDiscordUserByPublicKey(new PublicKey(publicKey));
 
@@ -96,8 +90,7 @@ export class ValidatorDiscordUserController {
         }
         else {
             const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey, this.configService.get('helius.apiKey')) ||
-                            await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'));
-        
+                            await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
         
             const isValidSignature = await this.verifySignature(publicKey, discordauthorizationcode, signature);
 
@@ -111,9 +104,10 @@ export class ValidatorDiscordUserController {
 
                 const metadata = await this.validatorDiscordUserService.calculateMetadata(publicKey);
 
-                console.log(metadata);
-
                 await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
+            }
+            else {
+                throw new HttpException('Invalid signature', HttpStatus.BAD_REQUEST);
             }
         }
     }

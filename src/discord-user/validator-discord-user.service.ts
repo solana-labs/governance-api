@@ -7,6 +7,8 @@ import { ConfigService } from '@src/config/config.service';
 import axios from "axios";
 import { ValidatorDiscordUser } from './entities/ValidatorDiscordUser.entity';
 
+const STAKE_THRESHOLD = 0;
+
 @Injectable()
 export class ValidatorDiscordUserService {
     private logger = new Logger(ValidatorDiscordUser.name);
@@ -23,7 +25,7 @@ export class ValidatorDiscordUserService {
             is_mainnet_validator: 0,
             is_active_testnet_validator: 0,
             is_active_mainnet_validator: 0,
-            mainnet_activated_stake: 0,
+            mainnet_activated_stake_threshold: 0,
         };
 
         if (await this.isTestnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
@@ -38,8 +40,9 @@ export class ValidatorDiscordUserService {
         if (await this.isActiveMainnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
             metadata.is_active_mainnet_validator = 1;
         }
-        metadata.mainnet_activated_stake = await this.getMainnetActivatedStake(publicKey, this.configService.get('helius.apiKey')) || 0
-
+        if (await this.getMainnetActivatedStake(publicKey, this.configService.get('helius.apiKey'))) {
+            metadata.mainnet_activated_stake_threshold = 1;
+        }
 
         return metadata;
     }
@@ -160,29 +163,34 @@ export class ValidatorDiscordUserService {
     async getMainnetActivatedStake(votePubkey: string, apiKey: string) {
         try {
             if (await this.isMainnetValidator(votePubkey, apiKey)) {
-                const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
-                jsonrpc: "2.0",
-                id: 1,
-                method: "getVoteAccounts",
-                params: [
-                    {
-                        "votePubkey": votePubkey
+                    const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
+                    jsonrpc: "2.0",
+                    id: 1,
+                    method: "getVoteAccounts",
+                    params: [
+                        {
+                            "votePubkey": votePubkey
+                        }
+                    ]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                ]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
+                });
+        
+                if (response.data.result.current[0] != null) {
+                    const lamport_stake = response.data.result.current[0].activatedStake
+                    const sol_stake = Math.round(lamport_stake / LAMPORTS_PER_SOL);
+
+                    if (sol_stake >= STAKE_THRESHOLD) {
+                        return true;
+                    }
                 }
-            });
-    
-            if (response.data.result.current[0] != null) {
-                const lamport_stake = response.data.result.current[0].activatedStake
-                return Math.round(lamport_stake / LAMPORTS_PER_SOL);
+                return false;
             }
-            return 0;
-            }
-    
-        } catch (error) {
+            return false;
+        } 
+        catch (error) {
             console.error('Failed to check validator status:', error);
             return 0;
         }
@@ -293,6 +301,19 @@ export class ValidatorDiscordUserService {
             throw new Error('Discord user not found');
         }
     }
+
+    async deleteDiscordUser(publicKey: PublicKey) {
+        const user = await this.getDiscordUserByPublicKey(publicKey);
+      
+        if (!user) {
+          this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
+          throw new Error('Discord user not found');
+        }
+      
+        await this.validatorDiscordUserRepository.delete(user.id);
+      
+        this.logger.debug(`Deleted Discord user for ${publicKey.toBase58()}`);
+      }
 
     async pushMetadata(userId, accessToken, metadata) {
         // PUT /users/@me/applications/:id/role-connection

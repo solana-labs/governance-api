@@ -73,12 +73,35 @@ export class ValidatorDiscordUserController {
         return nacl.sign.detached.verify(fullSerializedMessage, sig, publicKey);
     }
 
-    @Post('/verify-gossip-keypair/:publicKey/:discordauthorizationcode')
+    async newDiscordUser(publicKey: string, discordAuthorizationCode: string, signature: string) {
+        const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey, this.configService.get('helius.apiKey')) ||
+                        await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
+    
+        const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
+
+        if (isValidSignature) { // && isValidator for production
+            const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
+
+            const meData = await this.validatorDiscordUserService.getUserData(tokens);
+            const userId = meData.user.id;
+
+            await this.validatorDiscordUserService.createDiscordUser(userId, new PublicKey(publicKey), tokens.refresh_token);
+
+            const metadata = await this.validatorDiscordUserService.calculateMetadata(publicKey);
+
+            await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
+        }
+        else {
+            throw new HttpException('Invalid signature', HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Post('/verify-gossip-keypair/:publicKey/:discordAuthorizationCode')
     @HttpCode(200)
     async validatorVerify(
         @Body() body: {signature: string},
         @Param('publicKey') publicKey: string,
-        @Param('discordauthorizationcode') discordauthorizationcode: string,
+        @Param('discordAuthorizationCode') discordAuthorizationCode: string,
     ) {
 
         const { signature } = body;
@@ -86,16 +109,21 @@ export class ValidatorDiscordUserController {
         const discordUser = await this.validatorDiscordUserService.getDiscordUserByPublicKey(new PublicKey(publicKey));
 
         if (discordUser) {
-            await this.validatorDiscordUserService.updateMetadataForUser(new PublicKey(publicKey));
+            try {
+                await this.validatorDiscordUserService.updateMetadataForUser(new PublicKey(publicKey));
+            } catch (error) { // existing user with Oauth tokens stored but wants to refresh
+                await this.validatorDiscordUserService.deleteDiscordUser(new PublicKey(publicKey));
+                await this.newDiscordUser(publicKey, discordAuthorizationCode, signature);
+            }
         }
         else {
             const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey, this.configService.get('helius.apiKey')) ||
                             await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
         
-            const isValidSignature = await this.verifySignature(publicKey, discordauthorizationcode, signature);
+            const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
 
             if (isValidSignature) { // && isValidator for production
-                const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordauthorizationcode);
+                const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
 
                 const meData = await this.validatorDiscordUserService.getUserData(tokens);
                 const userId = meData.user.id;

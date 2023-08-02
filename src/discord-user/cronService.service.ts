@@ -18,8 +18,8 @@ export class CronService {
     ) {}
 
     // updates cannot be too frequent per Discord API rate limits
-    //@Cron("0 0 */2 * *") // every 2 days (the approximate length of each Solana epoch)
-    @Cron(CronExpression.EVERY_12_HOURS) // for testing
+    //@Cron("0 0 */2 * *") // every 2 days (approximate length of each Solana epoch)
+    @Cron(CronExpression.EVERY_10_MINUTES) // for testing
     async handleCron() {
         try {
             const validatorDiscordUsers = await this.validatorDiscordUserRepository.find();

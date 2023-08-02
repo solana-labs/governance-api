@@ -159,35 +159,35 @@ export class ValidatorDiscordUserService {
         }
     }
 
-    // get testnet stake weight
     async getMainnetActivatedStake(votePubkey: string, apiKey: string) {
         try {
             if (await this.isMainnetValidator(votePubkey, apiKey)) {
-                    const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
-                    jsonrpc: "2.0",
-                    id: 1,
-                    method: "getVoteAccounts",
-                    params: [
-                        {
-                            "votePubkey": votePubkey
-                        }
-                    ]
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json'
+                const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
+                jsonrpc: "2.0",
+                id: 1,
+                method: "getVoteAccounts",
+                params: [
+                    {
+                        "votePubkey": votePubkey
                     }
-                });
-        
-                if (response.data.result.current[0] != null) {
-                    const lamport_stake = response.data.result.current[0].activatedStake
-                    const sol_stake = Math.round(lamport_stake / LAMPORTS_PER_SOL);
-
-                    if (sol_stake >= STAKE_THRESHOLD) {
-                        return true;
-                    }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-                return false;
+            });
+        
+            if (response.data.result.current[0] != null) {
+                const lamport_stake = response.data.result.current[0].activatedStake
+                const sol_stake = Math.round(lamport_stake / LAMPORTS_PER_SOL);
+
+                if (sol_stake >= STAKE_THRESHOLD) {
+                    return true;
+                }
             }
+            return false;
+            }
+            
             return false;
         } 
         catch (error) {

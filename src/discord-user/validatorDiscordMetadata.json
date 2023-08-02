@@ -1,50 +1,42 @@
 [
-  {
-    "type": 7,
-    "key": "is_testnet_validator",
-    "name": "Is a validator on testnet",
-    "description": "Whether or not this keypair operates a validator on testnet",
-    "name_localizations": null,
-    "description_localizations": null
-  },
-  {
-    "type": 7,
-    "key": "is_mainnet_validator",
-    "name": "Is a validator on mainnet",
-    "description": "Whether or not this keypair operates a validator on mainnet",
-    "name_localizations": null,
-    "description_localizations": null
-  },
-  {
-    "type": 7,
-    "key": "is_active_testnet_validator",
-    "name": "Is an active validator on testnet",
-    "description": "Whether or not this keypair operates a validator on testnet within last epoch",
-    "name_localizations": null,
-    "description_localizations": null
-  },
-  {
-    "type": 7,
-    "key": "is_active_mainnet_validator",
-    "name": "Is an active validator on mainnet",
-    "description": "Whether or not this keypair operates a validator on mainnet within last epoch",
-    "name_localizations": null,
-    "description_localizations": null
-  },
-  {
-    "type": 3,
-    "key": "testnet_activated_stake",
-    "name": "Activated stake on testnet",
-    "description": "The stake weight associated with this acocunt on testnet",
-    "name_localizations": null,
-    "description_localizations": null
-  },
-  {
-    "type": 3,
-    "key": "mainnet_activated_stake",
-    "name": "Activated stake on mainnet",
-    "description": "The stake weight associated with this acocunt on mainnet",
-    "name_localizations": null,
-    "description_localizations": null
-  }
+{
+  "type": 7,
+  "key": "is_testnet_validator",
+  "name": "Is a validator on testnet",
+  "description": "Whether or not this keypair operates a validator on testnet",
+  "name_localizations": null,
+  "description_localizations": null
+},
+{
+  "type": 7,
+  "key": "is_mainnet_validator",
+  "name": "Is a validator on mainnet",
+  "description": "Whether or not this keypair operates a validator on mainnet",
+  "name_localizations": null,
+  "description_localizations": null
+},
+{
+  "type": 7,
+  "key": "is_active_testnet_validator",
+  "name": "Is an active validator on testnet",
+  "description": "Whether or not this keypair operates a validator on testnet within last epoch",
+  "name_localizations": null,
+  "description_localizations": null
+},
+{
+  "type": 7,
+  "key": "is_active_mainnet_validator",
+  "name": "Is an active validator on mainnet",
+  "description": "Whether or not this keypair operates a validator on mainnet within last epoch",
+  "name_localizations": null,
+  "description_localizations": null
+},
+{
+  "type": 7,
+  "key": "mainnet_activated_stake_threshold",
+  "name": "Has stake over 5,000 SOL on mainnet",
+  "description": "True if the stake weight associated with this account on mainnet is greater than or equal to 5,000 SOL",
+  "name_localizations": null,
+  "description_localizations": null
+}
 ]

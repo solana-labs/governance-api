@@ -117,26 +117,7 @@ export class ValidatorDiscordUserController {
             }
         }
         else {
-            const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey, this.configService.get('helius.apiKey')) ||
-                            await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
-        
-            const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
-
-            if (isValidSignature) { // && isValidator for production
-                const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
-
-                const meData = await this.validatorDiscordUserService.getUserData(tokens);
-                const userId = meData.user.id;
-
-                await this.validatorDiscordUserService.createDiscordUser(userId, new PublicKey(publicKey), tokens.refresh_token);
-
-                const metadata = await this.validatorDiscordUserService.calculateMetadata(publicKey);
-
-                await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
-            }
-            else {
-                throw new HttpException('Invalid signature', HttpStatus.BAD_REQUEST);
-            }
+            await this.newDiscordUser(publicKey, discordAuthorizationCode, signature);
         }
     }
 }

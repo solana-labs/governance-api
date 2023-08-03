@@ -74,12 +74,12 @@ export class ValidatorDiscordUserController {
     }
 
     async newDiscordUser(publicKey: string, discordAuthorizationCode: string, signature: string) {
-        const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey, this.configService.get('helius.apiKey')) ||
+        const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey) ||
                         await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
     
         const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
 
-        if (isValidSignature) { // && isValidator for production
+        if (isValidator) { // && isValidSignature for production
             const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
 
             const meData = await this.validatorDiscordUserService.getUserData(tokens);

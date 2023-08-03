@@ -7,7 +7,7 @@ import { ConfigService } from '@src/config/config.service';
 import axios from "axios";
 import { ValidatorDiscordUser } from './entities/ValidatorDiscordUser.entity';
 
-const STAKE_THRESHOLD = 0;
+const STAKE_THRESHOLD = 5000;
 
 @Injectable()
 export class ValidatorDiscordUserService {
@@ -20,6 +20,8 @@ export class ValidatorDiscordUserService {
     ) {}
 
     async calculateMetadata(publicKey: string) {
+        const api_key = this.configService.get('helius.apiKey');
+
         let metadata = {
             is_testnet_validator: 0,
             is_mainnet_validator: 0,
@@ -28,26 +30,26 @@ export class ValidatorDiscordUserService {
             mainnet_activated_stake_threshold: 0,
         };
 
-        if (await this.isTestnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
+        if (await this.isTestnetValidator(publicKey)) {
             metadata.is_testnet_validator = 1;
         }
-        if (await this.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
+        if (await this.isMainnetValidator(publicKey, api_key)) {
             metadata.is_mainnet_validator = 1;
         }
-        if (await this.isActiveTestnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
+        if (await this.isActiveTestnetValidator(publicKey)) {
             metadata.is_active_testnet_validator = 1;
         }
-        if (await this.isActiveMainnetValidator(publicKey, this.configService.get('helius.apiKey'))) {
+        if (await this.isActiveMainnetValidator(publicKey, api_key)) {
             metadata.is_active_mainnet_validator = 1;
         }
-        if (await this.getMainnetActivatedStake(publicKey, this.configService.get('helius.apiKey'))) {
+        if (await this.getMainnetActivatedStake(publicKey, api_key)) {
             metadata.mainnet_activated_stake_threshold = 1;
         }
 
         return metadata;
     }
 
-    async isTestnetValidator(votePubkey: string, apiKey: string) {
+    async isTestnetValidator(votePubkey: string) {
         try {
             const response = await axios.post(`https://api.testnet.solana.com`, {
                 jsonrpc: "2.0",
@@ -104,7 +106,7 @@ export class ValidatorDiscordUserService {
     }
     
     // active is defined if validator has voted in the last epoch
-    async isActiveTestnetValidator(votePubkey: string, apiKey: string) {
+    async isActiveTestnetValidator(votePubkey: string) {
         try {
             const response = await axios.post(`https://api.testnet.solana.com`, {
                 jsonrpc: "2.0",
@@ -187,12 +189,12 @@ export class ValidatorDiscordUserService {
             }
             return false;
             }
-            
+
             return false;
         } 
         catch (error) {
             console.error('Failed to check validator status:', error);
-            return 0;
+            return false;
         }
     }
 
@@ -302,23 +304,10 @@ export class ValidatorDiscordUserService {
         }
     }
 
-    async deleteDiscordUser(publicKey: PublicKey) {
-        const user = await this.getDiscordUserByPublicKey(publicKey);
-      
-        if (!user) {
-          this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
-          throw new Error('Discord user not found');
-        }
-      
-        await this.validatorDiscordUserRepository.delete(user.id);
-      
-        this.logger.debug(`Deleted Discord user for ${publicKey.toBase58()}`);
-      }
-
     async pushMetadata(userId, accessToken, metadata) {
         // PUT /users/@me/applications/:id/role-connection
         const url = `https://discord.com/api/v10/users/@me/applications/${this.configService.get('validatorDiscord.clientId')}/role-connection`;
-        //const accessToken = await this.getAccessToken(userId, tokens);
+
         const body = {
             platform_name: 'Validator',
             metadata,
@@ -372,14 +361,6 @@ export class ValidatorDiscordUserService {
             throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
         }
     }
-
-    getDiscordApplicationCredentials() {
-        return {
-          client_id: this.configService.get('validatorDiscord.clientId'),
-          client_secret: this.configService.get('validatorDiscord.clientSecret'),
-          public_key: this.configService.get('validatorDiscord.publicKey'),
-        };
-      }
     
     /**
     * Creates a new Discord user
@@ -397,15 +378,28 @@ export class ValidatorDiscordUserService {
         console.log('initial refresh token: ', refreshToken)
 
         return insertResult;
-  }
+    }
 
-  /**
-   * Returns a user by their ID
-   */
-  async getDiscordUserByPublicKey(publicKey: PublicKey) {
+    async deleteDiscordUser(publicKey: PublicKey) {
+        const user = await this.getDiscordUserByPublicKey(publicKey);
+      
+        if (!user) {
+          this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
+          throw new Error('Discord user not found');
+        }
+      
+        await this.validatorDiscordUserRepository.delete(user.id);
+      
+        this.logger.debug(`Deleted Discord user for ${publicKey.toBase58()}`);
+    }
+
+    /**
+     * Returns a user by their ID
+     */
+    async getDiscordUserByPublicKey(publicKey: PublicKey) {
     const result = await this.validatorDiscordUserRepository.findOne({
-      where: { publicKeyStr: publicKey.toBase58() },
+        where: { publicKeyStr: publicKey.toBase58() },
     });
     return result;
-  }
+    }
 }

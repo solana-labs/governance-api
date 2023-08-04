@@ -92,7 +92,7 @@ export class ValidatorDiscordUserController {
             await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
         }
         else {
-            throw new HttpException('Invalid signature', HttpStatus.BAD_REQUEST);
+            throw new HttpException('Not a validator / invalid signature', HttpStatus.BAD_REQUEST);
         }
     }
 

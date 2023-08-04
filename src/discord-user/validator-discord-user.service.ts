@@ -20,7 +20,7 @@ export class ValidatorDiscordUserService {
     ) {}
 
     async calculateMetadata(publicKey: string) {
-        const api_key = this.configService.get('helius.apiKey');
+        const API_KEY = this.configService.get('helius.apiKey');
 
         let metadata = {
             is_testnet_validator: 0,
@@ -33,16 +33,16 @@ export class ValidatorDiscordUserService {
         if (await this.isTestnetValidator(publicKey)) {
             metadata.is_testnet_validator = 1;
         }
-        if (await this.isMainnetValidator(publicKey, api_key)) {
+        if (await this.isMainnetValidator(publicKey, API_KEY)) {
             metadata.is_mainnet_validator = 1;
         }
         if (await this.isActiveTestnetValidator(publicKey)) {
             metadata.is_active_testnet_validator = 1;
         }
-        if (await this.isActiveMainnetValidator(publicKey, api_key)) {
+        if (await this.isActiveMainnetValidator(publicKey, API_KEY)) {
             metadata.is_active_mainnet_validator = 1;
         }
-        if (await this.getMainnetActivatedStake(publicKey, api_key)) {
+        if (await this.getMainnetActivatedStake(publicKey, API_KEY)) {
             metadata.mainnet_activated_stake_threshold = 1;
         }
 

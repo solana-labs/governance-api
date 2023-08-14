@@ -8,6 +8,7 @@ import axios from "axios";
 import { ValidatorDiscordUser } from './entities/ValidatorDiscordUser.entity';
 
 const STAKE_THRESHOLD = 5000;
+const SLOTS_IN_EPOCH = 432000;
 
 @Injectable()
 export class ValidatorDiscordUserService {
@@ -108,6 +109,19 @@ export class ValidatorDiscordUserService {
     // active is defined if validator has voted in the last epoch
     async isActiveTestnetValidator(votePubkey: string) {
         try {
+            // get current slot
+            const slot_response = await axios.post(`https://api.testnet.solana.com`, {
+                jsonrpc: "2.0",
+                id: 1,
+                method: "getSlot"
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const current_slot = slot_response.data.result;
+
             const response = await axios.post(`https://api.testnet.solana.com`, {
                 jsonrpc: "2.0",
                 id: 1,
@@ -124,7 +138,10 @@ export class ValidatorDiscordUserService {
             });
     
             if (response.data.result.current[0] != null) {
-                return response.data.result.current[0].epochVoteAccount;
+                const last_vote = response.data.result.current[0].lastVote;
+                if (current_slot - last_vote < SLOTS_IN_EPOCH) {
+                    return true;
+                }
             }
             
         } catch (error) {
@@ -136,6 +153,19 @@ export class ValidatorDiscordUserService {
     // active is defined if validator has voted in the last epoch
     async isActiveMainnetValidator(votePubkey: string, apiKey: string) {
         try {
+            // get current slot
+            const slot_response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
+                jsonrpc: "2.0",
+                id: 1,
+                method: "getSlot"
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const current_slot = slot_response.data.result;
+
             const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
                 jsonrpc: "2.0",
                 id: 1,
@@ -152,7 +182,7 @@ export class ValidatorDiscordUserService {
             });
     
             if (response.data.result.current[0] != null) {
-                return response.data.result.current[0].epochVoteAccount;
+                const last_vote = response.data.result.current[0].lastVote;
             }
     
         } catch (error) {

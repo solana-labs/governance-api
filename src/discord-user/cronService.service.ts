@@ -27,7 +27,7 @@ export class CronService {
             validatorDiscordUsers.forEach(async (user) => {
                 const publicKey = user.publicKeyStr;
                 try {
-                    await axios.post(`http://localhost:3001/verify-gossip-keypair/${publicKey}/discordauthplaceholder`);
+                    await axios.post(`http://localhost:3001/verify-gossip-keypair/${publicKey}/identitykeyplacerholder/discordauthplaceholder`);
                     console.log(`REFRESHING`);
                 } catch (error) {
                     console.error(`Error for publicKey ${publicKey}: `, error);

@@ -18,7 +18,7 @@ export class ValidatorDiscordUserService {
         @InjectRepository(ValidatorDiscordUser)
         private readonly validatorDiscordUserRepository: Repository<ValidatorDiscordUser>,
         private readonly configService: ConfigService,
-    ) {}
+    ) { }
 
     async calculateMetadata(publicKey: string) {
         const API_KEY = this.configService.get('helius.apiKey');
@@ -66,18 +66,18 @@ export class ValidatorDiscordUserService {
                     'Content-Type': 'application/json'
                 }
             });
-    
+
             if (response.data.result.current[0] != null) {
                 return true;
             }
             return false;
-            
+
         } catch (error) {
             console.error('Failed to check validator status:', error);
             return false;
         }
     }
-    
+
     async isMainnetValidator(votePubkey: string, apiKey: string) {
         try {
             const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
@@ -94,18 +94,18 @@ export class ValidatorDiscordUserService {
                     'Content-Type': 'application/json'
                 }
             });
-    
+
             if (response.data.result.current[0] != null) {
                 return true;
             }
             return false;
-    
+
         } catch (error) {
             console.error('Failed to check validator status:', error);
             return false;
         }
     }
-    
+
     // active is defined if validator has voted in the last epoch
     async isActiveTestnetValidator(votePubkey: string) {
         try {
@@ -136,20 +136,20 @@ export class ValidatorDiscordUserService {
                     'Content-Type': 'application/json'
                 }
             });
-    
+
             if (response.data.result.current[0] != null) {
                 const last_vote = response.data.result.current[0].lastVote;
                 if (current_slot - last_vote < SLOTS_IN_EPOCH) {
                     return true;
                 }
             }
-            
+
         } catch (error) {
             console.error('Failed to check validator status:', error);
             return false;
         }
     }
-    
+
     // active is defined if validator has voted in the last epoch
     async isActiveMainnetValidator(votePubkey: string, apiKey: string) {
         try {
@@ -180,11 +180,14 @@ export class ValidatorDiscordUserService {
                     'Content-Type': 'application/json'
                 }
             });
-    
+
             if (response.data.result.current[0] != null) {
                 const last_vote = response.data.result.current[0].lastVote;
+                if (current_slot - last_vote < SLOTS_IN_EPOCH) {
+                    return true;
+                }
             }
-    
+
         } catch (error) {
             console.error('Failed to check validator status:', error);
             return false;
@@ -195,35 +198,66 @@ export class ValidatorDiscordUserService {
         try {
             if (await this.isMainnetValidator(votePubkey, apiKey)) {
                 const response = await axios.post(`https://rpc.helius.xyz?api-key=${apiKey}`, {
-                jsonrpc: "2.0",
-                id: 1,
-                method: "getVoteAccounts",
-                params: [
-                    {
-                        "votePubkey": votePubkey
+                    jsonrpc: "2.0",
+                    id: 1,
+                    method: "getVoteAccounts",
+                    params: [
+                        {
+                            "votePubkey": votePubkey
+                        }
+                    ]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                ]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-        
-            if (response.data.result.current[0] != null) {
-                const lamport_stake = response.data.result.current[0].activatedStake
-                const sol_stake = Math.round(lamport_stake / LAMPORTS_PER_SOL);
+                });
 
-                if (sol_stake >= STAKE_THRESHOLD) {
+                if (response.data.result.current[0] != null) {
+                    const lamport_stake = response.data.result.current[0].activatedStake
+                    const sol_stake = Math.round(lamport_stake / LAMPORTS_PER_SOL);
+
+                    if (sol_stake >= STAKE_THRESHOLD) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            return false;
+        }
+        catch (error) {
+            console.error('Failed to check validator status:', error);
+            return false;
+        }
+    }
+
+    async verifyIdentityKey(publicKey: string, identityKey: string){
+        try {
+            const response = await axios.post(`https://rpc.helius.xyz?api-key=${this.configService.get('helius.apiKey')}`, {
+                    jsonrpc: "2.0",
+                    id: 1,
+                    method: "getVoteAccounts",
+                    params: [
+                        {
+                            "votePubkey": publicKey
+                        }
+                    ]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+            });
+
+            if (response.data.result.current[0] != null) {
+                const nodePubkey = response.data.result.current[0].nodePubkey;
+
+                if (nodePubkey == identityKey) {
                     return true;
                 }
             }
-            return false;
-            }
-
-            return false;
-        } 
+        }
         catch (error) {
-            console.error('Failed to check validator status:', error);
+            console.log('Failed to verify identity key:', error);
             return false;
         }
     }
@@ -237,28 +271,28 @@ export class ValidatorDiscordUserService {
             code,
             redirect_uri: this.configService.get('validatorDiscord.oauthRedirectUri'),
         });
-      
+
         const response = await fetch(url, {
-          body,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+            body,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
         });
         if (response.ok) {
-          const data = await response.json();
-          return data;
+            const data = await response.json();
+            return data;
         } else {
-          throw new Error(`Error fetching OAuth tokens: [${response.status}] ${response.statusText}`);
+            throw new Error(`Error fetching OAuth tokens: [${response.status}] ${response.statusText}`);
         }
     }
 
     async getUserData(tokens) {
         const url = 'https://discord.com/api/v10/oauth2/@me';
         const response = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${tokens.access_token}`,
-        },
+            headers: {
+                Authorization: `Bearer ${tokens.access_token}`,
+            },
         });
         if (response.ok) {
             const data = await response.json();
@@ -271,9 +305,9 @@ export class ValidatorDiscordUserService {
     async getUserDataWithAccessToken(access_token) {
         const url = 'https://discord.com/api/v10/oauth2/@me';
         const response = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${access_token}`,
-        },
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+            },
         });
         if (response.ok) {
             const data = await response.json();
@@ -296,7 +330,7 @@ export class ValidatorDiscordUserService {
                 body,
                 method: 'POST',
                 headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
             });
             if (response.ok) {
@@ -346,14 +380,14 @@ export class ValidatorDiscordUserService {
             method: 'PUT',
             body: JSON.stringify(body),
             headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
             },
         });
         if (!response.ok) {
             throw new Error(`Error pushing discord metadata: [${response.status}] ${response.statusText}`);
         }
-      }
+    }
 
     async getAccessTokenWithRefreshToken(refreshToken: string) {
         const body = new URLSearchParams({
@@ -362,7 +396,7 @@ export class ValidatorDiscordUserService {
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
         }).toString();
-    
+
         const response = await fetch('https://discord.com/api/v10/oauth2/token', {
             body,
             method: 'POST',
@@ -391,18 +425,18 @@ export class ValidatorDiscordUserService {
             throw new Error(`Error refreshing access token: [${response.status}] ${response.statusText}`);
         }
     }
-    
+
     /**
     * Creates a new Discord user
     */
     async createDiscordUser(authId: string, publicKey: PublicKey, refreshToken: string) {
         const insertResult = await this.validatorDiscordUserRepository.upsert(
-        {
-            authId,
-            publicKeyStr: publicKey.toBase58(),
-            refreshToken,
-        },
-        { conflictPaths: ['authId'] },
+            {
+                authId,
+                publicKeyStr: publicKey.toBase58(),
+                refreshToken,
+            },
+            { conflictPaths: ['authId'] },
         );
 
         console.log('initial refresh token: ', refreshToken)
@@ -412,14 +446,14 @@ export class ValidatorDiscordUserService {
 
     async deleteDiscordUser(publicKey: PublicKey) {
         const user = await this.getDiscordUserByPublicKey(publicKey);
-      
+
         if (!user) {
-          this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
-          throw new Error('Discord user not found');
+            this.logger.error(`Discord user for ${publicKey.toBase58()} not found`);
+            throw new Error('Discord user not found');
         }
-      
+
         await this.validatorDiscordUserRepository.delete(user.id);
-      
+
         this.logger.debug(`Deleted Discord user for ${publicKey.toBase58()}`);
     }
 
@@ -427,9 +461,9 @@ export class ValidatorDiscordUserService {
      * Returns a user by their ID
      */
     async getDiscordUserByPublicKey(publicKey: PublicKey) {
-    const result = await this.validatorDiscordUserRepository.findOne({
-        where: { publicKeyStr: publicKey.toBase58() },
-    });
-    return result;
+        const result = await this.validatorDiscordUserRepository.findOne({
+            where: { publicKeyStr: publicKey.toBase58() },
+        });
+        return result;
     }
 }

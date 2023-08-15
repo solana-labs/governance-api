@@ -74,13 +74,14 @@ export class ValidatorDiscordUserController {
         return nacl.sign.detached.verify(fullSerializedMessage, sig, publicKey);
     }
 
-    async newDiscordUser(publicKey: string, discordAuthorizationCode: string, signature: string) {
+    async newDiscordUser(publicKey: string, identityKey: string, discordAuthorizationCode: string, signature: string) {
+        const isValidIdentityKey = await this.validatorDiscordUserService.verifyIdentityKey(publicKey, identityKey);
         const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey) ||
                         await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
     
         const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
 
-        if (isValidator && isValidSignature) { // && isValidSignature for production
+        if (isValidator && isValidIdentityKey && isValidSignature) { // && isValidSignature for production
             const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
 
             const meData = await this.validatorDiscordUserService.getUserData(tokens);
@@ -93,18 +94,18 @@ export class ValidatorDiscordUserController {
             await this.validatorDiscordUserService.pushMetadata(userId, tokens.access_token, metadata);
         }
         else {
-            throw new HttpException('Not a validator / invalid signature', HttpStatus.BAD_REQUEST);
+            throw new HttpException('Not a validator / invalid signature / identity key', HttpStatus.BAD_REQUEST);
         }
     }
 
-    @Post('/verify-gossip-keypair/:publicKey/:discordAuthorizationCode')
+    @Post('/verify-gossip-keypair/:publicKey/:identityKey/:discordAuthorizationCode')
     @HttpCode(200)
     async validatorVerify(
         @Body() body: {signature: string},
         @Param('publicKey') publicKey: string,
+        @Param('identityKey') identityKey: string,
         @Param('discordAuthorizationCode') discordAuthorizationCode: string,
     ) {
-
         const { signature } = body;
         
         const discordUser = await this.validatorDiscordUserService.getDiscordUserByPublicKey(new PublicKey(publicKey));
@@ -114,11 +115,11 @@ export class ValidatorDiscordUserController {
                 await this.validatorDiscordUserService.updateMetadataForUser(new PublicKey(publicKey));
             } catch (error) { // existing user with Oauth tokens stored but wants to refresh
                 await this.validatorDiscordUserService.deleteDiscordUser(new PublicKey(publicKey));
-                await this.newDiscordUser(publicKey, discordAuthorizationCode, signature);
+                await this.newDiscordUser(publicKey, identityKey, discordAuthorizationCode, signature);
             }
         }
         else {
-            await this.newDiscordUser(publicKey, discordAuthorizationCode, signature);
+            await this.newDiscordUser(publicKey, identityKey, discordAuthorizationCode, signature);
         }
     }
 }

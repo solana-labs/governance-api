@@ -19,7 +19,6 @@ import * as bs58 from 'bs58';
 import { ConfigService } from '@src/config/config.service';
 
 import { ValidatorDiscordUserService } from './validator-discord-user.service';
-import { isValid } from 'date-fns';
 
 @Controller()
 export class ValidatorDiscordUserController {

@@ -78,7 +78,7 @@ export class ValidatorDiscordUserController {
         const isValidator = await this.validatorDiscordUserService.isTestnetValidator(publicKey) ||
                         await this.validatorDiscordUserService.isMainnetValidator(publicKey, this.configService.get('helius.apiKey'))
     
-        const isValidSignature = await this.verifySignature(publicKey, discordAuthorizationCode, signature);
+        const isValidSignature = await this.verifySignature(identityKey, discordAuthorizationCode, signature);
 
         if (isValidator && isValidIdentityKey && isValidSignature) { // && isValidSignature for production
             const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);

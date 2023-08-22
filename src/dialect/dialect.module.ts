@@ -5,7 +5,7 @@ import {
 import { Dialect, Environment } from '@dialectlabs/sdk';
 import { Module } from '@nestjs/common';
 
-import { ConfigModule } from '@src/config/config.module';
+import { ConfigModule } from '@src/config/config.module';3
 
 import { ConfigService } from '@src/config/config.service';
 
@@ -24,7 +24,8 @@ import { DialectService } from './dialect.service';
             environment: configService.get('external.dialectSdkEnvironment') as Environment,
           },
           SolanaSdkFactory.create({
-            wallet: NodeDialectSolanaWalletAdapter.create(),
+            //wallet: NodeDialectSolanaWalletAdapter.create(),
+            wallet: NodeDialectSolanaWalletAdapter.create() as any,
           }),
         );
       },

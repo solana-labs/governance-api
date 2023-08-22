@@ -1,0 +1,9 @@
+CREATE TABLE "validator_discord_user" (
+    "id" SERIAL PRIMARY KEY,
+    "authId" VARCHAR(255) UNIQUE,
+    "publicKeyStr" VARCHAR(255) NOT NULL,
+    "refreshToken" VARCHAR(255) NOT NULL,
+    "created" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+    "updated" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+    "deleted" TIMESTAMP WITHOUT TIME ZONE
+);

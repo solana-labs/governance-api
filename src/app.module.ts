@@ -40,8 +40,14 @@ import { FollowFeedModule } from './follow-feed/follow-feed.module';
 import { HeliusModule } from './helius/helius.module';
 import { StatsModule } from './stats/stats.module';
 
+import { ScheduleModule } from '@nestjs/schedule';
+import { CronService } from '@src/discord-user/cronService.service';
+import { ValidatorDiscordUser } from '@src/discord-user/entities/ValidatorDiscordUser.entity';
+
 @Module({
   imports: [
+    TypeOrmModule.forFeature([ValidatorDiscordUser]),
+    ScheduleModule.forRoot(),
     ConfigModule,
     GraphQLModule.forRoot<MercuriusDriverConfig>({
       autoSchemaFile: true,
@@ -98,6 +104,7 @@ import { StatsModule } from './stats/stats.module';
   ],
   controllers: [AppController],
   providers: [
+    CronService,
     AppService,
     {
       provide: APP_INTERCEPTOR,

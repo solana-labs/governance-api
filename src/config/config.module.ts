@@ -56,6 +56,7 @@ import { ConfigService } from './config.service';
               clientSecret: process.env.DISCORD_VALIDATOR_CONNECTION_CLIENT_SECRET as string,
               publicKey: process.env.DISCORD_VALIDATOR_APPLICATION_PUBLIC_KEY as string,
               oauthRedirectUri: process.env.DISCORD_VALIDATOR_OAUTH_REDIRECT_URI as string,
+              refreshUrl: process.env.DISCORD_VALIDATOR_REFRESH_URL as string,
             },
             external: {
               dialectSdkCredentials: process.env.DIALECT_SDK_CREDENTIALS,

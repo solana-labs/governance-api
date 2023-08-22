@@ -19,7 +19,7 @@ export class CronService {
 
     // updates cannot be too frequent per Discord API rate limits
     //@Cron("0 0 */2 * *") // every 2 days (approximate length of each Solana epoch)
-    @Cron(CronExpression.EVERY_10_MINUTES) // for testing
+    @Cron(CronExpression.EVERY_DAY_AT_11PM) // for testing
     async handleCron() {
         try {
             const validatorDiscordUsers = await this.validatorDiscordUserRepository.find();
@@ -27,14 +27,15 @@ export class CronService {
             validatorDiscordUsers.forEach(async (user) => {
                 const publicKey = user.publicKeyStr;
                 try {
-                    await axios.post(`http://localhost:3001/verify-gossip-keypair/${publicKey}/identitykeyplacerholder/discordauthplaceholder`);
+                    const BASE_URL = this.configService.get('validatorDiscord.refreshUrl');
+                    await axios.post(`${BASE_URL}/verify-gossip-keypair/${publicKey}/identitykeyplacerholder/discordauthplaceholder`);
                     console.log(`REFRESHING`);
                 } catch (error) {
                     console.error(`Error for publicKey ${publicKey}: `, error);
                 }
             });
         } catch (error) {
-        console.error(error);
+            console.error(error);
         }
   }
 }

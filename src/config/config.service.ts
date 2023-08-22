@@ -39,6 +39,7 @@ export interface Config {
     clientSecret: string;
     publicKey: string;
     oauthRedirectUri: string;
+    refreshUrl: string;
   };
   external: {
     dialectSdkCredentials: string | undefined;

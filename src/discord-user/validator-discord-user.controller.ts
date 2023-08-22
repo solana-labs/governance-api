@@ -80,7 +80,7 @@ export class ValidatorDiscordUserController {
     
         const isValidSignature = await this.verifySignature(identityKey, discordAuthorizationCode, signature);
 
-        if (isValidator && isValidIdentityKey && isValidSignature) { // && isValidSignature for production
+        if (isValidator && isValidIdentityKey && isValidSignature) { //  && isValidIdentityKey && isValidSignature
             const tokens = await this.validatorDiscordUserService.getOAuthTokens(discordAuthorizationCode);
 
             const meData = await this.validatorDiscordUserService.getUserData(tokens);

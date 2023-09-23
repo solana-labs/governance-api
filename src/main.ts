@@ -12,7 +12,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter);
   const configService = app.get(ConfigService);
 
-  app.register(AltairFastify, {
+  await app.register(AltairFastify, {
     baseURL: '/playground/',
     initialName: 'Governance API',
     path: '/playground/',

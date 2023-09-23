@@ -34,7 +34,21 @@ $ yarn install
 
 ## Setup
 
-You'll need to have a postgresql instance running locally.
+Copy the `.env.example` file to `.env` and fill in the values.
+
+Most of the values are self-explanatory. Check [these instructions](#setup-dialect-app) on how to register a Dialect app.
+
+```bash
+$ cp .env.example .env
+```
+
+Start the Postgres database:
+
+```bash
+$ docker compose up
+```
+
+Run the database migrations:
 
 ```bash
 $ yarn run db:setup
@@ -66,6 +80,65 @@ $ yarn run test:e2e
 $ yarn run test:cov
 ```
 
+## Setup Dialect App
+
+The steps below explain how to set up the Dialect app to work with the API.
+
+- Generate a new keypair
+
+```
+solana-keygen new --no-bip39-passphrase --outfile ./tmp/dialect.json
+```
+
+- Set an ENV var with the content of the generated file
+
+```
+export DIALECT_APP_KEYPAIR=$(cat ./tmp/dialect.json)
+```
+
+- Create a script to register the app
+
+```ts
+// ./tmp/register-dialect-app.ts
+import {
+  NodeDialectSolanaWalletAdapter,
+  Solana,
+  SolanaSdkFactory,
+} from '@dialectlabs/blockchain-sdk-solana';
+import { BlockchainType, Dialect, DialectSdk, TokenStore } from '@dialectlabs/sdk';
+
+const sdk: DialectSdk<Solana> = Dialect.sdk(
+  {
+    dialectCloud: { tokenStore: TokenStore.createInMemory() },
+    environment: 'development',
+  },
+  SolanaSdkFactory.create({
+    wallet: NodeDialectSolanaWalletAdapter.create(),
+  }),
+);
+
+async function main() {
+  await sdk.dapps.create({
+    name: 'My test dapp',
+    description: `My test dapp's description.`,
+    blockchainType: BlockchainType.SOLANA,
+  });
+  const dapp = await sdk.dapps.find();
+
+  // If all went well, you now have registered a dapp on Dialect Cloud!
+  console.log(dapp);
+}
+main();
+```
+
+- Run the script to register the app
+
+```
+npx ts-node ./tmp/register-dialect-app.ts
+```
+
+The app is now registered on Dialect.
+
 ## Support
 
 Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
@@ -79,3 +152,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+
+```
+
+```

@@ -1,0 +1,12 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: governance-api
+      POSTGRES_USER: governance-api
+      POSTGRES_PASSWORD: governance-api
+    volumes:
+      - ./tmp/postgres:/var/lib/postgresql/data

@@ -7,7 +7,7 @@ export interface Config {
   app: {
     port: number;
     host?: string;
-    codeCommitedInfoUrl: string;
+    codeCommittedInfoUrl: string;
   };
   constants: {
     admins: PublicKey[];

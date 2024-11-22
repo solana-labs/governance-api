@@ -18,7 +18,7 @@ import { ConfigService } from './config.service';
             app: {
               port,
               host: process.env.HOST,
-              codeCommitedInfoUrl: process.env.CODE_COMMITED_INFO_URL || 'https://app.realms.today',
+              codeCommittedInfoUrl: process.env.CODE_COMMITTED_INFO_URL || 'https://app.realms.today',
             },
             constants: {
               admins: process.env.ADMINS

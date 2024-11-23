@@ -44,7 +44,7 @@ export class RealmSettingsService {
   fetchAllCodeCommittedSettings = this.staleCacheService.dedupe(
     async (environment: Environment) => {
       return fetch(
-        `${this.configService.get('app.codeCommitedInfoUrl')}/realms/${
+        `${this.configService.get('app.codeCommittedInfoUrl')}/realms/${
           environment === 'mainnet' ? 'mainnet-beta' : 'devnet'
         }.json`,
       ).then<CodeCommittedSettings[]>((resp) => resp.json());

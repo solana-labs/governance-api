@@ -317,7 +317,7 @@ export class RealmService {
         iconUrl: settings.ogImage
           ? normalizeCodeCommittedUrl(
               settings.ogImage,
-              this.configService.get('app.codeCommitedInfoUrl'),
+              this.configService.get('app.codeCommittedInfoUrl'),
             )
           : undefined,
         instagramUrl: settings.instagram,

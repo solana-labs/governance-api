@@ -204,7 +204,7 @@ export class RealmTreasuryService {
                 () =>
                   fetch(
                     `${this.configService.get(
-                      'app.codeCommitedInfoUrl',
+                      'app.codeCommittedInfoUrl',
                     )}/realms/token-overrides.json`,
                   ).then<TokenOverrides>((response) => response.json()),
                 (e) => new errors.Exception(e),

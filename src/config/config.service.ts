@@ -34,6 +34,13 @@ export interface Config {
     publicKey: string;
     oauthRedirectUri: string;
   };
+  validatorDiscord: {
+    clientId: string;
+    clientSecret: string;
+    publicKey: string;
+    oauthRedirectUri: string;
+    refreshUrl: string;
+  };
   external: {
     dialectSdkCredentials: string | undefined;
     dialectSdkEnvironment: string | undefined;

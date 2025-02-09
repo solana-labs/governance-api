@@ -1,3 +1,12 @@
+# governance-api
+
+This repo still exists in archived form, but the maintained version has now relocated to: https://github.com/Mythic-Project/governance-api
+
+
+
+
+
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
 </p>

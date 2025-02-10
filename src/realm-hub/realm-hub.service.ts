@@ -133,7 +133,7 @@ export class RealmHubService {
       return cached;
     }
 
-    const url = this.configService.get('app.codeCommitedInfoUrl') + '/realms/about.json';
+    const url = this.configService.get('app.codeCommittedInfoUrl') + '/realms/about.json';
     const resp = await fetch(url);
     const allInfo: { [address: string]: CodeCommittedHubInfo } = await resp.json();
 
